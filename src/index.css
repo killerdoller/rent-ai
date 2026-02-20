@@ -1,8 +1,8 @@
 :root {
   --primary: #2563eb;
   --primary-hover: #1e40af;
-  --purple: #8b5cf6;
-  --purple-hover: #7c3aed;
+  --pink: #ec4899;
+  --pink-hover: #db2777;
   --bg-dark: #0f172a;
   --surface: rgba(30, 41, 59, 0.7);
   --text-main: #f8fafc;
@@ -62,21 +62,28 @@ body {
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
-.btn-purple {
-  background: var(--purple);
+.btn-pink {
+  background: var(--pink);
   color: white;
 }
 
-.btn-purple:hover {
-  background: var(--purple-hover);
+.btn-pink:hover {
+  background: var(--pink-hover);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
 }
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .fade-in {

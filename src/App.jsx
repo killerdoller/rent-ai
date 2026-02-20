@@ -59,14 +59,14 @@ function App() {
         <p className="fade-in" style={{ color: 'var(--text-muted)', fontSize: '1.2rem', marginBottom: '3rem', maxWidth: '600px', marginInline: 'auto' }}>
           La plataforma más avanzada para renta, compra y venta de bienes raíces en Colombia.
         </p>
-        
+
         <div className="glass fade-in" style={{ padding: '1.5rem', maxWidth: '800px', marginInline: 'auto', display: 'flex', gap: '1rem' }}>
-          <input 
-            type="text" 
-            placeholder="¿A dónde quieres mudarte?" 
+          <input
+            type="text"
+            placeholder="¿A dónde quieres mudarte?"
             style={{ flex: 1, background: 'none', border: 'none', color: 'white', fontSize: '1rem', outline: 'none' }}
           />
-          <button className="btn btn-purple">Buscar</button>
+          <button className="btn btn-pink">Buscar</button>
         </div>
       </section>
 
@@ -84,9 +84,9 @@ function App() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
           {properties.map(prop => (
-            <div key={prop.id} className="glass" style={{ overflow: 'hidden', transition: 'transform 0.3s ease' }} 
-                 onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
-                 onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+            <div key={prop.id} className="glass" style={{ overflow: 'hidden', transition: 'transform 0.3s ease' }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
               <img src={prop.image} alt={prop.title} style={{ width: '100%', height: '240px', objectFit: 'cover' }} />
               <div style={{ padding: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
