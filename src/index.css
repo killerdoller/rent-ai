@@ -1,6 +1,8 @@
 :root {
   --primary: #2563eb;
   --primary-hover: #1e40af;
+  --purple: #8b5cf6;
+  --purple-hover: #7c3aed;
   --bg-dark: #0f172a;
   --surface: rgba(30, 41, 59, 0.7);
   --text-main: #f8fafc;
@@ -58,6 +60,17 @@ body {
   background: var(--primary-hover);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.btn-purple {
+  background: var(--purple);
+  color: white;
+}
+
+.btn-purple:hover {
+  background: var(--purple-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
 }
 
 /* Animations */

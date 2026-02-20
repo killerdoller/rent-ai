@@ -66,7 +66,7 @@ function App() {
             placeholder="¿A dónde quieres mudarte?" 
             style={{ flex: 1, background: 'none', border: 'none', color: 'white', fontSize: '1rem', outline: 'none' }}
           />
-          <button className="btn btn-primary">Buscar</button>
+          <button className="btn btn-purple">Buscar</button>
         </div>
       </section>
 
