@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="RentApp Logo">
+  <defs>
+    <filter id="glowD" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="2.0" flood-color="#2563eb" flood-opacity="0.3"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="2.5" flood-color="#10b981" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <!-- Optimized for favicon: scaled up and centered -->
+  <g filter="url(#glowD)" transform="translate(64, 64) scale(1.4) translate(-64, -64)">
+    <!-- Back bubble (blue) -->
+    <path d="M26 44
+             Q26 34 36 34
+             H72
+             Q82 34 82 44
+             V62
+             Q82 72 72 72
+             H48
+             L34 84
+             V72
+             H36
+             Q26 72 26 62
+             Z"
+          fill="rgba(255,255,255,0.05)"
+          stroke="#2563eb" stroke-width="7" stroke-linejoin="round"/>
+
+    <!-- Front bubble (Teal) -->
+    <path d="M46 52
+             Q46 42 56 42
+             H92
+             Q102 42 102 52
+             V70
+             Q102 80 92 80
+             H72
+             V92
+             L88 80
+             H56
+             Q46 80 46 70
+             Z"
+          fill="rgba(255,255,255,0.05)"
+          stroke="#10b981" stroke-width="7" stroke-linejoin="round"/>
+
+    <!-- Tiny house in overlap -->
+    <g stroke="#f8fafc" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M56 68 L64 60 L72 68"/>
+      <path d="M58 68 V78 H70 V68"/>
+    </g>
+
+    <!-- Chat dots (subtle) -->
+    <g fill="#94a3b8">
+      <circle cx="44" cy="52" r="2.6"/>
+      <circle cx="52" cy="52" r="2.6"/>
+      <circle cx="60" cy="52" r="2.6"/>
+    </g>
+  </g>
+</svg>

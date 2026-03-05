@@ -1,119 +1,221 @@
 import React, { useState } from 'react';
+import { content } from './data/content';
+import { Section } from './components/Section';
+import { ScrollAnimation } from './components/ScrollAnimation';
+import { ChatDemo } from './components/ChatDemo';
 import './index.css';
 
-const properties = [
-  {
-    id: 1,
-    title: "Luxury Modern Villa",
-    location: "Medellín, Colombia",
-    price: "$2,500,000",
-    beds: 4,
-    baths: 5,
-    area: "450m²",
-    image: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&q=80&w=800"
-  },
-  {
-    id: 2,
-    title: "Penthouse at the Coast",
-    location: "Cartagena, Colombia",
-    price: "$1,800,000",
-    beds: 3,
-    baths: 3,
-    area: "210m²",
-    image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800"
-  },
-  {
-    id: 3,
-    title: "Eco-Chalet Forest",
-    location: "Guatapé, Colombia",
-    price: "$950,000",
-    beds: 2,
-    baths: 2,
-    area: "120m²",
-    image: "https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&q=80&w=800"
-  }
-];
+const Navbar = () => (
+  <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200">
+    <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+      <div className="flex items-center gap-1 group cursor-pointer">
+        <div className="w-20 h-20 transition-transform duration-700 group-hover:scale-110 flex items-center justify-center">
+          <img src="/Logo_finalfinal.png" alt="RentAI Logo" className="w-full h-full object-contain mix-blend-multiply" />
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-2xl font-black tracking-tighter text-text-main">Rent<span className="text-primary italic">AI</span></span>
+        </div>
+      </div>
 
-function App() {
-  const [search, setSearch] = useState("");
+      <div className="hidden md:flex items-center gap-10">
+        {content.nav.links.map(link => (
+          <a key={link.name} href={link.href} className="text-[14px] font-bold text-text-muted hover:text-primary transition-all">
+            {link.name}
+          </a>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-4">
+        <button className="text-[14px] font-bold text-text-muted hover:text-text-main transition-colors px-4">
+          {content.nav.login}
+        </button>
+        <button className="bg-primary hover:opacity-90 text-white text-[14px] font-black px-8 py-3 rounded-full transition-all shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5">
+          {content.nav.cta}
+        </button>
+      </div>
+    </div>
+  </nav>
+);
+
+const Hero = () => {
+  const totalFrames = 120;
+  // Based on the working example: https://nedrncbxdfgofnlkzaxv.supabase.co/storage/v1/object/public/Frames/frame_119_delay-0.042s.png
+  const baseUrl = "https://nedrncbxdfgofnlkzaxv.supabase.co/storage/v1/object/public/Frames/frame_";
+  const frames = Array.from({ length: totalFrames }, (_, i) => {
+    const frameIndex = i.toString().padStart(3, '0');
+    return `${baseUrl}${frameIndex}_delay-0.042s.png`;
+  });
 
   return (
-    <div className="app">
-      {/* Navigation */}
-      <nav className="container" style={{ padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Rent<span style={{ color: 'var(--primary)' }}>AI</span></h1>
-        <div style={{ display: 'flex', gap: '2rem' }}>
-          <a href="#" style={{ color: 'white', textDecoration: 'none' }}>Rent</a>
-          <a href="#" style={{ color: 'white', textDecoration: 'none' }}>Buy</a>
-          <a href="#" style={{ color: 'white', textDecoration: 'none' }}>Sell</a>
-        </div>
-        <button className="btn btn-primary">Sign In</button>
-      </nav>
-
-      {/* Hero Section */}
-      <section className="hero container" style={{ padding: '8rem 2rem', textAlign: 'center' }}>
-        <h2 className="fade-in" style={{ fontSize: '4rem', marginBottom: '1.5rem', lineHeight: '1.1' }}>
-          Encuentra el hogar de <br />
-          <span style={{ color: 'var(--primary)' }}>tus sueños</span> con AI.
-        </h2>
-        <p className="fade-in" style={{ color: 'var(--text-muted)', fontSize: '1.2rem', marginBottom: '3rem', maxWidth: '600px', marginInline: 'auto' }}>
-          La plataforma más avanzada para renta, compra y venta de bienes raíces en Colombia.
-        </p>
-
-        <div className="glass fade-in" style={{ padding: '1.5rem', maxWidth: '800px', marginInline: 'auto', display: 'flex', gap: '1rem' }}>
-          <input
-            type="text"
-            placeholder="¿A dónde quieres mudarte?"
-            style={{ flex: 1, background: 'none', border: 'none', color: 'white', fontSize: '1rem', outline: 'none' }}
-          />
-          <button className="btn btn-pink">Buscar</button>
-        </div>
-      </section>
-
-      {/* Listings Grid */}
-      <main className="container" style={{ paddingBottom: '8rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem' }}>
-          <div>
-            <h3 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Propiedades destacadas</h3>
-            <p style={{ color: 'var(--text-muted)' }}>Explora las mejores opciones elegidas para ti</p>
+    <section className="relative pt-40 pb-20 bg-bg-light overflow-hidden">
+      <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+        <div className="flex flex-col gap-10">
+          <div className="space-y-6">
+            <h1 className="text-5xl sm:text-7xl font-black tracking-tighter leading-[0.9] text-text-main">
+              {content.hero.title}
+            </h1>
+            <p className="text-xl text-text-muted font-medium leading-relaxed max-w-xl">
+              {content.hero.subtitle}
+            </p>
+            <p className="text-sm font-bold text-terracotta-warm tracking-wide flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-terracotta-warm animate-pulse" />
+              {content.hero.variantA.trust}
+            </p>
           </div>
-          <button style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: '600', cursor: 'pointer' }}>
-            Ver todas →
-          </button>
+
+          {/* Search Bar / CTA */}
+          <div className="flex flex-col gap-4">
+            <div className="bg-slate-50 border-2 border-primary/60 p-2 pl-6 rounded-3xl flex flex-col sm:flex-row items-center gap-4 shadow-2xl shadow-primary/10 transition-all focus-within:ring-4 focus-within:ring-primary/5">
+              <div className="flex-1 w-full py-2 flex items-center gap-3">
+                <span className="text-xl">📍</span>
+                <input
+                  type="text"
+                  placeholder={content.hero.search.placeholder}
+                  className="w-full bg-transparent border-none outline-none text-text-main font-bold placeholder:text-slate-400"
+                />
+              </div>
+              <div className="flex w-full sm:w-auto gap-2">
+                <button className="bg-primary text-white px-8 py-4 rounded-2xl font-black text-sm uppercase transition-all hover:opacity-90 active:scale-95 shadow-lg shadow-primary/25">
+                  {content.hero.search.primaryCta}
+                </button>
+                <button className="border-2 border-primary text-primary px-6 py-4 rounded-2xl font-black text-sm uppercase transition-all hover:bg-white/50 active:scale-95 whitespace-nowrap">
+                  {content.hero.search.aiCta}
+                </button>
+              </div>
+            </div>
+            <p className="text-[11px] text-text-muted font-bold pl-4">
+              {content.hero.search.privacy}
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
-          {properties.map(prop => (
-            <div key={prop.id} className="glass" style={{ overflow: 'hidden', transition: 'transform 0.3s ease' }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-              <img src={prop.image} alt={prop.title} style={{ width: '100%', height: '240px', objectFit: 'cover' }} />
-              <div style={{ padding: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                  <span style={{ color: 'var(--primary)', fontWeight: '700', fontSize: '1.2rem' }}>{prop.price}</span>
-                  <span style={{ color: 'var(--text-muted)' }}>{prop.area}</span>
-                </div>
-                <h4 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{prop.title}</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>📍 {prop.location}</p>
-                <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  <span>🛏️ {prop.beds} Beds</span>
-                  <span>🚿 {prop.baths} Baths</span>
-                </div>
+        {/* Scroll Animation Container */}
+        <div className="relative h-[400px] lg:h-[600px] rounded-4xl bg-mint-soft/5 overflow-hidden flex items-center justify-center border border-primary/5">
+          <ScrollAnimation frames={frames} className="w-full h-full p-8" />
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-bg-light to-transparent" />
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const Problem = () => (
+  <Section id="problema" variant="default" kicker="El dolor actual" className="bg-white">
+    <div className="flex flex-col gap-12">
+      <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-text-main max-w-3xl">
+        {content.problem.title}
+      </h2>
+      <div className="grid md:grid-cols-3 gap-8">
+        {content.problem.items.map((item, i) => (
+          <div key={i} className="bg-white border border-slate-100 p-10 rounded-3xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
+            <div className="w-12 h-12 bg-terracotta-warm/10 text-terracotta-warm rounded-2xl flex items-center justify-center text-2xl mb-6">
+              {i === 0 ? "🔎" : i === 1 ? "📅" : "🔇"}
+            </div>
+            <h3 className="text-xl font-black text-text-main mb-4">{item.title}</h3>
+            <p className="text-text-muted font-bold text-sm leading-relaxed">{item.description}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </Section>
+);
+
+const Solution = () => (
+  <Section id="solucion" variant="cyan" kicker="La Revolución" className="bg-bg-light">
+    <div className="grid lg:grid-cols-2 gap-20 items-center">
+      <div className="flex flex-col gap-12">
+        <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-text-main">
+          {content.solution.title}
+        </h2>
+        <div className="space-y-8">
+          {content.solution.steps.map((s, i) => (
+            <div key={i} className="flex gap-6 items-start">
+              <div className="w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center font-black flex-shrink-0">
+                {s.step}
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-lg font-black text-text-main">{s.title}</h4>
+                <p className="text-text-muted font-bold text-sm">{s.description}</p>
               </div>
             </div>
           ))}
         </div>
-      </main>
+      </div>
 
-      {/* Footer */}
-      <footer style={{ background: 'rgba(0,0,0,0.3)', padding: '5rem 2rem' }}>
-        <div className="container" style={{ textAlign: 'center' }}>
-          <h2 style={{ marginBottom: '1rem' }}>Rent<span style={{ color: 'var(--primary)' }}>AI</span></h2>
-          <p style={{ color: 'var(--text-muted)' }}>© 2026 Rent AI - Tu aliado en Finca Raíz.</p>
-        </div>
-      </footer>
+      <div className="flex flex-col gap-6">
+        <ChatDemo />
+      </div>
     </div>
+  </Section>
+);
+
+const Features = () => (
+  <Section id="features" variant="violet" kicker="Características" className="bg-white">
+    <div className="flex flex-col gap-16">
+      <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-text-main text-center">
+        {content.features.title}
+      </h2>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        {content.features.items.map((feature, i) => (
+          <div key={i} className="p-10 rounded-3xl border border-slate-100 bg-white hover:border-primary/20 transition-all hover:shadow-xl group">
+            <div className="w-14 h-14 bg-mint-soft/20 text-olive-match rounded-2xl flex items-center justify-center text-2xl mb-8 group-hover:scale-110 transition-transform">
+              {["🏠", "🎯", "🤖", "🔔", "✅"][i]}
+            </div>
+            <h4 className="text-xl font-black text-text-main mb-4">{feature.title}</h4>
+            <p className="text-text-muted font-bold text-sm leading-relaxed">{feature.description}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </Section>
+);
+
+const Footer = () => (
+  <footer className="bg-bg-light border-t border-slate-200">
+    <div className="max-w-7xl mx-auto px-6 py-20">
+      <div className="bg-primary/5 rounded-4xl p-12 md:p-20 text-center flex flex-col items-center gap-8 mb-20">
+        <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-text-main max-w-3xl">
+          {content.footer.headline}
+        </h2>
+        <p className="text-xl text-text-muted font-bold">
+          {content.footer.subheadline}
+        </p>
+        <button className="bg-primary text-white px-12 py-5 rounded-2xl font-black text-lg uppercase transition-all hover:scale-105 shadow-xl shadow-primary/20">
+          {content.footer.cta}
+        </button>
+      </div>
+
+      <div className="flex flex-col md:flex-row justify-between items-center gap-10 border-t border-slate-200 pt-10">
+        <div className="flex items-center gap-1">
+          <div className="w-20 h-20 flex items-center justify-center">
+            <img src="/Logo_finalfinal.png" alt="RentAI" className="w-full h-full object-contain mix-blend-multiply" />
+          </div>
+          <span className="text-2xl font-black text-text-main">Rent<span className="text-primary italic">AI</span></span>
+        </div>
+        <div className="flex gap-10">
+          <a href="#" className="text-text-muted hover:text-primary font-bold transition-colors">Términos</a>
+          <a href="#" className="text-text-muted hover:text-primary font-bold transition-colors">Privacidad</a>
+        </div>
+        <p className="text-[11px] font-black text-slate-400 tracking-widest uppercase italic">
+          {content.footer.copy}
+        </p>
+      </div>
+    </div>
+  </footer>
+);
+
+export default function Landing() {
+  return (
+    <main className="min-h-screen bg-bg-light selection:bg-primary/20 font-sans text-text-main">
+      <Navbar />
+      <Hero />
+      <div className="text-center py-4 bg-white border-y border-slate-100 font-black text-[12px] tracking-[0.3em] uppercase text-primary/60">
+        {content.transition}
+      </div>
+      <Problem />
+      <Solution />
+      <Features />
+      <Footer />
+    </main>
   );
 }
-
-export default App;
