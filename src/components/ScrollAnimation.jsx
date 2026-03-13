@@ -43,47 +43,40 @@ export const ScrollAnimation = ({ frames, className }) => {
             const canvas = canvasRef.current;
             if (!container || !canvas) return;
 
-            const rect = container.getBoundingClientRect();
-            const windowHeight = window.innerHeight;
+            const heroSection = container.closest('header');
+            if (!heroSection) return;
 
-            // Simplified progress: 0 at bottom, 1 at top
-            const start = windowHeight;
-            const end = 0;
-            let progress = (start - rect.top) / (start + rect.height);
-            progress = Math.max(0, Math.min(1, progress));
+            const scrollTop = window.scrollY;
+            const maxScroll = heroSection.offsetHeight - window.innerHeight;
 
+            const scrollFraction = Math.max(0, Math.min(1, scrollTop / maxScroll));
             const frameIndex = Math.min(
                 images.length - 1,
-                Math.floor(progress * images.length)
+                Math.floor(scrollFraction * images.length)
             );
 
             const context = canvas.getContext('2d');
             const img = images[frameIndex];
 
             if (img && context) {
-                // Fix canvas sizing
-                if (canvas.width !== canvas.offsetWidth || canvas.height !== canvas.offsetHeight) {
-                    canvas.width = canvas.offsetWidth;
-                    canvas.height = canvas.offsetHeight;
+                if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
                 }
 
-                context.clearRect(0, 0, canvas.width, canvas.height);
-                const canvasAspect = canvas.width / canvas.height;
-                const imgAspect = img.width / img.height;
-                let drawWidth, drawHeight, offsetX, offsetY;
+                const cWidth = canvas.width;
+                const cHeight = canvas.height;
+                const iWidth = img.width;
+                const iHeight = img.height;
 
-                if (canvasAspect > imgAspect) {
-                    drawHeight = canvas.height;
-                    drawWidth = drawHeight * imgAspect;
-                    offsetX = (canvas.width - drawWidth) / 2;
-                    offsetY = 0;
-                } else {
-                    drawWidth = canvas.width;
-                    drawHeight = drawWidth / imgAspect;
-                    offsetX = 0;
-                    offsetY = (canvas.height - drawHeight) / 2;
-                }
-                context.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+                const ratio = Math.max(cWidth / iWidth, cHeight / iHeight);
+                const newWidth = iWidth * ratio * 1.05;
+                const newHeight = iHeight * ratio * 1.05;
+                const offsetX = (cWidth - newWidth) / 2;
+                const offsetY = (cHeight - newHeight) / 2;
+
+                context.clearRect(0, 0, cWidth, cHeight);
+                context.drawImage(img, offsetX, offsetY, newWidth, newHeight);
             }
         };
 
@@ -99,15 +92,15 @@ export const ScrollAnimation = ({ frames, className }) => {
     }, [images]);
 
     return (
-        <div ref={containerRef} className={`${className} relative min-h-[400px] flex items-center justify-center`}>
+        <div ref={containerRef} className={`${className}`}>
             {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center justify-center z-10">
                     <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
             )}
             <canvas
                 ref={canvasRef}
-                className="w-full h-full object-contain pointer-events-none"
+                className="w-full h-full block"
                 style={{ display: isLoading ? 'none' : 'block' }}
             />
         </div>

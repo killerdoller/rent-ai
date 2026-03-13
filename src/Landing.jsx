@@ -42,67 +42,63 @@ const Navbar = () => (
 );
 
 const Hero = () => {
-    const totalFrames = 120;
-    const baseUrl = "https://nedrncbxdfgofnlkzaxv.supabase.co/storage/v1/object/public/Frames/frame_";
+    const totalFrames = 191;
+    const baseUrl = "https://qtolgzslaxgiaoomophi.supabase.co/storage/v1/object/public/animacion/casita/frame_";
     const frames = Array.from({ length: totalFrames }, (_, i) => {
         const frameIndex = i.toString().padStart(3, '0');
-        return `${baseUrl}${frameIndex}_delay-0.042s.png`;
+        return `${baseUrl}${frameIndex}_delay-0.041s.webp`;
     });
 
     return (
-        <section className="relative pt-40 pb-20 bg-bg-light overflow-hidden">
-            <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-                <div className="flex flex-col gap-10">
-                    <div className="space-y-6">
-                        <h1 className="text-5xl sm:text-7xl font-black tracking-tighter leading-[0.9] text-text-main">
-                            {content.hero.title}
-                        </h1>
-                        <p className="text-xl text-text-muted font-medium leading-relaxed max-w-xl">
-                            {content.hero.subtitle}
-                        </p>
-                        <p className="text-sm font-bold text-terracotta-warm tracking-wide flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-terracotta-warm animate-pulse" />
-                            {content.hero.variantA.trust}
-                        </p>
-                    </div>
-
-                    <div className="flex flex-col gap-4">
-                        <div className="bg-slate-50 border-2 border-primary/60 p-2 pl-6 rounded-3xl flex flex-col sm:flex-row items-center gap-4 shadow-2xl shadow-primary/10 transition-all focus-within:ring-4 focus-within:ring-primary/5">
-                            <div className="flex-1 w-full py-2 flex items-center gap-3">
-                                <span className="text-xl">📍</span>
-                                <input
-                                    type="text"
-                                    placeholder={content.hero.search.placeholder}
-                                    className="w-full bg-transparent border-none outline-none text-text-main font-bold placeholder:text-slate-400"
-                                />
-                            </div>
-                            <div className="flex w-full sm:w-auto gap-2">
-                                <Link
-                                    to="/app"
-                                    className="bg-primary text-white px-8 py-4 rounded-2xl font-black text-sm uppercase transition-all hover:opacity-90 active:scale-95 shadow-lg shadow-primary/25"
-                                >
-                                    {content.hero.search.primaryCta}
-                                </Link>
-                                <Link
-                                    to="/app"
-                                    className="border-2 border-primary text-primary px-6 py-4 rounded-2xl font-black text-sm uppercase transition-all hover:bg-white/50 active:scale-95 whitespace-nowrap flex items-center justify-center"
-                                >
-                                    {content.hero.search.aiCta}
-                                </Link>
-                            </div>
-                        </div>
-                        <p className="text-[11px] text-text-muted font-bold pl-4">
-                            {content.hero.search.privacy}
-                        </p>
-                    </div>
+        <header className="h-[250vh] relative">
+            <div className="sticky top-0 h-[100vh] flex flex-col justify-center items-center pt-20 overflow-hidden">
+                {/* Scroll Animation Background */}
+                <div className="absolute inset-0 z-[1] overflow-hidden bg-bg-light">
+                    <ScrollAnimation frames={frames} className="w-full h-full block" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-[#C7D9BF]/60 to-[#2A333A]/40 z-[2]" />
                 </div>
 
-                <div className="relative h-[400px] lg:h-[600px] rounded-4xl bg-mint-soft/5 overflow-hidden flex items-center justify-center border border-primary/5">
-                    <ScrollAnimation frames={frames} className="w-full h-full p-8" />
-                    <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-bg-light to-transparent" />
+                <div className="relative z-10 text-center max-w-3xl mx-auto px-6 w-full">
+                    <div className="space-y-6 mb-12">
+                        <h1
+                            className="text-6xl sm:text-8xl font-black tracking-tighter leading-[1] text-white drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]"
+                            style={{ fontWeight: 900 }}
+                        >
+                            Encuentra tu hogar en pocos clicks
+                        </h1>
+                        <p className="text-xl text-white/90 font-medium leading-relaxed max-w-xl mx-auto drop-shadow-sm">
+                            Utilizamos IA y filtros inteligentes para optimizar tu tiempo de búsqueda.
+                        </p>
+                    </div>
+
+                    {/* Search Bar */}
+                    <form className="flex gap-2 bg-white/70 border-2 border-white p-2 rounded-full max-w-[550px] mx-auto backdrop-blur-md transition-all focus-within:border-primary focus-within:shadow-[0_0_0_4px_rgba(166,93,140,0.15)] shadow-xl mb-16" onSubmit={(e) => e.preventDefault()}>
+                        <div className="flex-1 flex items-center gap-3 pl-4">
+                            <svg className="w-5 h-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
+                            <input
+                                type="text"
+                                placeholder="Área o lugar de búsqueda"
+                                className="w-full bg-transparent border-none outline-none text-text-main font-bold placeholder:text-slate-500"
+                                required
+                            />
+                        </div>
+                        <Link
+                            to="/app"
+                            className="bg-gradient-to-br from-[#A65D8C] to-[#BF7E7E] text-white px-8 py-3 rounded-full font-black text-sm transition-all hover:-translate-y-0.5 shadow-lg flex items-center gap-2"
+                        >
+                            <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                            Buscar
+                        </Link>
+                    </form>
+
+                    {/* Scroll Indicator */}
+                    <div className="absolute bottom-[-8rem] left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/90 font-medium text-sm drop-shadow-md">
+                        <p>Descubre más</p>
+                        <svg className="w-5 h-5 animate-bounce" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                    </div>
                 </div>
             </div>
-        </section>
+        </header>
     );
 };
 
@@ -177,6 +173,37 @@ const Features = () => (
     </Section>
 );
 
+const Roomies = () => (
+    <Section id="roomies" variant="default" kicker="La Nueva Era del Arriendo" className="bg-bg-light overflow-hidden">
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="order-2 lg:order-1 relative">
+                <div className="absolute inset-0 bg-primary/5 rounded-3xl transform -rotate-3 transition-transform group-hover:rotate-0"></div>
+                <img src="/roomies.png" alt="Roomies compatibility matching interface" className="relative z-10 w-full rounded-3xl shadow-2xl transition-transform hover:-translate-y-2 hover:shadow-primary/20" />
+            </div>
+
+            <div className="flex flex-col gap-10 order-1 lg:order-2">
+                <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-text-main leading-tight">
+                    {content.roomies.title}
+                </h2>
+                <p className="text-xl text-text-muted font-bold leading-relaxed">
+                    {content.roomies.description}
+                </p>
+
+                <div className="space-y-6 mt-4">
+                    {content.roomies.bullets.map((bullet, i) => (
+                        <div key={i} className="flex gap-4 items-center">
+                            <div className="w-8 h-8 rounded-full bg-mint-soft/30 text-olive-match flex items-center justify-center flex-shrink-0">
+                                <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                            <span className="text-lg font-bold text-text-main">{bullet}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    </Section>
+);
+
 const Footer = () => (
     <footer className="bg-bg-light border-t border-slate-200">
         <div className="max-w-7xl mx-auto px-6 py-20">
@@ -238,6 +265,7 @@ export default function Landing() {
                 </div>
             </Section>
             <Features />
+            <Roomies />
             <Footer />
         </main>
     );

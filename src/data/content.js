@@ -101,5 +101,14 @@ export const content = {
         subheadline: "Crea tu perfil de búsqueda en 1 minuto.",
         cta: "Empezar ahora",
         copy: "© 2026 RentAI - El arriendo del futuro hoy."
+    },
+    roomies: {
+        title: "Encuentra al roomie perfecto para compartir tu nuevo hogar",
+        description: "RentAI no solo te ayuda a encontrar el apartamento ideal, también te conectamos con personas compatibles con tu estilo de vida para compartir gastos y experiencias.",
+        bullets: [
+            "Perfiles de convivencia detallados y verificados",
+            "Matching basado en hábitos, horarios y gustos",
+            "Conecta y chatea de forma segura antes de decidir"
+        ]
     }
 };
