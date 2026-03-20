@@ -1,10 +1,17 @@
-import { useState } from "react";
+"use client";
+import { useState, useEffect } from "react";
 import { Camera, Edit2, MapPin, GraduationCap, Calendar, Home, Settings, LogOut, Shield } from "lucide-react";
-import { useNavigate } from "react-router";
+import { useRouter } from "next/navigation";
 
 export function Profile() {
-  const navigate = useNavigate();
-  const userMode = localStorage.getItem("userMode") || "find-room";
+  const navigate = useRouter();
+  const [userMode, setUserMode] = useState("find-room");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setUserMode(localStorage.getItem("userMode") || "find-room");
+    }
+  }, []);
   const [isEditing, setIsEditing] = useState(false);
 
   const getModeLabel = () => {
@@ -137,7 +144,7 @@ export function Profile() {
           <button
             onClick={() => {
               localStorage.clear();
-              navigate("/");
+              navigate.push("/");
             }}
             className="w-full flex items-center gap-3 p-4 hover:bg-accent/10 transition-colors text-accent"
           >
@@ -148,7 +155,7 @@ export function Profile() {
 
         {/* Change Mode */}
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate.push("/")}
           className="w-full bg-primary text-white py-4 rounded-2xl font-semibold hover:shadow-lg transition-shadow flex items-center justify-center gap-2"
         >
           <Home className="w-5 h-5" />

@@ -1,8 +1,9 @@
-import { useNavigate } from "react-router-dom";
+"use client";
+import { useRouter } from 'next/navigation';
 import { Home, Users, Key } from "lucide-react";
 
 export function Onboarding() {
-  const navigate = useNavigate();
+  const navigate = useRouter();
 
   const modes = [
     {
@@ -31,7 +32,7 @@ export function Onboarding() {
   const handleSelectMode = (modeId) => {
     // Guardar modo en localStorage o contexto
     localStorage.setItem("userMode", modeId);
-    navigate("/app/home");
+    navigate.push("/app/home");
   };
 
   return (

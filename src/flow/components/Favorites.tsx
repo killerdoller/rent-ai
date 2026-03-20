@@ -1,3 +1,4 @@
+"use client";
 import { useState, useEffect } from "react";
 import { Heart, MapPin, DollarSign, Bed, Trash2 } from "lucide-react";
 

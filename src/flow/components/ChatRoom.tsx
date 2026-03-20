@@ -1,5 +1,6 @@
+"use client";
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Send, Phone, Video, MoreVertical, Bot, Sparkles } from "lucide-react";
 
 interface Message {
@@ -11,7 +12,7 @@ interface Message {
 
 export function ChatRoom() {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const navigate = useRouter();
   const [message, setMessage] = useState("");
   const isAI = id === "ai";
 
@@ -114,7 +115,7 @@ export function ChatRoom() {
       {/* Header */}
       <header className="bg-white border-b border-border p-4 flex items-center gap-3 sticky top-0 z-10">
         <button
-          onClick={() => navigate("/chat")}
+          onClick={() => navigate.push("/app/chat")}
           className="p-2 hover:bg-secondary rounded-full transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />

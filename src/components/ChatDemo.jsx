@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Circle } from 'lucide-react';
@@ -168,6 +169,7 @@ export const ChatDemo = () => {
                         {/* Typing indicator */}
                         {showTyping && (
                             <motion.div
+                                key="typing"
                                 initial={{ opacity: 0, y: 12 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0 }}
@@ -192,7 +194,7 @@ export const ChatDemo = () => {
 
                         {/* Property Cards */}
                         {currentFrame >= 7 && (
-                            <div className="space-y-3 pt-2">
+                            <div key="properties" className="space-y-3 pt-2">
                                 {properties.map((property, index) => (
                                     <motion.div
                                         key={property.id}
@@ -251,7 +253,7 @@ export const ChatDemo = () => {
 
                         {/* Final message */}
                         {currentFrame >= 8 && (
-                            <motion.div
+                            <motion.div key="final-message"
                                 initial={{ opacity: 0, y: 12 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.4 }}

@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Circle, Send, ArrowRight, Sparkles } from 'lucide-react';
@@ -144,6 +145,7 @@ export default function FlowMockup() {
 
                         {showTyping && (
                             <motion.div
+                                key="typing"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
@@ -163,7 +165,7 @@ export default function FlowMockup() {
                         )}
 
                         {currentFrame >= 7 && (
-                            <div className="space-y-4 pt-4">
+                            <div key="properties" className="space-y-4 pt-4">
                                 {properties.map((prop, idx) => (
                                     <motion.div
                                         key={prop.id}
@@ -205,6 +207,7 @@ export default function FlowMockup() {
 
                         {currentFrame >= 8 && (
                             <motion.div
+                                key="final-message"
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 className="flex flex-col gap-4 mt-8"

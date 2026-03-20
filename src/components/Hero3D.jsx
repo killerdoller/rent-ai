@@ -1,3 +1,4 @@
+"use client";
 import React, { useRef, useLayoutEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Float, PerspectiveCamera, MeshDistortMaterial, Sphere } from '@react-three/drei';

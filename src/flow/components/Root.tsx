@@ -1,9 +1,10 @@
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+"use client";
+import { usePathname, useRouter } from 'next/navigation';
 import { Home, Heart, MessageCircle, User, Flame } from "lucide-react";
 
-export function Root() {
-  const location = useLocation();
-  const navigate = useNavigate();
+export function Root({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const navigate = useRouter();
   const hideNav = false; // Never hide in sub-app or handle logic differently
 
   const navItems = [
@@ -32,11 +33,11 @@ export function Root() {
             <nav className="space-y-2">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = location.pathname.startsWith(item.path);
+                const isActive = pathname?.startsWith(item.path);
                 return (
                   <button
                     key={item.path}
-                    onClick={() => navigate(item.path)}
+                    onClick={() => navigate.push(item.path)}
                     className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-colors ${isActive
                         ? "bg-primary text-primary-foreground"
                         : "text-foreground hover:bg-secondary"
@@ -55,7 +56,7 @@ export function Root() {
       {/* Main Content Area */}
       <div className={`flex flex-col flex-1 ${!hideNav ? 'md:ml-64' : ''}`}>
         <main className="flex-1 overflow-auto">
-          <Outlet />
+          {children}
         </main>
 
         {/* Mobile Navigation */}
@@ -64,11 +65,11 @@ export function Root() {
             <div className="flex justify-around items-center h-16 px-4">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = location.pathname.startsWith(item.path);
+                const isActive = pathname?.startsWith(item.path);
                 return (
                   <button
                     key={item.path}
-                    onClick={() => navigate(item.path)}
+                    onClick={() => navigate.push(item.path)}
                     className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-colors ${isActive
                         ? "text-primary"
                         : "text-muted-foreground hover:text-foreground"

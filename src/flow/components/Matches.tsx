@@ -1,6 +1,7 @@
+"use client";
 import { useState } from "react";
 import { MessageCircle, MapPin, Heart, Sparkles } from "lucide-react";
-import { useNavigate } from "react-router";
+import { useRouter } from "next/navigation";
 
 interface Match {
   id: number;
@@ -47,7 +48,7 @@ const mockMatches: Match[] = [
 
 export function Matches() {
   const [matches] = useState(mockMatches);
-  const navigate = useNavigate();
+  const navigate = useRouter();
 
   return (
     <div className="min-h-screen bg-background">
@@ -79,7 +80,7 @@ export function Matches() {
               <div
                 key={match.id}
                 className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow cursor-pointer group"
-                onClick={() => navigate(`/chat/${match.id}`)}
+                onClick={() => navigate.push(`/app/chat/${match.id}`)}
               >
                 <div className="relative h-64">
                   <img

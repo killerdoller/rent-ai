@@ -1,4 +1,5 @@
-import { useState } from "react";
+"use client";
+import { useState, useEffect } from "react";
 import { motion, PanInfo, useMotionValue, useTransform } from "motion/react";
 import { X, Heart, MapPin, User, Bed, DollarSign, Info, MessageCircle, Sparkles } from "lucide-react";
 
@@ -84,7 +85,13 @@ const mockData: CardData[] = [
 export function Home() {
   const [cards, setCards] = useState(mockData);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const userMode = localStorage.getItem("userMode") || "find-room";
+  const [userMode, setUserMode] = useState("find-room");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setUserMode(localStorage.getItem("userMode") || "find-room");
+    }
+  }, []);
 
   const removeCard = (direction: "left" | "right") => {
     if (currentIndex < cards.length) {

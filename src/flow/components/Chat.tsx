@@ -1,5 +1,6 @@
+"use client";
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useRouter } from "next/navigation";
 import { MessageCircle, Search, Bot } from "lucide-react";
 
 interface ChatPreview {
@@ -45,7 +46,7 @@ const mockChats: ChatPreview[] = [
 export function Chat() {
   const [chats] = useState(mockChats);
   const [searchQuery, setSearchQuery] = useState("");
-  const navigate = useNavigate();
+  const navigate = useRouter();
 
   const filteredChats = chats.filter((chat) =>
     chat.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -64,7 +65,7 @@ export function Chat() {
               </p>
             </div>
             <button
-              onClick={() => navigate("/chat/ai")}
+              onClick={() => navigate.push("/app/chat/ai")}
               className="p-3 rounded-full bg-primary text-white hover:bg-primary/90 transition-colors shadow-lg"
             >
               <Bot className="w-6 h-6" />
@@ -102,7 +103,7 @@ export function Chat() {
             {filteredChats.map((chat) => (
               <button
                 key={chat.id}
-                onClick={() => navigate(`/chat/${chat.id}`)}
+                onClick={() => navigate.push(`/app/chat/${chat.id}`)}
                 className="w-full p-4 hover:bg-secondary/30 transition-colors flex items-center gap-4 text-left"
               >
                 <div className="relative flex-shrink-0">

@@ -1,10 +1,13 @@
+"use client";
 import React from 'react';
 import { content } from './data/content';
 import { Section } from './components/Section';
 import { ScrollAnimation } from './components/ScrollAnimation';
 import { ChatDemo } from './components/ChatDemo';
 import FlowMockup from './components/FlowMockup';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
+import Image from 'next/image';
+
 
 const Navbar = () => (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200">
@@ -31,7 +34,7 @@ const Navbar = () => (
                     {content.nav.login}
                 </button>
                 <Link
-                    to="/app"
+                    href="/app"
                     className="bg-primary hover:opacity-90 text-white text-[14px] font-black px-8 py-3 rounded-full transition-all shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5"
                 >
                     {content.nav.cta}
@@ -83,7 +86,7 @@ const Hero = () => {
                             />
                         </div>
                         <Link
-                            to="/app"
+                            href="/app"
                             className="bg-gradient-to-br from-[#A65D8C] to-[#BF7E7E] text-white px-8 py-3 rounded-full font-black text-sm transition-all hover:-translate-y-0.5 shadow-lg flex items-center gap-2"
                         >
                             <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
@@ -178,7 +181,7 @@ const Roomies = () => (
         <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div className="order-2 lg:order-1 relative">
                 <div className="absolute inset-0 bg-primary/5 rounded-3xl transform -rotate-3 transition-transform group-hover:rotate-0"></div>
-                <img src="/roomies.png" alt="Roomies compatibility matching interface" className="relative z-10 w-full rounded-3xl shadow-2xl transition-transform hover:-translate-y-2 hover:shadow-primary/20" />
+                <Image src="/roomies.png" alt="Roomies compatibility matching interface" width={800} height={600} className="relative z-10 w-full rounded-3xl shadow-2xl transition-transform hover:-translate-y-2 hover:shadow-primary/20" />
             </div>
 
             <div className="flex flex-col gap-10 order-1 lg:order-2">
@@ -215,7 +218,7 @@ const Footer = () => (
                     {content.footer.subheadline}
                 </p>
                 <Link
-                    to="/app"
+                    href="/app"
                     className="bg-primary text-white px-12 py-5 rounded-2xl font-black text-lg uppercase transition-all hover:scale-105 shadow-xl shadow-primary/20"
                 >
                     {content.footer.cta}
