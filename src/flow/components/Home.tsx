@@ -4,7 +4,7 @@ import { motion, PanInfo, useMotionValue, useTransform } from "motion/react";
 import { X, Heart, MapPin, User, Bed, DollarSign, Info, MessageCircle, Sparkles } from "lucide-react";
 
 interface CardData {
-  id: number;
+  id: string | number;
   type: "room" | "roommate";
   image: string;
   title: string;
@@ -19,79 +19,35 @@ interface CardData {
   matchScore?: number;
 }
 
-const mockData: CardData[] = [
-  {
-    id: 1,
-    type: "room",
-    image: "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=1080",
-    title: "Apartamento Moderno en Chapinero",
-    location: "Chapinero, Bogotá",
-    price: 1200000,
-    bedrooms: 2,
-    description: "Apartamento amoblado cerca a universidades, transporte público y zonas comerciales.",
-    tags: ["WiFi", "Amoblado", "Seguridad"],
-    matchScore: 95,
-  },
-  {
-    id: 2,
-    type: "roommate",
-    image: "https://images.unsplash.com/photo-1645664747204-31fee58898dc?w=1080",
-    name: "María García",
-    age: 22,
-    university: "Universidad Nacional",
-    location: "Teusaquillo",
-    description: "Estudiante de ingeniería, busco compañera ordenada y tranquila. Me gusta estudiar por las noches.",
-    tags: ["No fumador", "Mascotas OK", "Ordenada"],
-    matchScore: 88,
-  },
-  {
-    id: 3,
-    type: "room",
-    image: "https://images.unsplash.com/photo-1767800766055-1cdbd2e351b9?w=1080",
-    title: "Habitación Acogedora con Escritorio",
-    location: "La Candelaria",
-    price: 800000,
-    bedrooms: 1,
-    description: "Habitación individual con escritorio amplio, ideal para estudiantes. Servicios incluidos.",
-    tags: ["Escritorio", "Luz natural", "Servicios incluidos"],
-    matchScore: 82,
-  },
-  {
-    id: 4,
-    type: "roommate",
-    image: "https://images.unsplash.com/photo-1618316224214-a5bac0651def?w=1080",
-    name: "Carlos Rodríguez",
-    age: 24,
-    university: "Universidad de los Andes",
-    location: "Chapinero",
-    description: "Estudiante de medicina, busco roommate tranquilo. Horarios flexibles y respetuoso.",
-    tags: ["Tranquilo", "Responsable", "Estudiante"],
-    matchScore: 76,
-  },
-  {
-    id: 5,
-    type: "room",
-    image: "https://images.unsplash.com/photo-1593853814555-6951885ffa63?w=1080",
-    title: "Apartamento Compartido Luminoso",
-    location: "Salitre",
-    price: 950000,
-    bedrooms: 3,
-    description: "Comparte apartamento con otros estudiantes. Sala amplia, cocina equipada y zona de estudio.",
-    tags: ["Compartido", "Zona de estudio", "Gym"],
-    matchScore: 90,
-  },
-];
+// Mock data moved or deleted after API implementation
 
 export function Home() {
-  const [cards, setCards] = useState(mockData);
+  const [cards, setCards] = useState<CardData[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userMode, setUserMode] = useState("find-room");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setUserMode(localStorage.getItem("userMode") || "find-room");
     }
+    fetchProperties();
   }, []);
+
+  const fetchProperties = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch("/api/properties");
+      if (!response.ok) throw new Error("Error al cargar las propiedades");
+      const data = await response.json();
+      setCards(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const removeCard = (direction: "left" | "right") => {
     if (currentIndex < cards.length) {
@@ -133,7 +89,22 @@ export function Home() {
 
       {/* Cards Container */}
       <div className="max-w-4xl mx-auto p-4 md:p-6 pb-24 md:pb-6">
-        {currentIndex >= cards.length ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+            <p className="text-muted-foreground">Buscando las mejores opciones para ti...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-20">
+            <p className="text-red-500 mb-4">{error}</p>
+            <button
+              onClick={fetchProperties}
+              className="px-6 py-2 bg-primary text-white rounded-full hover:bg-primary/90 transition-all font-medium"
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : currentIndex >= cards.length ? (
           <div className="text-center py-20">
             <div className="w-24 h-24 mx-auto mb-6 bg-secondary rounded-full flex items-center justify-center">
               <Heart className="w-12 h-12 text-primary" />
@@ -145,7 +116,7 @@ export function Home() {
             <button
               onClick={() => {
                 setCurrentIndex(0);
-                setCards([...mockData]);
+                fetchProperties();
               }}
               className="px-6 py-3 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors"
             >
