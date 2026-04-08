@@ -47,15 +47,14 @@ export const signUp = async (email, password, role, userData) => {
   if (!userId) throw new Error("No se pudo crear el usuario");
 
   if (role === "student") {
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: userId,
-      email,
+    // El trigger on_auth_user_created ya creó el perfil — solo actualizamos los datos extra
+    const { error: profileError } = await supabase.from("profiles").update({
       first_name: userData.firstName || "",
       last_name: userData.lastName || "",
       phone: userData.phone || null,
       university_name: userData.university || null,
       user_mode: "find-room",
-    });
+    }).eq("id", userId);
     if (profileError) throw profileError;
     return { user: authData.user, role: "student", userId };
   }
