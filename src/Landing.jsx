@@ -1,15 +1,17 @@
 "use client";
-import React from 'react';
+import React, { useState } from 'react';
 import { content } from './data/content';
 import { Section } from './components/Section';
 import { ScrollAnimation } from './components/ScrollAnimation';
 import { ChatDemo } from './components/ChatDemo';
 import FlowMockup from './components/FlowMockup';
+import AuthForm from './components/AuthForm';
 import Link from 'next/link';
 import Image from 'next/image';
 
 
-const Navbar = () => (
+
+const Navbar = ({ onLoginClick }) => (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
             <div className="flex items-center gap-1 group cursor-pointer">
@@ -30,7 +32,10 @@ const Navbar = () => (
             </div>
 
             <div className="flex items-center gap-4">
-                <button className="text-[14px] font-bold text-text-muted hover:text-text-main transition-colors px-4">
+                <button 
+                    onClick={onLoginClick}
+                    className="text-[14px] font-bold text-text-muted hover:text-text-main transition-colors px-4"
+                >
                     {content.nav.login}
                 </button>
                 <Link
@@ -245,9 +250,12 @@ const Footer = () => (
 );
 
 export default function Landing() {
+    const [isAuthOpen, setIsAuthOpen] = useState(false);
+
     return (
         <main className="min-h-screen bg-bg-light selection:bg-primary/20 font-sans text-text-main">
-            <Navbar />
+            <Navbar onLoginClick={() => setIsAuthOpen(true)} />
+            <AuthForm isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
             <Hero />
             <div className="text-center py-4 bg-white border-y border-slate-100 font-black text-[12px] tracking-[0.3em] uppercase text-primary/60">
                 {content.transition}
