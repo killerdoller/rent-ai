@@ -38,10 +38,30 @@ export function Home() {
   const fetchProperties = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/properties");
-      if (!response.ok) throw new Error("Error al cargar las propiedades");
-      const data = await response.json();
-      setCards(data);
+      const userId = localStorage.getItem("rentai_user_id");
+
+      const [propertiesRes, likesRes, rejectionsRes] = await Promise.all([
+        fetch("/api/properties"),
+        userId ? fetch(`/api/likes?user_id=${userId}`) : Promise.resolve(null),
+        userId ? fetch(`/api/rejections?user_id=${userId}`) : Promise.resolve(null),
+      ]);
+
+      if (!propertiesRes.ok) throw new Error("Error al cargar las propiedades");
+      const allProperties = await propertiesRes.json();
+
+      // IDs ya vistos (likes + rechazos)
+      const seenIds = new Set<string>();
+      if (likesRes?.ok) {
+        const likes = await likesRes.json();
+        likes.forEach((l: any) => seenIds.add(l.property_id));
+      }
+      if (rejectionsRes?.ok) {
+        const rejections = await rejectionsRes.json();
+        rejections.forEach((r: any) => seenIds.add(r.property_id));
+      }
+
+      const unseen = allProperties.filter((p: CardData) => !seenIds.has(String(p.id)));
+      setCards(unseen);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -49,16 +69,21 @@ export function Home() {
     }
   };
 
-  const removeCard = (direction: "left" | "right") => {
-    if (currentIndex < cards.length) {
-      if (direction === "right") {
-        // Guardar en favoritos
-        const likedCards = JSON.parse(localStorage.getItem("likedCards") || "[]");
-        likedCards.push(cards[currentIndex]);
-        localStorage.setItem("likedCards", JSON.stringify(likedCards));
-      }
-      setCurrentIndex(currentIndex + 1);
+  const removeCard = async (direction: "left" | "right") => {
+    if (currentIndex >= cards.length) return;
+    const card = cards[currentIndex];
+    const userId = localStorage.getItem("rentai_user_id");
+
+    if (userId) {
+      const endpoint = direction === "right" ? "/api/likes" : "/api/rejections";
+      fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, property_id: card.id }),
+      }).catch(() => {}); // fire-and-forget, no bloquear la UI
     }
+
+    setCurrentIndex(currentIndex + 1);
   };
 
   return (

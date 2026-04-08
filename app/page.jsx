@@ -1,5 +1,5 @@
-import Landing from '../src/Landing';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return <Landing />;
+  redirect('/app');
 }
