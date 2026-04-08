@@ -16,7 +16,7 @@ export function Root({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Desktop Sidebar */}
       {!hideNav && (
         <div className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:w-64 md:bg-card md:border-r md:border-border">
@@ -54,8 +54,8 @@ export function Root({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Main Content Area */}
-      <div className={`flex flex-col flex-1 ${!hideNav ? 'md:ml-64' : ''}`}>
-        <main className="flex-1 overflow-auto">
+      <div className={`flex flex-col flex-1 min-h-0 ${!hideNav ? 'md:ml-64' : ''}`}>
+        <main className="flex-1 overflow-y-auto min-h-0">
           {children}
         </main>
 

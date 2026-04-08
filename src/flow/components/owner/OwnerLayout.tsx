@@ -65,8 +65,8 @@ export function OwnerLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-col flex-1 md:ml-64">
-        <main className="flex-1 overflow-auto">{children}</main>
+      <div className="flex flex-col flex-1 min-h-0 md:ml-64 h-screen overflow-hidden">
+        <main className="flex-1 overflow-y-auto min-h-0">{children}</main>
 
         {/* Mobile Navigation */}
         <nav className="border-t border-border bg-card shadow-lg md:hidden">
