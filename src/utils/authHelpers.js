@@ -60,13 +60,21 @@ export const signUp = async (email, password, role, userData) => {
   }
 
   if (role === "owner") {
-    const { error: ownerError } = await supabase.from("owners").insert({
-      owner_id: userId,
-      name: `${userData.firstName || ""} ${userData.lastName || ""}`.trim() || email.split("@")[0],
-      email,
-      phone: userData.phone || null,
+    // Usar el API route para evitar restricciones RLS en el cliente
+    const res = await fetch("/api/owner/find-or-create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        owner_id: userId,
+        name: `${userData.firstName || ""} ${userData.lastName || ""}`.trim() || email.split("@")[0],
+        email,
+        phone: userData.phone || null,
+      }),
     });
-    if (ownerError) throw ownerError;
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "Error al crear el perfil de propietario");
+    }
     return { user: authData.user, role: "owner", ownerId: userId };
   }
 

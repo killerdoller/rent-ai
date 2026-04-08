@@ -9,13 +9,13 @@ const supabase = createClient(
 // POST /api/owner/find-or-create — busca o crea un propietario por email
 export async function POST(request: Request) {
   const body = await request.json();
-  const { email } = body;
+  const { email, owner_id, name: bodyName, phone } = body;
 
   if (!email) {
     return NextResponse.json({ error: "email requerido" }, { status: 400 });
   }
 
-  // Buscar propietario existente
+  // Buscar propietario existente por email
   const { data: existing } = await supabase
     .from("owners")
     .select("owner_id, name, email, phone")
@@ -26,11 +26,17 @@ export async function POST(request: Request) {
     return NextResponse.json(existing);
   }
 
-  // Crear nuevo propietario
-  const name = email.split("@")[0];
+  // Crear nuevo propietario (con owner_id explícito si viene del registro con auth)
+  const insertData: any = {
+    email: email.toLowerCase(),
+    name: bodyName || email.split("@")[0],
+  };
+  if (owner_id) insertData.owner_id = owner_id;
+  if (phone) insertData.phone = phone;
+
   const { data: created, error } = await supabase
     .from("owners")
-    .insert({ email: email.toLowerCase(), name })
+    .insert(insertData)
     .select("owner_id, name, email, phone")
     .single();
 
