@@ -1,63 +1,81 @@
 import { supabase } from "./supabaseClient";
 
 /**
- * Inicia sesión con email y contraseña
+ * Inicia sesión con email y contraseña.
+ * Retorna { user, role, userId/ownerId } para saber a dónde redirigir.
  */
 export const signIn = async (email, password) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
-  return data;
+
+  const userId = data.user?.id;
+  if (!userId) throw new Error("No se pudo obtener el usuario");
+
+  // Determinar rol: buscar en profiles (arrendatario) y luego en owners
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, user_mode")
+    .eq("id", userId)
+    .single();
+
+  if (profile) {
+    return { user: data.user, role: "student", userId };
+  }
+
+  const { data: owner } = await supabase
+    .from("owners")
+    .select("owner_id")
+    .eq("owner_id", userId)
+    .single();
+
+  if (owner) {
+    return { user: data.user, role: "owner", ownerId: owner.owner_id };
+  }
+
+  // Perfil no encontrado aún (puede pasar si el trigger de BD no corrió)
+  return { user: data.user, role: "unknown", userId };
 };
 
 /**
- * Registra un nuevo usuario y crea su perfil según el rol (estudiante o dueño)
+ * Registra un nuevo usuario y crea su perfil según el rol.
  */
 export const signUp = async (email, password, role, userData) => {
-  // 1. Crear el usuario en Supabase Auth
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-
+  const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
   if (authError) throw authError;
 
   const userId = authData.user?.id;
+  if (!userId) throw new Error("No se pudo crear el usuario");
 
-  if (userId) {
-    // 2. Crear el perfil en la tabla correspondiente
-    if (role === "student") {
-      const { error: profileError } = await supabase.from("students").insert([
-        {
-          student_id: userId, // Usamos el ID de auth para vincularlos
-          first_name: userData.firstName,
-          last_name: userData.lastName,
-          email: email,
-          university_name: userData.university,
-          phone: userData.phone
-        },
-      ]);
-      if (profileError) throw profileError;
-    } else if (role === "owner") {
-      const { error: profileError } = await supabase.from("owners").insert([
-        {
-          owner_id: userId,
-          name: `${userData.firstName} ${userData.lastName}`,
-          email: email,
-          phone: userData.phone
-        },
-      ]);
-      if (profileError) throw profileError;
-    }
+  if (role === "student") {
+    const { error: profileError } = await supabase.from("profiles").insert({
+      id: userId,
+      email,
+      first_name: userData.firstName || "",
+      last_name: userData.lastName || "",
+      phone: userData.phone || null,
+      university_name: userData.university || null,
+      user_mode: "find-room",
+    });
+    if (profileError) throw profileError;
+    return { user: authData.user, role: "student", userId };
   }
 
-  return authData;
+  if (role === "owner") {
+    const { error: ownerError } = await supabase.from("owners").insert({
+      owner_id: userId,
+      name: `${userData.firstName || ""} ${userData.lastName || ""}`.trim() || email.split("@")[0],
+      email,
+      phone: userData.phone || null,
+    });
+    if (ownerError) throw ownerError;
+    return { user: authData.user, role: "owner", ownerId: userId };
+  }
+
+  return { user: authData.user, role: "unknown", userId };
 };
 
 /**
- * Cierra la sesión activa
+ * Cierra la sesión activa.
  */
 export const signOut = async () => {
   const { error } = await supabase.auth.signOut();
@@ -65,7 +83,7 @@ export const signOut = async () => {
 };
 
 /**
- * Obtiene el usuario actual y su sesión
+ * Obtiene el usuario actual y su sesión.
  */
 export const getCurrentUser = async () => {
   const { data: { user }, error } = await supabase.auth.getUser();
