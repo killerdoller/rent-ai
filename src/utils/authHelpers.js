@@ -11,17 +11,8 @@ export const signIn = async (email, password) => {
   const userId = data.user?.id;
   if (!userId) throw new Error("No se pudo obtener el usuario");
 
-  // Determinar rol: buscar en profiles (arrendatario) y luego en owners
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, user_mode")
-    .eq("id", userId)
-    .single();
-
-  if (profile) {
-    return { user: data.user, role: "student", userId };
-  }
-
+  // Determinar rol: owners primero porque el trigger on_auth_user_created
+  // crea una fila en profiles para TODOS los usuarios, incluyendo propietarios.
   const { data: owner } = await supabase
     .from("owners")
     .select("owner_id")
@@ -30,6 +21,16 @@ export const signIn = async (email, password) => {
 
   if (owner) {
     return { user: data.user, role: "owner", ownerId: owner.owner_id };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, user_mode")
+    .eq("id", userId)
+    .single();
+
+  if (profile) {
+    return { user: data.user, role: "student", userId };
   }
 
   // Perfil no encontrado aún (puede pasar si el trigger de BD no corrió)

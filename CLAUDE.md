@@ -7,12 +7,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 npm run dev      # Start dev server at http://localhost:3000
 npm run build    # Production build
+npm run start    # Start production server (after build)
 npm run lint     # ESLint
 
 # Supabase migrations (requires login first: npx supabase login)
 npx supabase link --project-ref nkwemnfunfsxkcpfipyq
 npx supabase db push                          # Apply pending migrations to remote
 npx supabase migration repair --status applied <timestamp>  # Mark migration as applied if already run manually
+```
+
+## Environment Variables
+
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=       # Used by API routes to bypass RLS
 ```
 
 ## Architecture
@@ -55,6 +64,7 @@ Server-side routes that use `SUPABASE_SERVICE_ROLE_KEY` (falls back to anon key)
 | `POST /api/likes` / `GET /api/likes?user_id=` | Tenant likes a property |
 | `POST /api/rejections` | Tenant rejects a property |
 | `GET /api/matches?user_id=` | Tenant's bilateral matches |
+| `GET /api/profile` / `PATCH /api/profile` | Get or update authenticated user's profile |
 | `POST /api/owner/find-or-create` | Find or create owner by email |
 | `GET /api/owner/properties?owner_id=` | Owner's properties |
 | `GET /api/owner/interested?owner_id=` | Tenants who liked owner's properties |
@@ -69,10 +79,10 @@ The match is created automatically by a **Supabase database trigger** — never 
 ```
 property_likes (tenant swipes right)
                     + owner_tenant_likes (owner accepts)
-                    → trigger → property_matches created automatically
+                    → trigger check_bilateral_match() → property_matches created automatically
 ```
 
-Never create `property_matches` records directly from code.
+Two triggers fire: `trg_student_likes_property` (on `property_likes`) and `trg_owner_likes_tenant` (on `owner_tenant_likes`). **Never create `property_matches` records directly from code.**
 
 ## Auth & Identity
 
@@ -85,9 +95,29 @@ Never create `property_matches` records directly from code.
 
 - Supabase project ref: `nkwemnfunfsxkcpfipyq`
 - Migrations are in `supabase/migrations/`. Apply with `npx supabase db push`.
-- `20260408_demo_mode.sql` relaxes FK constraints and RLS policies for demo mode (no auth required). This is intentional and temporary.
+- `20260408_demo_mode.sql` drops FK constraints on `user_id` columns (so guest UUIDs not in `auth.users` are accepted) and relaxes all RLS to `USING (true)`. This is intentional and temporary.
 - `guest_users` table holds tenant identity for demo flows (no FK to `auth.users`).
 - Supabase client for server-side: `createClient(url, SUPABASE_SERVICE_ROLE_KEY)` — bypasses RLS. Client-side uses anon key via `src/utils/supabaseClient.ts`.
+
+### Key Tables
+
+| Table | Purpose |
+|---|---|
+| `profiles` | Tenant identity (linked to `auth.users`). Fields: basic info + `bio`, `job_title`, `interests`, `lifestyle_tags`, `cleanliness_level`, `social_level`, `profile_images` |
+| `owners` | Owner identity (separate from `auth.users`) |
+| `properties` | Listings with `image_url`, `description`, `tags` |
+| `property_likes` | Tenant swipes right |
+| `property_rejections` | Tenant swipes left |
+| `owner_tenant_likes` | Owner accepts a tenant |
+| `property_matches` | Bilateral matches (trigger-created only) |
+| `guest_users` | Demo-mode tenants without auth |
+
+## UI / Styling
+
+- **Tailwind CSS v4** with shadcn/ui-style components (Radix UI primitives) in `src/flow/components/ui/`.
+- Use `cn()` from `src/flow/components/ui/utils.ts` for conditional class merging.
+- `lucide-react` for icons, `framer-motion` / `gsap` for animations, `recharts` for charts.
+- Three.js via `@react-three/fiber` + `@react-three/drei` (used in landing 3D hero).
 
 ## Key Conventions
 
@@ -95,3 +125,4 @@ Never create `property_matches` records directly from code.
 - All flow components are TypeScript (`.tsx`), landing/utils are JSX (`.jsx`).
 - `userMode` in localStorage: `"find-room"` | `"find-roommate"` | `"landlord"`.
 - The `Root.tsx` layout requires `h-screen overflow-hidden` + `min-h-0` on flex children to keep the header sticky and prevent full-page scroll.
+- `matchScore` in `GET /api/properties` is currently a random value (75–95). Real AI-based scoring is a pending TODO.
