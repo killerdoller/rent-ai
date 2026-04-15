@@ -1,13 +1,21 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Building2, Users, Heart, ArrowRight, Loader2 } from "lucide-react";
+import { Building2, Users, Heart, ArrowRight, Loader2, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { supabase } from "../../../utils/supabaseClient";
 
 export function OwnerDashboard() {
   const navigate = useRouter();
   const [stats, setStats] = useState({ properties: 0, interested: 0, matches: 0 });
   const [ownerEmail, setOwnerEmail] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut().catch(() => {});
+    localStorage.removeItem("owner_id");
+    localStorage.removeItem("owner_email");
+    navigate.push("/app");
+  };
 
   useEffect(() => {
     const ownerId = localStorage.getItem("owner_id");
@@ -74,11 +82,20 @@ export function OwnerDashboard() {
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-white border-b border-border p-4 md:p-6">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Dashboard</h1>
-          {ownerEmail && (
-            <p className="text-muted-foreground mt-1">{ownerEmail}</p>
-          )}
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Dashboard</h1>
+            {ownerEmail && (
+              <p className="text-muted-foreground mt-1 text-sm">{ownerEmail}</p>
+            )}
+          </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 text-gray-500 text-sm font-medium hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition-all flex-shrink-0"
+          >
+            <LogOut className="w-4 h-4" />
+            Cerrar sesión
+          </button>
         </div>
       </header>
 

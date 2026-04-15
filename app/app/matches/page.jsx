@@ -1,5 +1,5 @@
-import { Matches } from '../../../src/flow/components/Matches';
+import { Conexiones } from '../../../src/flow/components/Conexiones';
 
 export default function Page() {
-  return <Matches />;
+  return <Conexiones defaultTab="matches" />;
 }

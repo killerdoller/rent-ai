@@ -1,16 +1,26 @@
 "use client";
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Heart, MessageCircle, User, Flame } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { Heart, MessageCircle, User, Flame } from "lucide-react";
 
 export function Root({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const navigate = useRouter();
-  const hideNav = false; // Never hide in sub-app or handle logic differently
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const userId = localStorage.getItem("rentai_user_id");
+    const ownerId = localStorage.getItem("owner_id");
+    setIsLoggedIn(!!userId || !!ownerId);
+  }, [pathname]);
+
+  // Ocultar nav en la página de login/registro y cuando no hay sesión
+  const isAuthPage = pathname === "/app";
+  const hideNav = isAuthPage || !isLoggedIn;
 
   const navItems = [
     { path: "/app/home", icon: Flame, label: "Descubrir" },
-    { path: "/app/matches", icon: Heart, label: "Matches" },
-    { path: "/app/favorites", icon: Home, label: "Guardados" },
+    { path: "/app/matches", icon: Heart, label: "Conexiones" },
     { path: "/app/chat", icon: MessageCircle, label: "Chats" },
     { path: "/app/profile", icon: User, label: "Perfil" },
   ];

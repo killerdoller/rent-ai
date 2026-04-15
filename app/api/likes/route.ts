@@ -30,7 +30,10 @@ export async function GET(request: Request) {
         bedrooms,
         image_url,
         description,
-        tags
+        tags,
+        address,
+        latitude,
+        longitude
       )
     `)
     .eq("user_id", userId)
