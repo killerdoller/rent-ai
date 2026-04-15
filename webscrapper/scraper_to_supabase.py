@@ -196,6 +196,9 @@ async def scrape_and_upload(url: str, owner_id: str, limit: int = 100, dry_run: 
                 rooms = item.get("bedrooms") or 1
                 description = item.get("description") or ""
                 tags = [f["name"] for f in (item.get("facilities") or []) if f.get("name")]
+                address = item.get("address") or None
+                latitude = item.get("latitude") or None
+                longitude = item.get("longitude") or None
 
                 # --- Image ---
                 image_url = None
@@ -221,12 +224,16 @@ async def scrape_and_upload(url: str, owner_id: str, limit: int = 100, dry_run: 
                     "description": description,
                     "tags": tags,
                     "image_url": image_url,
+                    "address": address,
+                    "latitude": latitude,
+                    "longitude": longitude,
                     "allows_students": True,
                     "requires_co_debtor": False,
                 }
 
                 if dry_run:
                     print(f"  [DRY RUN] {title} — ${price:,.0f} COP — {neighborhood}, {city}")
+                    print(f"           dirección: {address or '(sin dirección)'} | coords: {latitude}, {longitude}")
                     print(f"           imagen: {image_url or '(sin imagen)'}")
                 else:
                     ok = insert_property(supabase, prop)

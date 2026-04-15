@@ -6,6 +6,47 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+// POST /api/owner/properties — crear nueva propiedad
+export async function POST(request: Request) {
+  const body = await request.json();
+  const {
+    owner_id, title, monthly_rent, city, neighborhood, bedrooms,
+    description, image_url, allows_students, requires_co_debtor,
+    tags, address, latitude, longitude,
+  } = body;
+
+  if (!owner_id || !title || !monthly_rent || !city) {
+    return NextResponse.json({ error: "owner_id, title, monthly_rent y city son requeridos" }, { status: 400 });
+  }
+
+  const { data, error } = await supabase
+    .from("properties")
+    .insert({
+      owner_id,
+      title,
+      monthly_rent,
+      city,
+      neighborhood: neighborhood || null,
+      bedrooms: bedrooms || 1,
+      description: description || null,
+      image_url: image_url || null,
+      allows_students: allows_students ?? true,
+      requires_co_debtor: requires_co_debtor ?? false,
+      tags: tags || [],
+      address: address || null,
+      latitude: latitude || null,
+      longitude: longitude || null,
+    })
+    .select("property_id, title")
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json(data, { status: 201 });
+}
+
 // GET /api/owner/properties?owner_id=xxx
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

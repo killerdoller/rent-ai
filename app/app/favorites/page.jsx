@@ -1,5 +1,5 @@
-import { Favorites } from '../../../src/flow/components/Favorites';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return <Favorites />;
+  redirect('/app/matches?tab=guardados');
 }

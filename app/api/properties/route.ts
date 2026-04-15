@@ -20,6 +20,9 @@ export async function GET() {
         image_url,
         description,
         tags,
+        address,
+        latitude,
+        longitude,
         allows_students,
         requires_co_debtor,
         created_at,
@@ -53,6 +56,9 @@ export async function GET() {
       description: p.description || "",
       tags: p.tags || [],
       matchScore: Math.floor(Math.random() * 20) + 75, // TODO: real match scoring
+      address: p.address || null,
+      latitude: p.latitude || null,
+      longitude: p.longitude || null,
       owner: p.owners,
     }));
 

@@ -1,8 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Camera, Edit2, MapPin, Briefcase, DollarSign, Heart, Zap, Coffee, Moon, Sun, Save, X, Plus, Home } from "lucide-react";
+import { Camera, Edit2, MapPin, Briefcase, DollarSign, Heart, Zap, Moon, Sun, Save, X, Plus, Home, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { supabase } from "../../utils/supabaseClient";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface UserProfile {
@@ -80,6 +81,13 @@ export function Profile() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut().catch(() => {});
+    localStorage.removeItem("rentai_user_id");
+    localStorage.removeItem("userMode");
+    navigate.push("/app");
   };
 
   const handleUpdate = async () => {
@@ -369,8 +377,19 @@ export function Profile() {
           </div>
         </section>
 
+        {/* --- LOGOUT BUTTON --- */}
+        <div className="mt-10 flex justify-center">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-6 py-3 rounded-full border-2 border-zinc-200 text-zinc-500 font-semibold text-sm hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition-all"
+          >
+            <LogOut className="w-4 h-4" />
+            Cerrar sesión
+          </button>
+        </div>
+
         {/* --- SEARCH FOOTER (USER MODE) --- */}
-        <footer className="mt-12 overflow-hidden rounded-[40px] shadow-2xl relative min-h-40 flex flex-col items-center justify-center transition-all" style={{ backgroundColor: PLUM_COLOR }}>
+        <footer className="mt-6 overflow-hidden rounded-[40px] shadow-2xl relative min-h-40 flex flex-col items-center justify-center transition-all" style={{ backgroundColor: PLUM_COLOR }}>
           <div className="absolute inset-0 bg-white/5 opacity-10 pointer-events-none" />
           <div className="text-center text-white p-8 relative z-10 w-full">
             <h4 className="text-xl font-black mb-4">¿Qué estás buscando?</h4>
