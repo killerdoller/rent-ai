@@ -2,8 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Briefcase, Heart, Moon, Sun, Zap, Home, Users, ChevronRight, Loader2 } from "lucide-react";
-import { supabase } from "../../utils/supabaseClient";
+import { MapPin, Briefcase, Home, Users, ChevronRight, Loader2 } from "lucide-react";
 
 const PLUM = "#935B7E";
 
@@ -54,25 +53,32 @@ export function CompleteProfile() {
   const handleFinish = async () => {
     setIsSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("No hay sesión activa");
+      const userId = localStorage.getItem("rentai_user_id");
+      if (!userId) throw new Error("No hay sesión activa");
 
-      await supabase.from("profiles").update({
-        bio: form.bio || null,
-        age: form.age ? Number(form.age) : null,
-        city: form.city || null,
-        job_title: form.job_title || null,
-        lifestyle_tags: form.lifestyle_tags,
-        cleanliness_level: form.cleanliness_level,
-        social_level: form.social_level,
-        interests: form.interests,
-        user_mode: form.user_mode,
-        monthly_budget: form.monthly_budget ? Number(form.monthly_budget) : null,
-      }).eq("id", user.id);
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          bio: form.bio || null,
+          age: form.age ? Number(form.age) : null,
+          city: form.city || null,
+          job_title: form.job_title || null,
+          lifestyle_tags: form.lifestyle_tags,
+          cleanliness_level: form.cleanliness_level,
+          social_level: form.social_level,
+          interests: form.interests,
+          user_mode: form.user_mode,
+          monthly_budget: form.monthly_budget ? Number(form.monthly_budget) : null,
+        }),
+      });
 
+      if (!res.ok) throw new Error("Error al guardar el perfil");
       navigate.push("/app/home");
     } catch (err) {
       console.error(err);
+      navigate.push("/app/home");
     } finally {
       setIsSaving(false);
     }

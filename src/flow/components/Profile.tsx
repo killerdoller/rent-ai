@@ -43,41 +43,22 @@ export function Profile() {
   const fetchProfile = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/profile");
-      if (res.status === 401) {
-        // Mock data from Figma screenshots
-        const mock: UserProfile = {
-          id: "mock",
-          first_name: "Sofia",
-          last_name: "Martinez",
-          age: 26,
-          job_title: "UX Designer",
-          university_name: "Universidad Iberoamericana",
-          city: "Polanco, CDMX",
-          monthly_budget: 13500,
-          user_mode: "find-roommate",
-          avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800",
-          bio: "Diseñadora creativa buscando un espacio luminoso con buena vibra. Me encanta cocinar, hacer yoga y recibir amigos los fines de semana. Busco un roomie organizado y respetuoso.",
-          interests: ["Yoga", "Cocina", "Arte", "Música", "Lectura"],
-          lifestyle_tags: ["No fumador", "Mascotas", "Noctámbulo", "Madrugador"],
-          cleanliness_level: 8,
-          social_level: 7,
-          profile_images: [
-            "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=500",
-            "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=500",
-            "https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?w=500",
-            "https://images.unsplash.com/photo-1505691938895-1758d7eaa511?w=500"
-          ]
-        };
-        setProfile(mock);
-        setEditForm(mock);
-      } else {
-        const data = await res.json();
-        setProfile(data);
-        setEditForm(data);
+      const userId = localStorage.getItem("rentai_user_id");
+      if (!userId) {
+        toast.error("No hay sesión activa");
+        setIsLoading(false);
+        return;
       }
-    } catch (err) {
-      toast.error("Error al cargar el perfil");
+      const res = await fetch(`/api/profile?user_id=${userId}`);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Error al cargar el perfil");
+      }
+      const data = await res.json();
+      setProfile(data);
+      setEditForm(data);
+    } catch (err: any) {
+      toast.error(err.message || "Error al cargar el perfil");
     } finally {
       setIsLoading(false);
     }
@@ -105,10 +86,11 @@ export function Profile() {
     }
 
     try {
+      const userId = localStorage.getItem("rentai_user_id");
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify({ user_id: userId, ...editForm }),
       });
 
       if (!res.ok) {
