@@ -28,6 +28,13 @@ export function Onboarding() {
       async (event, session) => {
         if (event === "SIGNED_IN" && session) {
           const userId = session.user.id;
+          const user = session.user;
+
+          // Detectar si es registro nuevo: created_at y last_sign_in_at son iguales
+          const createdAt = new Date(user.created_at).getTime();
+          const lastSignIn = new Date(user.last_sign_in_at || user.created_at).getTime();
+          const isNewUser = Math.abs(createdAt - lastSignIn) < 5000;
+
           // Verificar si es owner
           const { data: owner } = await supabase
             .from("owners")
@@ -37,13 +44,13 @@ export function Onboarding() {
 
           if (owner) {
             localStorage.setItem("owner_id", userId);
-            localStorage.setItem("owner_email", session.user.email || "");
+            localStorage.setItem("owner_email", user.email || "");
             localStorage.setItem("userMode", "landlord");
-            navigate.push("/owner/dashboard");
+            navigate.push(isNewUser ? "/owner/complete-profile" : "/owner/dashboard");
           } else {
             localStorage.setItem("rentai_user_id", userId);
             localStorage.setItem("userMode", "find-room");
-            navigate.push("/app/home");
+            navigate.push(isNewUser ? "/app/complete-profile" : "/app/home");
           }
         }
       }
@@ -84,11 +91,13 @@ export function Onboarding() {
       if (result.role === "student") {
         localStorage.setItem("rentai_user_id", result.userId);
         localStorage.setItem("userMode", "find-room");
-        navigate.push("/app/home");
+        // Nuevo usuario → completar perfil; login → home directamente
+        navigate.push(isLogin ? "/app/home" : "/app/complete-profile");
       } else if (result.role === "owner") {
         localStorage.setItem("owner_id", result.ownerId);
+        localStorage.setItem("owner_email", formData.email);
         localStorage.setItem("userMode", "landlord");
-        navigate.push("/owner/dashboard");
+        navigate.push(isLogin ? "/owner/dashboard" : "/owner/complete-profile");
       } else {
         navigate.push("/app/home");
       }
