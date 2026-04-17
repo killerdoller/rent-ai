@@ -193,7 +193,7 @@ export function Profile() {
             <div className="flex flex-wrap gap-2">
               <Badge icon={<Briefcase className="w-3.5 h-3.5" />} text={data?.job_title || "Profesión"} />
               <Badge icon={<MapPin className="w-3.5 h-3.5" />} text={data?.city || "Ubicación"} />
-              <Badge icon={<DollarSign className="w-3.5 h-3.5" />} text={`$${(data?.monthly_budget || 0).toLocaleString()} MXN`} />
+              <Badge icon={<DollarSign className="w-3.5 h-3.5" />} text={`${(data?.monthly_budget || 0).toLocaleString("es-CO")} COP/mes`} />
             </div>
           </motion.div>
         </div>
@@ -370,40 +370,6 @@ export function Profile() {
           </button>
         </div>
 
-        {/* --- SEARCH FOOTER (USER MODE) --- */}
-        <footer className="mt-6 overflow-hidden rounded-[40px] shadow-2xl relative min-h-40 flex flex-col items-center justify-center transition-all" style={{ backgroundColor: PLUM_COLOR }}>
-          <div className="absolute inset-0 bg-white/5 opacity-10 pointer-events-none" />
-          <div className="text-center text-white p-8 relative z-10 w-full">
-            <h4 className="text-xl font-black mb-4">¿Qué estás buscando?</h4>
-            
-            {isEditing ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-4">
-                <ModeOption 
-                  label="Apartamento" 
-                  selected={editForm.user_mode === "find-room"} 
-                  onClick={() => setEditForm({...editForm, user_mode: "find-room"})}
-                />
-                <ModeOption 
-                  label="Roommate" 
-                  selected={editForm.user_mode === "find-roommate"} 
-                  onClick={() => setEditForm({...editForm, user_mode: "find-roommate"})}
-                />
-                <ModeOption 
-                  label="Alquilar propiedad" 
-                  selected={editForm.user_mode === "landlord"} 
-                  onClick={() => setEditForm({...editForm, user_mode: "landlord"})}
-                />
-              </div>
-            ) : (
-              <p className="text-white font-bold text-lg px-6 py-3 bg-white/10 rounded-2xl inline-block backdrop-blur-sm">
-                {profile?.user_mode === "find-room" && "Buscando apartamento / habitación"}
-                {profile?.user_mode === "find-roommate" && "Buscando roommate compatible"}
-                {profile?.user_mode === "landlord" && "Ofreciendo propiedad en alquiler"}
-                {!profile?.user_mode && "Configura tu modo de búsqueda"}
-              </p>
-            )}
-          </div>
-        </footer>
       </div>
     </div>
   );
@@ -420,21 +386,6 @@ function Badge({ icon, text }: { icon: React.ReactNode; text: string }) {
   );
 }
 
-function ModeOption({ label, selected, onClick }: { label: string, selected: boolean, onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`py-3 px-4 rounded-2xl font-black text-sm transition-all active:scale-95 border-2
-        ${selected 
-          ? "bg-white text-[#935B7E] border-white shadow-lg" 
-          : "bg-transparent text-white border-white/30 hover:bg-white/10"
-        }
-      `}
-    >
-      {label}
-    </button>
-  );
-}
 
 function LifeTag({ icon, label, active, isEdit, onClick }: { icon: React.ReactNode; label: string; active?: boolean; isEdit?: boolean; onClick?: () => void }) {
   return (
