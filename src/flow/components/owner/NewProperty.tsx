@@ -1,99 +1,76 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import {
-  ArrowLeft, MapPin, DollarSign, Bed, FileText,
-  Tag, Loader2, CheckCircle2, Image as ImageIcon
-} from "lucide-react";
+import { ArrowLeft, MapPin, Bed, FileText, Image as ImageIcon, Loader2, CheckCircle2 } from "lucide-react";
 
-// Leaflet must be loaded client-side only
-const MapPicker = dynamic(() => import("./MapPicker"), { ssr: false, loading: () => (
-  <div className="w-full h-64 rounded-2xl bg-secondary flex items-center justify-center">
-    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-  </div>
-) });
+const MapPicker = dynamic(() => import("./MapPicker"), {
+  ssr: false,
+  loading: () => (
+    <div style={{ width: "100%", height: 220, borderRadius: 16, background: "#EFE7DE", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ width: 28, height: 28, borderRadius: "50%", border: "3px solid #D87D6F", borderTopColor: "transparent", animation: "spin 0.7s linear infinite" }} />
+    </div>
+  ),
+});
+
+const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
+const BODY    = "var(--font-inter, 'system-ui', sans-serif)";
+const C = {
+  ink: "#0D0D0D", cream: "#F7F2EC", muted: "#EFE7DE",
+  white: "#FFFFFF", terra: "#D87D6F", coffee: "#82554D",
+  border: "rgba(130,85,77,0.14)",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%", boxSizing: "border-box", padding: "11px 12px",
+  background: C.muted, border: "none", borderRadius: 12,
+  fontFamily: BODY, fontSize: 14, color: C.ink, outline: "none",
+};
 
 const COMMON_TAGS = [
-  "Amoblado", "Ascensor", "Parqueadero", "Balcón", "Terraza",
-  "Gimnasio", "Piscina", "Portería 24h", "Zona de lavandería",
-  "Mascotas permitidas", "Cocina integral", "WiFi incluido",
+  "Amoblado","Ascensor","Parqueadero","Balcón","Terraza",
+  "Gimnasio","Piscina","Portería 24h","Zona de lavandería",
+  "Mascotas permitidas","Cocina integral","WiFi incluido",
 ];
 
 export function NewProperty() {
   const navigate = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-
   const [form, setForm] = useState({
-    title: "",
-    monthly_rent: "",
-    city: "Bogotá",
-    neighborhood: "",
-    bedrooms: "1",
-    description: "",
-    image_url: "",
-    allows_students: true,
-    requires_co_debtor: false,
-    address: "",
-    latitude: null as number | null,
-    longitude: null as number | null,
+    title: "", monthly_rent: "", city: "Bogotá", neighborhood: "",
+    bedrooms: "1", description: "", image_url: "",
+    allows_students: true, requires_co_debtor: false,
+    address: "", latitude: null as number | null, longitude: null as number | null,
   });
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
+  const set = (name: string, value: any) => setForm(f => ({ ...f, [name]: value }));
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
-    }));
-  };
-
-  const handleLocationPicked = (lat: number, lng: number, address: string) => {
-    setForm((prev) => ({ ...prev, latitude: lat, longitude: lng, address }));
-  };
-
-  const toggleTag = (tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-    );
+    set(name, type === "checkbox" ? (e.target as HTMLInputElement).checked : value);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setError("");
-
+    setIsLoading(true); setError("");
     const ownerId = localStorage.getItem("owner_id");
     if (!ownerId) { navigate.push("/app"); return; }
-
     try {
       const res = await fetch("/api/owner/properties", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          owner_id: ownerId,
-          title: form.title,
-          monthly_rent: Number(form.monthly_rent),
-          city: form.city,
-          neighborhood: form.neighborhood,
-          bedrooms: Number(form.bedrooms),
-          description: form.description,
-          image_url: form.image_url || null,
-          allows_students: form.allows_students,
-          requires_co_debtor: form.requires_co_debtor,
-          tags: selectedTags,
-          address: form.address || null,
-          latitude: form.latitude,
-          longitude: form.longitude,
+          owner_id: ownerId, title: form.title,
+          monthly_rent: Number(form.monthly_rent), city: form.city,
+          neighborhood: form.neighborhood, bedrooms: Number(form.bedrooms),
+          description: form.description, image_url: form.image_url || null,
+          allows_students: form.allows_students, requires_co_debtor: form.requires_co_debtor,
+          tags: selectedTags, address: form.address || null,
+          latitude: form.latitude, longitude: form.longitude,
         }),
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Error al crear la propiedad");
-      }
-
+      if (!res.ok) throw new Error((await res.json()).error || "Error al crear");
       navigate.push("/owner/properties");
     } catch (err: any) {
       setError(err.message);
@@ -102,199 +79,157 @@ export function NewProperty() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-white border-b border-border p-4 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <button onClick={() => navigate.back()} className="p-2 rounded-xl hover:bg-secondary transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <h1 className="text-xl font-semibold">Nueva propiedad</h1>
-        </div>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.cream, overflow: "hidden" }}>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+
+      {/* Header */}
+      <header style={{ flexShrink: 0, background: C.white, borderBottom: `1.5px solid ${C.border}`, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+        <button onClick={() => navigate.back()} style={{ width: 36, height: 36, borderRadius: 18, background: C.muted, border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+          <ArrowLeft style={{ width: 17, height: 17, color: C.coffee }} />
+        </button>
+        <div style={{ fontFamily: DISPLAY, fontSize: 22, fontWeight: 500, color: C.ink, letterSpacing: -0.6 }}>Nueva propiedad</div>
       </header>
 
-      <form onSubmit={handleSubmit} className="max-w-2xl mx-auto p-4 md:p-6 pb-24 space-y-6">
+      {/* Form */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+        <form onSubmit={handleSubmit} style={{ maxWidth: 600, margin: "0 auto", padding: "20px 16px 80px", display: "flex", flexDirection: "column", gap: 14 }}>
 
-        {/* Basic info */}
-        <Section title="Información básica">
-          <Field label="Título del anuncio">
-            <input
-              name="title" required value={form.title} onChange={handleChange}
-              placeholder="Ej: Apartamento moderno en Chapinero"
-              className="input"
-            />
-          </Field>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Canon mensual (COP)">
-              <div className="relative">
-                <DollarSign className="icon-left" />
-                <input
-                  name="monthly_rent" required type="number" min="0"
-                  value={form.monthly_rent} onChange={handleChange}
-                  placeholder="1500000"
-                  className="input pl-9"
-                />
-              </div>
+          {/* Información básica */}
+          <Card title="Información básica">
+            <Field label="Título del anuncio">
+              <input name="title" required value={form.title} onChange={handleChange}
+                placeholder="Ej: Apartamento moderno en Chapinero" style={inputStyle} />
             </Field>
-            <Field label="Habitaciones">
-              <div className="relative">
-                <Bed className="icon-left" />
-                <select name="bedrooms" value={form.bedrooms} onChange={handleChange} className="input pl-9">
-                  {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
-                </select>
-              </div>
-            </Field>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Ciudad">
-              <input name="city" value={form.city} onChange={handleChange} className="input" />
-            </Field>
-            <Field label="Barrio">
-              <input
-                name="neighborhood" value={form.neighborhood} onChange={handleChange}
-                placeholder="Chapinero Alto"
-                className="input"
-              />
-            </Field>
-          </div>
-        </Section>
-
-        {/* Location */}
-        <Section title="Ubicación" subtitle="Haz clic en el mapa para marcar la ubicación exacta">
-          <MapPicker
-            initialLat={form.latitude ?? 4.711}
-            initialLng={form.longitude ?? -74.0721}
-            onLocationPicked={handleLocationPicked}
-          />
-          {form.address && (
-            <div className="flex items-start gap-2 text-sm text-muted-foreground mt-2">
-              <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D87D6F]" />
-              <span>{form.address}</span>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <Field label="Canon mensual (COP)">
+                <div style={{ position: "relative" }}>
+                  <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontFamily: BODY, fontSize: 14, color: C.coffee, opacity: 0.5, fontWeight: 700 }}>$</span>
+                  <input name="monthly_rent" required type="number" min="0" value={form.monthly_rent} onChange={handleChange}
+                    placeholder="1500000" style={{ ...inputStyle, paddingLeft: 26 }} />
+                </div>
+              </Field>
+              <Field label="Habitaciones">
+                <div style={{ position: "relative" }}>
+                  <Bed style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: C.coffee, opacity: 0.5 }} />
+                  <select name="bedrooms" value={form.bedrooms} onChange={handleChange}
+                    style={{ ...inputStyle, paddingLeft: 30, appearance: "none" }}>
+                    {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </div>
+              </Field>
             </div>
-          )}
-          {!form.latitude && (
-            <p className="text-xs text-muted-foreground mt-1">
-              La ubicación es opcional pero ayuda a los arrendatarios a ver el mapa del apartamento.
-            </p>
-          )}
-        </Section>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <Field label="Ciudad">
+                <input name="city" value={form.city} onChange={handleChange} style={inputStyle} />
+              </Field>
+              <Field label="Barrio">
+                <input name="neighborhood" value={form.neighborhood} onChange={handleChange}
+                  placeholder="Chapinero Alto" style={inputStyle} />
+              </Field>
+            </div>
+          </Card>
 
-        {/* Description */}
-        <Section title="Descripción">
-          <Field label="">
-            <div className="relative">
-              <FileText className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-              <textarea
-                name="description" value={form.description} onChange={handleChange}
+          {/* Descripción */}
+          <Card title="Descripción">
+            <div style={{ position: "relative" }}>
+              <FileText style={{ position: "absolute", left: 10, top: 12, width: 14, height: 14, color: C.coffee, opacity: 0.5 }} />
+              <textarea name="description" value={form.description} onChange={handleChange}
                 rows={4} placeholder="Describe tu apartamento: características, zona, acceso a transporte..."
-                className="input pl-9 resize-none"
-              />
+                style={{ ...inputStyle, paddingLeft: 30, resize: "none" }} />
             </div>
-          </Field>
-        </Section>
+          </Card>
 
-        {/* Image */}
-        <Section title="Imagen principal">
-          <Field label="URL de la imagen">
-            <div className="relative">
-              <ImageIcon className="icon-left" />
-              <input
-                name="image_url" type="url" value={form.image_url} onChange={handleChange}
-                placeholder="https://..."
-                className="input pl-9"
-              />
+          {/* Imagen */}
+          <Card title="Imagen principal">
+            <Field label="URL de la imagen">
+              <div style={{ position: "relative" }}>
+                <ImageIcon style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: C.coffee, opacity: 0.5 }} />
+                <input name="image_url" type="url" value={form.image_url} onChange={handleChange}
+                  placeholder="https://..." style={{ ...inputStyle, paddingLeft: 30 }} />
+              </div>
+            </Field>
+            {form.image_url && (
+              <img src={form.image_url} alt="preview" style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 12, marginTop: 8 }} />
+            )}
+          </Card>
+
+          {/* Ubicación */}
+          <Card title="Ubicación" subtitle="Haz clic en el mapa para marcar la ubicación exacta">
+            <MapPicker initialLat={form.latitude ?? 4.711} initialLng={form.longitude ?? -74.0721}
+              onLocationPicked={(lat, lng, address) => setForm(f => ({ ...f, latitude: lat, longitude: lng, address }))} />
+            {form.address && (
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 8 }}>
+                <MapPin style={{ width: 13, height: 13, color: C.terra, flexShrink: 0, marginTop: 2 }} />
+                <span style={{ fontFamily: BODY, fontSize: 12, color: C.coffee }}>{form.address}</span>
+              </div>
+            )}
+            {!form.latitude && (
+              <p style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, opacity: 0.6, marginTop: 6 }}>
+                La ubicación es opcional pero ayuda a los arrendatarios a ver el mapa.
+              </p>
+            )}
+          </Card>
+
+          {/* Características */}
+          <Card title="Características" subtitle="Selecciona las que apliquen">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {COMMON_TAGS.map(tag => {
+                const active = selectedTags.includes(tag);
+                return (
+                  <button key={tag} type="button" onClick={() => setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])}
+                    style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 9999, border: `1.5px solid ${active ? C.terra : C.border}`, background: active ? `${C.terra}12` : C.cream, fontFamily: BODY, fontSize: 12, fontWeight: 600, color: active ? C.terra : C.coffee, cursor: "pointer" }}>
+                    {active && <CheckCircle2 style={{ width: 12, height: 12 }} />}
+                    {tag}
+                  </button>
+                );
+              })}
             </div>
-          </Field>
-          {form.image_url && (
-            <img src={form.image_url} alt="preview" className="w-full h-40 object-cover rounded-xl mt-2" />
-          )}
-        </Section>
+          </Card>
 
-        {/* Tags */}
-        <Section title="Características" subtitle="Selecciona las que apliquen">
-          <div className="flex flex-wrap gap-2">
-            {COMMON_TAGS.map((tag) => (
-              <button
-                key={tag} type="button" onClick={() => toggleTag(tag)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                  selectedTags.includes(tag)
-                    ? "bg-[#D87D6F] border-[#D87D6F] text-white"
-                    : "bg-white border-border text-foreground hover:border-[#D87D6F]"
-                }`}
-              >
-                {selectedTags.includes(tag) && <CheckCircle2 className="w-3.5 h-3.5" />}
-                {tag}
-              </button>
+          {/* Opciones */}
+          <Card title="Opciones">
+            {[
+              { name: "allows_students", label: "Acepta estudiantes", checked: form.allows_students },
+              { name: "requires_co_debtor", label: "Requiere codeudor", checked: form.requires_co_debtor },
+            ].map(({ name, label, checked }) => (
+              <label key={name} style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", padding: "4px 0" }}>
+                <input type="checkbox" name={name} checked={checked} onChange={handleChange}
+                  style={{ width: 16, height: 16, accentColor: C.terra, cursor: "pointer" }} />
+                <span style={{ fontFamily: BODY, fontSize: 14, fontWeight: 600, color: C.ink }}>{label}</span>
+              </label>
             ))}
-          </div>
-        </Section>
+          </Card>
 
-        {/* Options */}
-        <Section title="Opciones">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox" name="allows_students"
-              checked={form.allows_students} onChange={handleChange}
-              className="w-4 h-4 accent-[#D87D6F]"
-            />
-            <span className="text-sm font-medium">Acepta estudiantes</span>
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer mt-3">
-            <input
-              type="checkbox" name="requires_co_debtor"
-              checked={form.requires_co_debtor} onChange={handleChange}
-              className="w-4 h-4 accent-[#D87D6F]"
-            />
-            <span className="text-sm font-medium">Requiere codeudor</span>
-          </label>
-        </Section>
+          {error && (
+            <div style={{ background: "#FEE2E2", borderRadius: 12, padding: "10px 14px" }}>
+              <p style={{ fontFamily: BODY, fontSize: 13, color: "#B91C1C" }}>{error}</p>
+            </div>
+          )}
 
-        {error && <p className="text-red-500 text-sm font-medium text-center">{error}</p>}
-
-        <button
-          type="submit" disabled={isLoading}
-          className="w-full py-4 bg-[#D87D6F] text-white rounded-2xl font-bold text-sm hover:bg-[#c46d5f] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Publicar propiedad"}
-        </button>
-      </form>
-
-      <style jsx>{`
-        .input {
-          width: 100%;
-          background: #f8f8f8;
-          border: none;
-          border-radius: 12px;
-          padding: 12px 14px;
-          font-size: 14px;
-          font-weight: 500;
-          outline: none;
-          transition: box-shadow 0.15s;
-        }
-        .input:focus {
-          box-shadow: 0 0 0 2px rgba(216,125,111,0.25);
-        }
-        .icon-left {
-          position: absolute;
-          left: 12px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 16px;
-          height: 16px;
-          color: #9ca3af;
-        }
-      `}</style>
+          <button type="submit" disabled={isLoading} style={{
+            width: "100%", padding: "14px 0", borderRadius: 16, border: "none",
+            background: C.terra, color: C.white, fontFamily: BODY, fontSize: 15, fontWeight: 700,
+            cursor: isLoading ? "default" : "pointer", opacity: isLoading ? 0.7 : 1,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          }}>
+            {isLoading
+              ? <><div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${C.white}`, borderTopColor: "transparent", animation: "spin 0.7s linear infinite" }} />Publicando…</>
+              : "Publicar propiedad"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
 
-function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  const BODY = "var(--font-inter, 'system-ui', sans-serif)";
+  const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm space-y-4">
+    <div style={{ background: "#FFFFFF", borderRadius: 20, padding: "18px 16px", border: "1.5px solid rgba(130,85,77,0.14)", display: "flex", flexDirection: "column", gap: 14 }}>
       <div>
-        <h2 className="font-semibold text-base">{title}</h2>
-        {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
+        <div style={{ fontFamily: DISPLAY, fontSize: 17, fontWeight: 500, color: "#0D0D0D", letterSpacing: -0.4 }}>{title}</div>
+        {subtitle && <p style={{ fontFamily: BODY, fontSize: 11, color: "#82554D", marginTop: 2 }}>{subtitle}</p>}
       </div>
       {children}
     </div>
@@ -302,9 +237,10 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  const BODY = "var(--font-inter, 'system-ui', sans-serif)";
   return (
-    <div className="space-y-1.5">
-      {label && <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</label>}
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {label && <label style={{ fontFamily: BODY, fontSize: 10, fontWeight: 700, color: "#82554D", textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</label>}
       {children}
     </div>
   );

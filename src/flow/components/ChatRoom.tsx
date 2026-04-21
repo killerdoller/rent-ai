@@ -1,214 +1,251 @@
 "use client";
-import { useState } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Send, Phone, Video, MoreVertical, Bot, Sparkles } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Send, Building2, User } from "lucide-react";
 
-interface Message {
-  id: number;
-  text: string;
-  sender: "user" | "other" | "ai";
-  timestamp: string;
+const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
+const BODY = "var(--font-inter, 'system-ui', sans-serif)";
+const C = {
+  ink:    "#0D0D0D",
+  cream:  "#F7F2EC",
+  white:  "#FFFFFF",
+  green:  "#63A694",
+  terra:  "#D87D6F",
+  coffee: "#82554D",
+  border: "rgba(130,85,77,0.14)",
+  muted:  "#EFE7DE",
+};
+
+interface DBMessage {
+  id: string;
+  sender_id: string;
+  sender_type: "user" | "owner";
+  content: string;
+  created_at: string;
 }
 
-export function ChatRoom() {
-  const { id } = useParams();
+interface RoomData {
+  conversation_id: string;
+  other_party: { name: string; avatar: string | null };
+  property: { title: string; image_url: string | null; neighborhood: string; monthly_rent: number } | null;
+}
+
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+}
+
+export function ChatRoom({
+  id,
+  senderType = "user",
+}: {
+  id: string;
+  senderType?: "user" | "owner";
+}) {
   const navigate = useRouter();
-  const [message, setMessage] = useState("");
-  const isAI = id === "ai";
+  const [room, setRoom]         = useState<RoomData | null>(null);
+  const [messages, setMessages] = useState<DBMessage[]>([]);
+  const [input, setInput]       = useState("");
+  const [sending, setSending]   = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pollRef        = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const chatName = isAI
-    ? "Asistente IA RoomiMatch"
-    : id === "1"
-    ? "Apartamento Moderno en Chapinero"
-    : id === "2"
-    ? "María García"
-    : "Apartamento Compartido Luminoso";
+  const accent   = senderType === "owner" ? C.terra : C.green;
+  const backPath = senderType === "owner" ? "/owner/chat" : "/app/chat";
 
-  const chatImage = isAI
-    ? null
-    : id === "1"
-    ? "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=400"
-    : id === "2"
-    ? "https://images.unsplash.com/photo-1645664747204-31fee58898dc?w=400"
-    : "https://images.unsplash.com/photo-1593853814555-6951885ffa63?w=400";
+  const senderId = useCallback((): string | null => {
+    if (senderType === "owner") return localStorage.getItem("owner_id");
+    return localStorage.getItem("rentai_user_id") || localStorage.getItem("user_id");
+  }, [senderType]);
 
-  const [messages, setMessages] = useState<Message[]>(
-    isAI
-      ? [
-          {
-            id: 1,
-            text: "¡Hola! Soy tu asistente de IA. Puedo ayudarte a encontrar el apartamento perfecto. ¿Qué tipo de lugar estás buscando?",
-            sender: "ai",
-            timestamp: "10:00",
-          },
-        ]
-      : [
-          {
-            id: 1,
-            text: "¡Hola! Me interesa conocer más sobre el apartamento",
-            sender: "user",
-            timestamp: "10:00",
-          },
-          {
-            id: 2,
-            text: "¡Hola! Claro, con gusto te cuento más. ¿Qué te gustaría saber?",
-            sender: "other",
-            timestamp: "10:02",
-          },
-          {
-            id: 3,
-            text: "¿Cuál es la disponibilidad y los servicios incluyen internet?",
-            sender: "user",
-            timestamp: "10:05",
-          },
-        ]
-  );
+  // Load room
+  useEffect(() => {
+    fetch(`/api/chat/room?match_id=${id}&caller_type=${senderType}`)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then((data: RoomData & { messages: DBMessage[] }) => {
+        setRoom({ conversation_id: data.conversation_id, other_party: data.other_party, property: data.property });
+        setMessages(data.messages);
+      })
+      .catch(() => setLoadError("No se pudo cargar la conversación."));
+  }, [id, senderType]);
 
-  const handleSend = () => {
-    if (!message.trim()) return;
-
-    const newMessage: Message = {
-      id: messages.length + 1,
-      text: message,
-      sender: "user",
-      timestamp: new Date().toLocaleTimeString("es-CO", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+  // Poll for new messages every 3 s
+  useEffect(() => {
+    if (!room) return;
+    const poll = () => {
+      const last = messages[messages.length - 1];
+      const after = last ? `&after=${encodeURIComponent(last.created_at)}` : "";
+      fetch(`/api/chat/messages?conversation_id=${room.conversation_id}${after}`)
+        .then(r => r.ok ? r.json() : [])
+        .then((newMsgs: DBMessage[]) => {
+          if (newMsgs.length > 0) setMessages(prev => [...prev, ...newMsgs]);
+        })
+        .catch(() => {});
     };
+    pollRef.current = setInterval(poll, 3000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [room, messages]);
 
-    setMessages([...messages, newMessage]);
-    setMessage("");
+  // Auto scroll
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-    // Simulate response
-    if (isAI) {
-      setTimeout(() => {
-        const aiResponse: Message = {
-          id: messages.length + 2,
-          text: "Basado en tus preferencias, te recomiendo revisar los apartamentos en Chapinero. Tienen excelente conectividad y están cerca de varias universidades. ¿Te gustaría ver opciones en esa zona?",
-          sender: "ai",
-          timestamp: new Date().toLocaleTimeString("es-CO", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        };
-        setMessages((prev) => [...prev, aiResponse]);
-      }, 1000);
-    } else {
-      setTimeout(() => {
-        const response: Message = {
-          id: messages.length + 2,
-          text: "Disponible desde el 1 de abril. Sí, internet de fibra óptica está incluido, al igual que servicios públicos básicos.",
-          sender: "other",
-          timestamp: new Date().toLocaleTimeString("es-CO", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        };
-        setMessages((prev) => [...prev, response]);
-      }, 1000);
-    }
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text || !room || sending) return;
+    const sid = senderId();
+    if (!sid) return;
+
+    setSending(true);
+    setInput("");
+    try {
+      const res = await fetch("/api/chat/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversation_id: room.conversation_id,
+          sender_id:       sid,
+          sender_type:     senderType,
+          content:         text,
+        }),
+      });
+      if (res.ok) {
+        const msg: DBMessage = await res.json();
+        setMessages(prev => [...prev, msg]);
+      }
+    } catch { /* silent */ }
+    finally { setSending(false); }
+  };
+
+  const isOwn = (msg: DBMessage) => {
+    const sid = senderId();
+    return msg.sender_id === sid || msg.sender_type === senderType;
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.cream, overflow: "hidden" }}>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+
       {/* Header */}
-      <header className="bg-white border-b border-border p-4 flex items-center gap-3 sticky top-0 z-10">
-        <button
-          onClick={() => navigate.push("/app/chat")}
-          className="p-2 hover:bg-secondary rounded-full transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
+      <header style={{
+        flexShrink: 0, background: C.white,
+        borderBottom: `1.5px solid ${C.border}`,
+        padding: "12px 16px", display: "flex", alignItems: "center", gap: 12,
+      }}>
+        <button onClick={() => navigate.push(backPath)}
+          style={{ width: 36, height: 36, borderRadius: 18, background: C.muted, border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+          <ArrowLeft style={{ width: 18, height: 18, color: C.coffee }} />
         </button>
 
-        {isAI ? (
-          <div className="flex items-center gap-3 flex-1">
-            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-              <Bot className="w-6 h-6 text-white" />
+        <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10 }}>
+          {room?.other_party.avatar ? (
+            <img src={room.other_party.avatar} alt={room.other_party.name}
+              style={{ width: 38, height: 38, borderRadius: 19, objectFit: "cover", flexShrink: 0 }} />
+          ) : (
+            <div style={{ width: 38, height: 38, borderRadius: 19, background: `${accent}22`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              {senderType === "owner"
+                ? <User style={{ width: 18, height: 18, color: accent }} />
+                : <Building2 style={{ width: 18, height: 18, color: accent }} />}
             </div>
-            <div className="flex-1">
-              <h2 className="font-semibold">{chatName}</h2>
-              <div className="flex items-center gap-1 text-sm text-primary">
-                <Sparkles className="w-3 h-3" />
-                <span>Asistente inteligente</span>
+          )}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {room?.other_party.name || "…"}
+            </div>
+            {room?.property && (
+              <div style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {room.property.title}
               </div>
-            </div>
+            )}
           </div>
-        ) : (
-          <div className="flex items-center gap-3 flex-1">
-            <img
-              src={chatImage || ""}
-              alt={chatName}
-              className="w-10 h-10 rounded-full object-cover"
-            />
-            <div className="flex-1">
-              <h2 className="font-semibold">{chatName}</h2>
-              <p className="text-sm text-green-500">En línea</p>
-            </div>
-          </div>
-        )}
-
-        {!isAI && (
-          <div className="flex items-center gap-2">
-            <button className="p-2 hover:bg-secondary rounded-full transition-colors">
-              <Phone className="w-5 h-5 text-primary" />
-            </button>
-            <button className="p-2 hover:bg-secondary rounded-full transition-colors">
-              <Video className="w-5 h-5 text-primary" />
-            </button>
-            <button className="p-2 hover:bg-secondary rounded-full transition-colors">
-              <MoreVertical className="w-5 h-5" />
-            </button>
-          </div>
-        )}
+        </div>
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 md:pb-4">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-[75%] md:max-w-md rounded-2xl px-4 py-3 ${
-                msg.sender === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : msg.sender === "ai"
-                  ? "bg-[#A8D1B1]/20 border border-primary/30 text-foreground"
-                  : "bg-secondary text-foreground"
-              }`}
-            >
-              <p className="text-sm md:text-base">{msg.text}</p>
-              <span
-                className={`text-xs mt-1 block ${
-                  msg.sender === "user" ? "text-primary-foreground/70" : "text-muted-foreground"
-                }`}
-              >
-                {msg.timestamp}
-              </span>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 16px 8px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 600, margin: "0 auto" }}>
+
+          {loadError && (
+            <div style={{ background: "#FEE2E2", borderRadius: 12, padding: "12px 16px", textAlign: "center" }}>
+              <p style={{ fontFamily: BODY, fontSize: 13, color: "#B91C1C", margin: 0 }}>{loadError}</p>
             </div>
-          </div>
-        ))}
+          )}
+
+          {!loadError && messages.length === 0 && room && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 40, gap: 8 }}>
+              <div style={{ width: 56, height: 56, borderRadius: 28, background: `${accent}18`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Building2 style={{ width: 24, height: 24, color: accent }} />
+              </div>
+              <p style={{ fontFamily: DISPLAY, fontSize: 15, fontWeight: 500, color: C.ink, textAlign: "center" }}>
+                Empieza la conversación
+              </p>
+              <p style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, textAlign: "center", maxWidth: 220 }}>
+                {room.property?.title}
+              </p>
+            </div>
+          )}
+
+          {messages.map(msg => {
+            const own = isOwn(msg);
+            return (
+              <div key={msg.id} style={{ display: "flex", justifyContent: own ? "flex-end" : "flex-start" }}>
+                <div style={{
+                  maxWidth: "75%", borderRadius: 18, padding: "10px 14px",
+                  background: own ? accent : C.white,
+                  border: own ? "none" : `1px solid ${C.border}`,
+                }}>
+                  <p style={{ fontFamily: BODY, fontSize: 14, lineHeight: 1.5, color: own ? C.white : C.ink, margin: 0 }}>
+                    {msg.content}
+                  </p>
+                  <span style={{ fontFamily: BODY, fontSize: 10, display: "block", marginTop: 4, color: own ? "rgba(255,255,255,0.65)" : C.coffee, opacity: own ? 1 : 0.7 }}>
+                    {formatTime(msg.created_at)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Input */}
-      <div className="border-t border-border bg-white p-4 sticky bottom-0">
-        <div className="max-w-4xl mx-auto flex items-center gap-2">
+      <div style={{
+        flexShrink: 0, background: C.white,
+        borderTop: `1.5px solid ${C.border}`,
+        padding: "12px 16px",
+        paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
+      }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", display: "flex", alignItems: "center", gap: 10 }}>
           <input
             type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && handleSend()}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
             placeholder="Escribe un mensaje..."
-            className="flex-1 px-4 py-3 bg-secondary/50 rounded-full focus:outline-none focus:ring-2 focus:ring-primary"
+            disabled={!room || !!loadError}
+            style={{
+              flex: 1, padding: "11px 16px",
+              background: C.muted, border: "none", borderRadius: 22,
+              fontFamily: BODY, fontSize: 14, color: C.ink, outline: "none",
+              opacity: (!room || !!loadError) ? 0.5 : 1,
+            }}
           />
           <button
             onClick={handleSend}
-            disabled={!message.trim()}
-            className="p-3 bg-primary text-white rounded-full hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!input.trim() || !room || sending || !!loadError}
+            style={{
+              width: 42, height: 42, borderRadius: 21, flexShrink: 0,
+              background: input.trim() && room && !loadError ? accent : C.muted,
+              border: "none", display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: input.trim() && room && !loadError ? "pointer" : "default",
+              transition: "background 0.15s",
+            }}
           >
-            <Send className="w-5 h-5" />
+            {sending
+              ? <div style={{ width: 16, height: 16, borderRadius: "50%", border: `2px solid ${C.white}`, borderTopColor: "transparent", animation: "spin 0.7s linear infinite" }} />
+              : <Send style={{ width: 17, height: 17, color: input.trim() && room ? C.white : C.coffee }} />}
           </button>
         </div>
       </div>

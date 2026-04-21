@@ -4,7 +4,17 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Briefcase, Home, Users, ChevronRight, Loader2 } from "lucide-react";
 
-const PLUM = "#935B7E";
+const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
+const BODY    = "var(--font-inter, 'system-ui', sans-serif)";
+const C = {
+  ink:    "#0D0D0D",
+  cream:  "#F7F2EC",
+  muted:  "#EFE7DE",
+  white:  "#FFFFFF",
+  green:  "#63A694",
+  coffee: "#82554D",
+  border: "rgba(130,85,77,0.14)",
+};
 
 const LIFESTYLE_OPTIONS = [
   { label: "No fumador", icon: "🚭" },
@@ -22,32 +32,24 @@ const INTEREST_OPTIONS = [
   "Arte", "Yoga", "Gaming", "Fotografía", "Deporte",
 ];
 
-interface StepProps {
-  form: any;
-  setForm: (f: any) => void;
-}
+interface StepProps { form: any; setForm: (f: any) => void; }
 
 export function CompleteProfile() {
   const navigate = useRouter();
   const [step, setStep] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState({
-    bio: "",
-    age: "",
-    city: "",
-    job_title: "",
+    bio: "", age: "", city: "", job_title: "",
     lifestyle_tags: [] as string[],
-    cleanliness_level: 5,
-    social_level: 5,
+    cleanliness_level: 5, social_level: 5,
     interests: [] as string[],
-    user_mode: "find-room",
-    monthly_budget: "",
+    user_mode: "find-room", monthly_budget: "",
   });
 
   const steps = [
-    { label: "Sobre ti", component: <Step1 form={form} setForm={setForm} /> },
+    { label: "Sobre ti",       component: <Step1 form={form} setForm={setForm} /> },
     { label: "Estilo de vida", component: <Step2 form={form} setForm={setForm} /> },
-    { label: "¿Qué buscas?", component: <Step3 form={form} setForm={setForm} /> },
+    { label: "¿Qué buscas?",  component: <Step3 form={form} setForm={setForm} /> },
   ];
 
   const handleFinish = async () => {
@@ -55,29 +57,22 @@ export function CompleteProfile() {
     try {
       const userId = localStorage.getItem("rentai_user_id");
       if (!userId) throw new Error("No hay sesión activa");
-
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: userId,
-          bio: form.bio || null,
-          age: form.age ? Number(form.age) : null,
-          city: form.city || null,
-          job_title: form.job_title || null,
+          bio: form.bio || null, age: form.age ? Number(form.age) : null,
+          city: form.city || null, job_title: form.job_title || null,
           lifestyle_tags: form.lifestyle_tags,
-          cleanliness_level: form.cleanliness_level,
-          social_level: form.social_level,
-          interests: form.interests,
-          user_mode: form.user_mode,
+          cleanliness_level: form.cleanliness_level, social_level: form.social_level,
+          interests: form.interests, user_mode: form.user_mode,
           monthly_budget: form.monthly_budget ? Number(form.monthly_budget) : null,
         }),
       });
-
-      if (!res.ok) throw new Error("Error al guardar el perfil");
+      if (!res.ok) throw new Error("Error al guardar");
       navigate.push("/app/home");
-    } catch (err) {
-      console.error(err);
+    } catch {
       navigate.push("/app/home");
     } finally {
       setIsSaving(false);
@@ -85,89 +80,68 @@ export function CompleteProfile() {
   };
 
   return (
-    <div className="min-h-screen bg-[#A8D1B1] flex items-center justify-center p-4">
-      <div className="w-full max-w-lg">
+    <div style={{ minHeight: "100vh", background: C.cream, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ width: "100%", maxWidth: 480 }}>
         {/* Header */}
-        <div className="text-center mb-6">
-          <img src="/Logo_finalfinal.png" alt="RentAI" className="w-12 h-12 object-contain mx-auto mb-3" />
-          <h1 className="text-xl font-black text-[#0D0D0D]">Completa tu perfil</h1>
-          <p className="text-sm text-[#0D0D0D]/60 mt-1">
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <img src="/Logo_finalfinal.png" alt="RentAI" style={{ width: 44, height: 44, objectFit: "contain", margin: "0 auto 10px" }} />
+          <div style={{ fontFamily: DISPLAY, fontSize: 26, fontWeight: 500, color: C.ink, letterSpacing: -0.8 }}>Completa tu perfil</div>
+          <p style={{ fontFamily: BODY, fontSize: 13, color: C.coffee, marginTop: 4 }}>
             Paso {step + 1} de {steps.length} — {steps[step].label}
           </p>
         </div>
 
-        {/* Progress bar */}
-        <div className="flex gap-2 mb-6">
-          {steps.map((s, i) => (
-            <div
-              key={i}
-              className="flex-1 h-1.5 rounded-full overflow-hidden bg-white/40"
-            >
-              <motion.div
-                className="h-full rounded-full"
-                style={{ backgroundColor: PLUM }}
-                initial={{ width: 0 }}
-                animate={{ width: i <= step ? "100%" : "0%" }}
-                transition={{ duration: 0.3 }}
-              />
+        {/* Progress */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 24 }}>
+          {steps.map((_, i) => (
+            <div key={i} style={{ flex: 1, height: 4, borderRadius: 9999, overflow: "hidden", background: "rgba(130,85,77,0.14)" }}>
+              <motion.div style={{ height: "100%", background: C.green, borderRadius: 9999 }}
+                initial={{ width: 0 }} animate={{ width: i <= step ? "100%" : "0%" }} transition={{ duration: 0.3 }} />
             </div>
           ))}
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
-          <div className="p-8">
+        <div style={{ background: C.white, borderRadius: 24, boxShadow: "0 8px 32px rgba(130,85,77,0.12)", overflow: "hidden", border: `1.5px solid ${C.border}` }}>
+          <div style={{ padding: "28px 24px" }}>
             <AnimatePresence mode="wait">
-              <motion.div
-                key={step}
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -30 }}
-                transition={{ duration: 0.2 }}
-              >
+              <motion.div key={step} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.18 }}>
                 {steps[step].component}
               </motion.div>
             </AnimatePresence>
 
-            {/* Navigation buttons */}
-            <div className="flex gap-3 mt-8">
+            {/* Nav buttons */}
+            <div style={{ display: "flex", gap: 10, marginTop: 28 }}>
               {step > 0 && (
-                <button
-                  onClick={() => setStep(step - 1)}
-                  className="flex-1 py-3 rounded-2xl border-2 border-slate-200 text-slate-500 font-bold text-sm hover:bg-slate-50 transition-all"
-                >
-                  Atrás
-                </button>
+                <button onClick={() => setStep(step - 1)} style={{
+                  flex: 1, padding: "12px 0", borderRadius: 14, border: `1.5px solid ${C.border}`,
+                  background: "none", fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.coffee, cursor: "pointer",
+                }}>Atrás</button>
               )}
               {step < steps.length - 1 ? (
-                <button
-                  onClick={() => setStep(step + 1)}
-                  className="flex-1 py-3 rounded-2xl text-white font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
-                  style={{ backgroundColor: PLUM }}
-                >
-                  Continuar <ChevronRight className="w-4 h-4" />
+                <button onClick={() => setStep(step + 1)} style={{
+                  flex: 1, padding: "12px 0", borderRadius: 14, border: "none",
+                  background: C.green, color: C.white, fontFamily: BODY, fontSize: 14, fontWeight: 700,
+                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                }}>
+                  Continuar <ChevronRight style={{ width: 16, height: 16 }} />
                 </button>
               ) : (
-                <button
-                  onClick={handleFinish}
-                  disabled={isSaving}
-                  className="flex-1 py-3 rounded-2xl text-white font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60"
-                  style={{ backgroundColor: PLUM }}
-                >
-                  {isSaving ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    "¡Listo, empezar! 🎉"
-                  )}
+                <button onClick={handleFinish} disabled={isSaving} style={{
+                  flex: 1, padding: "12px 0", borderRadius: 14, border: "none",
+                  background: C.green, color: C.white, fontFamily: BODY, fontSize: 14, fontWeight: 700,
+                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: isSaving ? 0.7 : 1,
+                }}>
+                  {isSaving ? <Loader2 style={{ width: 18, height: 18, animation: "spin 0.7s linear infinite" }} /> : "¡Listo, empezar! 🎉"}
                 </button>
               )}
             </div>
+            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
-            {/* Skip */}
-            <button
-              onClick={() => navigate.push("/app/home")}
-              className="w-full mt-3 text-xs text-slate-400 hover:text-slate-600 transition-colors"
-            >
+            <button onClick={() => navigate.push("/app/home")} style={{
+              width: "100%", marginTop: 12, background: "none", border: "none",
+              fontFamily: BODY, fontSize: 12, color: C.coffee, opacity: 0.55, cursor: "pointer",
+            }}>
               Completar después
             </button>
           </div>
@@ -177,144 +151,101 @@ export function CompleteProfile() {
   );
 }
 
-/* ── Paso 1: Sobre ti ── */
+function Label({ children }: { children: React.ReactNode }) {
+  return <div style={{ fontFamily: BODY, fontSize: 10, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>{children}</div>;
+}
+
+function FieldInput({ value, onChange, placeholder, type = "text", icon }: { value: string; onChange: (v: string) => void; placeholder: string; type?: string; icon?: React.ReactNode }) {
+  return (
+    <div style={{ position: "relative" }}>
+      {icon && <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: C.coffee, opacity: 0.5 }}>{icon}</div>}
+      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        style={{ width: "100%", boxSizing: "border-box", paddingLeft: icon ? 36 : 14, paddingRight: 14, paddingTop: 11, paddingBottom: 11, background: C.muted, border: "none", borderRadius: 12, fontFamily: BODY, fontSize: 14, color: C.ink, outline: "none" }} />
+    </div>
+  );
+}
+
 function Step1({ form, setForm }: StepProps) {
   return (
-    <div className="space-y-5">
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div>
-        <h2 className="text-lg font-black text-[#0D0D0D] mb-1">Cuéntanos sobre ti</h2>
-        <p className="text-sm text-slate-400">Esta info aparecerá en tu perfil público</p>
+        <div style={{ fontFamily: DISPLAY, fontSize: 20, fontWeight: 500, color: C.ink, letterSpacing: -0.5, marginBottom: 4 }}>Cuéntanos sobre ti</div>
+        <p style={{ fontFamily: BODY, fontSize: 13, color: C.coffee }}>Esta info aparecerá en tu perfil público</p>
       </div>
-
-      <div className="space-y-4">
+      <div>
+        <Label>Bio</Label>
+        <textarea value={form.bio} onChange={e => setForm({ ...form, bio: e.target.value })}
+          placeholder="Soy estudiante de ingeniería, tranquilo, ordenado..." rows={3}
+          style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", background: C.muted, border: "none", borderRadius: 12, fontFamily: BODY, fontSize: 14, color: C.ink, outline: "none", resize: "none" }} />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 80px", gap: 10 }}>
         <div>
-          <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Bio</label>
-          <textarea
-            value={form.bio}
-            onChange={e => setForm({ ...form, bio: e.target.value })}
-            placeholder="Soy estudiante de ingeniería, tranquilo, ordenado..."
-            rows={3}
-            className="w-full mt-1 bg-slate-50 rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-[#935B7E]/20 outline-none resize-none"
-          />
+          <Label>Ciudad</Label>
+          <FieldInput value={form.city} onChange={v => setForm({ ...form, city: v })} placeholder="Bogotá" icon={<MapPin style={{ width: 15, height: 15 }} />} />
         </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Edad</label>
-            <input
-              type="number"
-              value={form.age}
-              onChange={e => setForm({ ...form, age: e.target.value })}
-              placeholder="22"
-              min={16} max={80}
-              className="w-full mt-1 bg-slate-50 rounded-2xl py-3 px-4 text-sm font-bold focus:ring-2 focus:ring-[#935B7E]/20 outline-none"
-            />
-          </div>
-          <div>
-            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Ciudad</label>
-            <div className="relative mt-1">
-              <input
-                type="text"
-                value={form.city}
-                onChange={e => setForm({ ...form, city: e.target.value })}
-                placeholder="Bogotá"
-                className="w-full bg-slate-50 rounded-2xl py-3 pl-9 pr-4 text-sm font-bold focus:ring-2 focus:ring-[#935B7E]/20 outline-none"
-              />
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            </div>
-          </div>
-        </div>
-
         <div>
-          <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Ocupación / Universidad</label>
-          <div className="relative mt-1">
-            <input
-              type="text"
-              value={form.job_title}
-              onChange={e => setForm({ ...form, job_title: e.target.value })}
-              placeholder="Estudiante de Derecho — U. Javeriana"
-              className="w-full bg-slate-50 rounded-2xl py-3 pl-9 pr-4 text-sm font-bold focus:ring-2 focus:ring-[#935B7E]/20 outline-none"
-            />
-            <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          </div>
+          <Label>Edad</Label>
+          <FieldInput value={form.age} onChange={v => setForm({ ...form, age: v })} placeholder="22" type="number" />
         </div>
+      </div>
+      <div>
+        <Label>Ocupación / Universidad</Label>
+        <FieldInput value={form.job_title} onChange={v => setForm({ ...form, job_title: v })} placeholder="Estudiante de Derecho — U. Javeriana" icon={<Briefcase style={{ width: 15, height: 15 }} />} />
       </div>
     </div>
   );
 }
 
-/* ── Paso 2: Estilo de vida ── */
 function Step2({ form, setForm }: StepProps) {
-  const toggle = (arr: string[], val: string) =>
-    arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val];
-
+  const toggle = (arr: string[], val: string) => arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val];
   return (
-    <div className="space-y-6">
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
-        <h2 className="text-lg font-black text-[#0D0D0D] mb-1">Tu estilo de vida</h2>
-        <p className="text-sm text-slate-400">Ayuda a encontrar roomies compatibles</p>
+        <div style={{ fontFamily: DISPLAY, fontSize: 20, fontWeight: 500, color: C.ink, letterSpacing: -0.5, marginBottom: 4 }}>Tu estilo de vida</div>
+        <p style={{ fontFamily: BODY, fontSize: 13, color: C.coffee }}>Ayuda a encontrar roomies compatibles</p>
       </div>
 
-      {/* Tags de estilo */}
       <div>
-        <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Características</label>
-        <div className="grid grid-cols-2 gap-2 mt-2">
+        <Label>Características</Label>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {LIFESTYLE_OPTIONS.map(({ label, icon }) => {
             const active = form.lifestyle_tags.includes(label);
             return (
-              <button
-                key={label}
-                type="button"
-                onClick={() => setForm({ ...form, lifestyle_tags: toggle(form.lifestyle_tags, label) })}
-                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-sm font-bold transition-all ${
-                  active
-                    ? "border-[#935B7E] bg-[#935B7E]/10 text-[#935B7E]"
-                    : "border-slate-100 text-slate-500 hover:border-slate-200"
-                }`}
-              >
-                <span>{icon}</span> {label}
+              <button key={label} type="button" onClick={() => setForm({ ...form, lifestyle_tags: toggle(form.lifestyle_tags, label) })}
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 12, border: `1.5px solid ${active ? C.green : C.border}`, background: active ? `${C.green}12` : C.cream, color: active ? C.green : C.coffee, fontFamily: BODY, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                <span>{icon}</span>{label}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Sliders */}
-      <div className="space-y-4">
-        <SliderField
-          label="Nivel de limpieza"
-          value={form.cleanliness_level}
-          onChange={v => setForm({ ...form, cleanliness_level: v })}
-          leftLabel="Relajado"
-          rightLabel="Impecable"
-        />
-        <SliderField
-          label="Nivel social"
-          value={form.social_level}
-          onChange={v => setForm({ ...form, social_level: v })}
-          leftLabel="Tranquilo"
-          rightLabel="Muy social"
-        />
-      </div>
+      {[
+        { label: "Nivel de limpieza", key: "cleanliness_level", left: "Relajado", right: "Impecable" },
+        { label: "Nivel social", key: "social_level", left: "Tranquilo", right: "Muy social" },
+      ].map(({ label, key, left, right }) => (
+        <div key={key}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <Label>{label}</Label>
+            <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.green }}>{form[key]}/10</span>
+          </div>
+          <input type="range" min={1} max={10} value={form[key]} onChange={e => setForm({ ...form, [key]: Number(e.target.value) })}
+            style={{ width: "100%", accentColor: C.green }} />
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}>
+            <span style={{ fontFamily: BODY, fontSize: 10, color: C.coffee, opacity: 0.6 }}>{left}</span>
+            <span style={{ fontFamily: BODY, fontSize: 10, color: C.coffee, opacity: 0.6 }}>{right}</span>
+          </div>
+        </div>
+      ))}
 
-      {/* Intereses */}
       <div>
-        <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Intereses</label>
-        <div className="flex flex-wrap gap-2 mt-2">
+        <Label>Intereses</Label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {INTEREST_OPTIONS.map(interest => {
             const active = form.interests.includes(interest);
             return (
-              <button
-                key={interest}
-                type="button"
-                onClick={() => setForm({ ...form, interests: toggle(form.interests, interest) })}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  active
-                    ? "text-white"
-                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                }`}
-                style={active ? { backgroundColor: PLUM } : undefined}
-              >
+              <button key={interest} type="button" onClick={() => setForm({ ...form, interests: toggle(form.interests, interest) })}
+                style={{ padding: "7px 14px", borderRadius: 9999, fontFamily: BODY, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", background: active ? C.green : C.muted, color: active ? C.white : C.coffee }}>
                 {interest}
               </button>
             );
@@ -325,103 +256,42 @@ function Step2({ form, setForm }: StepProps) {
   );
 }
 
-/* ── Paso 3: ¿Qué buscas? ── */
 function Step3({ form, setForm }: StepProps) {
   return (
-    <div className="space-y-6">
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
-        <h2 className="text-lg font-black text-[#0D0D0D] mb-1">¿Qué estás buscando?</h2>
-        <p className="text-sm text-slate-400">Define tu búsqueda principal</p>
+        <div style={{ fontFamily: DISPLAY, fontSize: 20, fontWeight: 500, color: C.ink, letterSpacing: -0.5, marginBottom: 4 }}>¿Qué estás buscando?</div>
+        <p style={{ fontFamily: BODY, fontSize: 13, color: C.coffee }}>Define tu búsqueda principal</p>
       </div>
 
-      {/* Modo de búsqueda */}
-      <div className="grid grid-cols-2 gap-3">
-        <ModeCard
-          icon={<Home className="w-6 h-6" />}
-          label="Apartamento o habitación"
-          selected={form.user_mode === "find-room"}
-          onClick={() => setForm({ ...form, user_mode: "find-room" })}
-        />
-        <ModeCard
-          icon={<Users className="w-6 h-6" />}
-          label="Roommate compatible"
-          selected={form.user_mode === "find-roommate"}
-          onClick={() => setForm({ ...form, user_mode: "find-roommate" })}
-        />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {[
+          { icon: <Home style={{ width: 22, height: 22 }} />, label: "Apartamento o habitación", value: "find-room" },
+          { icon: <Users style={{ width: 22, height: 22 }} />, label: "Roommate compatible", value: "find-roommate" },
+        ].map(({ icon, label, value }) => {
+          const selected = form.user_mode === value;
+          return (
+            <button key={value} type="button" onClick={() => setForm({ ...form, user_mode: value })}
+              style={{ padding: "16px 12px", borderRadius: 16, border: `1.5px solid ${selected ? C.green : C.border}`, background: selected ? `${C.green}10` : C.cream, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, cursor: "pointer", color: selected ? C.green : C.coffee }}>
+              {icon}
+              <span style={{ fontFamily: BODY, fontSize: 12, fontWeight: 700, textAlign: "center", lineHeight: 1.3, color: selected ? C.green : C.coffee }}>{label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Presupuesto mensual */}
       <div>
-        <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">
-          Presupuesto mensual (COP)
-        </label>
-        <div className="relative mt-1">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">$</span>
-          <input
-            type="number"
-            value={form.monthly_budget}
-            onChange={e => setForm({ ...form, monthly_budget: e.target.value })}
-            placeholder="1.200.000"
-            className="w-full bg-slate-50 rounded-2xl py-3 pl-8 pr-4 text-sm font-bold focus:ring-2 focus:ring-[#935B7E]/20 outline-none"
-          />
+        <Label>Presupuesto mensual (COP)</Label>
+        <div style={{ position: "relative" }}>
+          <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.coffee, opacity: 0.5 }}>$</span>
+          <input type="number" value={form.monthly_budget} onChange={e => setForm({ ...form, monthly_budget: e.target.value })} placeholder="1.200.000"
+            style={{ width: "100%", boxSizing: "border-box", paddingLeft: 28, paddingRight: 14, paddingTop: 11, paddingBottom: 11, background: C.muted, border: "none", borderRadius: 12, fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink, outline: "none" }} />
         </div>
       </div>
 
-      <div className="bg-[#A8D1B1]/20 rounded-2xl p-4 text-sm text-slate-500 leading-relaxed">
+      <div style={{ background: `${C.green}12`, borderRadius: 16, padding: "14px 16px", fontFamily: BODY, fontSize: 13, color: C.coffee, lineHeight: 1.5 }}>
         🎉 Casi listo. Con esta información podremos mostrarte las mejores opciones según tu perfil.
       </div>
     </div>
-  );
-}
-
-/* ── Helpers ── */
-function SliderField({
-  label, value, onChange, leftLabel, rightLabel,
-}: {
-  label: string; value: number; onChange: (v: number) => void;
-  leftLabel: string; rightLabel: string;
-}) {
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-1">
-        <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">{label}</label>
-        <span className="text-xs font-black" style={{ color: PLUM }}>{value}/10</span>
-      </div>
-      <input
-        type="range" min={1} max={10} value={value}
-        onChange={e => onChange(Number(e.target.value))}
-        className="w-full accent-[#935B7E]"
-      />
-      <div className="flex justify-between text-[10px] text-slate-400 font-medium mt-0.5">
-        <span>{leftLabel}</span>
-        <span>{rightLabel}</span>
-      </div>
-    </div>
-  );
-}
-
-function ModeCard({
-  icon, label, selected, onClick,
-}: {
-  icon: React.ReactNode; label: string; selected: boolean; onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 text-center ${
-        selected
-          ? "border-[#935B7E] bg-[#935B7E]/5"
-          : "border-slate-100 hover:border-[#935B7E]/30"
-      }`}
-    >
-      <span style={{ color: selected ? PLUM : "#94a3b8" }}>{icon}</span>
-      <span
-        className="text-xs font-black leading-tight"
-        style={{ color: selected ? PLUM : "#94a3b8" }}
-      >
-        {label}
-      </span>
-    </button>
   );
 }

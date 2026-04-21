@@ -1,4 +1,9 @@
 import './globals.css';
+import { Fraunces, Inter } from 'next/font/google';
+import { ClerkProvider } from '@clerk/nextjs';
+
+const fraunces = Fraunces({ subsets: ['latin'], variable: '--font-fraunces', display: 'swap', axes: ['SOFT','WONK','opsz'], weight: 'variable' });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 
 export const metadata = {
   title: 'RentAI | Encuentra tu hogar en pocos clicks',
@@ -22,12 +27,14 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="es">
-      <body>
-        <div id="root">
-          {children}
-        </div>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="es" className={`${fraunces.variable} ${inter.variable}`}>
+        <body>
+          <div id="root">
+            {children}
+          </div>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

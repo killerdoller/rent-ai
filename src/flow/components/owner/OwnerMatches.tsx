@@ -1,21 +1,19 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Heart, MapPin, MessageCircle, DollarSign, Loader2 } from "lucide-react";
+import { Heart, MapPin, MessageCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
+const BODY    = "var(--font-inter, 'system-ui', sans-serif)";
+const C = {
+  ink: "#0D0D0D", cream: "#F7F2EC", muted: "#EFE7DE",
+  white: "#FFFFFF", terra: "#D87D6F", coffee: "#82554D",
+  border: "rgba(130,85,77,0.14)",
+};
+
 interface OwnerMatch {
-  id: string;
-  user_id: string;
-  created_at: string;
-  match_score: number | null;
-  properties: {
-    property_id: string;
-    title: string;
-    monthly_rent: number;
-    neighborhood: string;
-    city: string;
-    image_url: string;
-  };
+  id: string; user_id: string; created_at: string; match_score: number | null;
+  properties: { property_id: string; title: string; monthly_rent: number; neighborhood: string; city: string; image_url: string };
 }
 
 export function OwnerMatches() {
@@ -26,108 +24,98 @@ export function OwnerMatches() {
   useEffect(() => {
     const ownerId = localStorage.getItem("owner_id");
     if (!ownerId) { navigate.push("/app"); return; }
-    fetchMatches(ownerId);
+    fetch(`/api/owner/matches?owner_id=${ownerId}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(setMatches)
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
   }, []);
 
-  const fetchMatches = async (ownerId: string) => {
-    try {
-      const res = await fetch(`/api/owner/matches?owner_id=${ownerId}`);
-      if (res.ok) setMatches(await res.json());
-    } catch {
-      // silent
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays === 0) return "Hoy";
-    if (diffDays === 1) return "Ayer";
-    return `Hace ${diffDays} días`;
+    const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+    if (diff === 0) return "Hoy";
+    if (diff === 1) return "Ayer";
+    return `Hace ${diff} días`;
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-white border-b border-border p-4 md:p-6 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Matches</h1>
-          <p className="text-muted-foreground mt-1">
-            {isLoading ? "Cargando..." : `${matches.length} match${matches.length !== 1 ? "es" : ""} confirmado${matches.length !== 1 ? "s" : ""}`}
-          </p>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.cream, overflow: "hidden" }}>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+
+      <header style={{ flexShrink: 0, background: C.white, borderBottom: `1.5px solid ${C.border}`, padding: "20px 20px" }}>
+        <div style={{ maxWidth: 700, margin: "0 auto" }}>
+          <div style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, fontWeight: 600, letterSpacing: 0.4 }}>
+            {isLoading ? "Cargando…" : `${matches.length} match${matches.length !== 1 ? "es" : ""} confirmado${matches.length !== 1 ? "s" : ""}`}
+          </div>
+          <div style={{ fontFamily: DISPLAY, fontSize: 30, fontWeight: 500, color: C.ink, letterSpacing: -1.2, lineHeight: 1, marginTop: 4 }}>
+            Matches
+          </div>
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto p-4 md:p-6 pb-24 md:pb-6">
-        {isLoading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        ) : matches.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-24 h-24 mx-auto mb-6 bg-secondary rounded-full flex items-center justify-center">
-              <Heart className="w-12 h-12 text-muted-foreground" />
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+        <div style={{ maxWidth: 700, margin: "0 auto", padding: "20px 16px 80px" }}>
+          {isLoading ? (
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: 60 }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", border: `3px solid ${C.terra}`, borderTopColor: "transparent", animation: "spin 0.7s linear infinite" }} />
             </div>
-            <h2 className="text-2xl font-semibold mb-2">Sin matches aún</h2>
-            <p className="text-muted-foreground">
-              Acepta arrendatarios interesados para generar matches.
-            </p>
-            <button
-              onClick={() => navigate.push("/owner/interested")}
-              className="mt-4 px-6 py-2 bg-[#D87D6F] text-white rounded-full font-medium hover:bg-[#c46d5f] transition-colors"
-            >
-              Ver interesados
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {matches.map((match) => (
-              <div
-                key={match.id}
-                className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow"
-              >
-                <div className="relative h-48">
-                  <img
-                    src={match.properties?.image_url || "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=400"}
-                    alt={match.properties?.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-3 left-3 bg-[#D87D6F] text-white px-3 py-1 rounded-full text-sm font-semibold">
-                    Match {formatDate(match.created_at)}
-                  </div>
-                </div>
-
-                <div className="p-5">
-                  <h3 className="font-semibold text-lg mb-2">{match.properties?.title}</h3>
-
-                  <div className="flex items-center gap-1 text-muted-foreground text-sm mb-2">
-                    <MapPin className="w-4 h-4" />
-                    <span>{match.properties?.neighborhood}, {match.properties?.city}</span>
-                  </div>
-
-                  {match.properties?.monthly_rent && (
-                    <div className="flex items-center gap-1 text-primary mb-4">
-                      <DollarSign className="w-4 h-4" />
-                      <span className="font-semibold">
-                        ${Number(match.properties.monthly_rent).toLocaleString()} COP/mes
-                      </span>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => navigate.push(`/owner/chat/${match.id}`)}
-                    className="w-full flex items-center justify-center gap-2 py-2 bg-[#D87D6F] text-white rounded-xl font-medium hover:bg-[#c46d5f] transition-colors"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    Iniciar conversación
-                  </button>
-                </div>
+          ) : matches.length === 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 60, gap: 12 }}>
+              <div style={{ width: 72, height: 72, borderRadius: "50%", background: C.muted, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Heart style={{ width: 32, height: 32, color: C.coffee, opacity: 0.4 }} />
               </div>
-            ))}
-          </div>
-        )}
+              <div style={{ fontFamily: DISPLAY, fontSize: 22, fontWeight: 500, color: C.ink, letterSpacing: -0.8 }}>Sin matches aún</div>
+              <p style={{ fontFamily: BODY, fontSize: 13, color: C.coffee, textAlign: "center", maxWidth: 260 }}>
+                Acepta arrendatarios interesados para generar matches.
+              </p>
+              <button onClick={() => navigate.push("/owner/interested")} style={{
+                marginTop: 4, padding: "11px 24px", borderRadius: 9999, background: C.terra, border: "none",
+                fontFamily: BODY, fontSize: 13, fontWeight: 700, color: C.white, cursor: "pointer",
+              }}>
+                Ver interesados
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+              {matches.map((match) => (
+                <div key={match.id} style={{
+                  background: C.white, borderRadius: 20, overflow: "hidden",
+                  border: `1.5px solid ${C.border}`, boxShadow: "0 2px 8px rgba(130,85,77,0.06)",
+                }}>
+                  <div style={{ position: "relative", height: 160 }}>
+                    <img src={match.properties?.image_url || "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=400"}
+                      alt={match.properties?.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.45), transparent)" }} />
+                    <div style={{ position: "absolute", top: 10, left: 10, background: "rgba(255,255,255,0.92)", padding: "3px 10px", borderRadius: 9999 }}>
+                      <span style={{ fontFamily: BODY, fontSize: 10, fontWeight: 700, color: C.terra }}>Match {formatDate(match.created_at)}</span>
+                    </div>
+                    <div style={{ position: "absolute", bottom: 10, left: 12, right: 12 }}>
+                      <div style={{ fontFamily: BODY, fontSize: 13, fontWeight: 700, color: C.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{match.properties?.title}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                        <MapPin style={{ width: 11, height: 11, color: "rgba(255,255,255,0.7)" }} />
+                        <span style={{ fontFamily: BODY, fontSize: 11, color: "rgba(255,255,255,0.7)" }}>{match.properties?.neighborhood}, {match.properties?.city}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ padding: "12px 16px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      {match.properties?.monthly_rent && (
+                        <span style={{ fontFamily: BODY, fontSize: 13, fontWeight: 700, color: C.terra }}>${Number(match.properties.monthly_rent).toLocaleString()} COP/mes</span>
+                      )}
+                    </div>
+                    <button onClick={() => navigate.push(`/owner/chat/${match.id}`)} style={{
+                      width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                      padding: "11px 0", borderRadius: 12, background: C.terra, border: "none",
+                      fontFamily: BODY, fontSize: 13, fontWeight: 700, color: C.white, cursor: "pointer",
+                    }}>
+                      <MessageCircle style={{ width: 15, height: 15 }} /> Iniciar conversación
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

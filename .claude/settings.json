@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git reset *)",
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(cp \"C:\\\\Users\\\\PC\\\\.claude\\\\projects\\\\c--Users-PC-Documents-MLops-rent-ai\\\\93a2eb0f-1a01-4a90-9af6-528e3b7ccc7b\\\\tool-results\\\\webfetch-1776570703819-9zy1sa.bin\" /tmp/design.gz)",
+      "Bash(gunzip -f /tmp/design.gz)",
+      "Read(//tmp/**)",
+      "Bash(tar -x --wildcards \"rentai/project/*\" -O)",
+      "Read(//c/tmp/**)",
+      "Bash(mkdir -p design_extracted)",
+      "Bash(tar -xf design -C design_extracted)",
+      "Read(//c/Users/PC/.claude/projects/c--Users-PC-Documents-MLops-rent-ai/93a2eb0f-1a01-4a90-9af6-528e3b7ccc7b/tool-results/**)",
+      "Bash(cp \"C:\\\\Users\\\\PC\\\\.claude\\\\projects\\\\c--Users-PC-Documents-MLops-rent-ai\\\\93a2eb0f-1a01-4a90-9af6-528e3b7ccc7b\\\\tool-results\\\\webfetch-1776653301062-az1joe.bin\" /tmp/design2.gz)",
+      "Bash(gunzip -f design2.gz)",
+      "Bash(file design2 *)",
+      "Bash(mkdir -p design2_out)",
+      "Bash(tar -xf design2 -C design2_out)",
+      "Bash(mkdir -p \"/c/Users/PC/Documents/RentAI-handoff\")",
+      "Bash(tar -xzf \"/c/Users/PC/Documents/RentAI-handoff.tar.gz\" -C \"/c/Users/PC/Documents/RentAI-handoff\")",
+      "Read(//c/Users/PC/Documents/RentAI-handoff/**)",
+      "Bash(npx supabase *)",
+      "Bash(node -e ' *)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\PC\\Documents\\MLops\\rent-ai\\app\\owner\\chat"
+    ]
+  }
+}

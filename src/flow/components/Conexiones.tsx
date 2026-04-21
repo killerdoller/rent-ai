@@ -1,16 +1,26 @@
 "use client";
 import { useState, useEffect } from "react";
-import {
-  MessageCircle, MapPin, Bed, Sparkles,
-  Loader2, Heart, X, Tag
-} from "lucide-react";
+import { MessageCircle, MapPin, Bed, Sparkles, Heart, X, Tag } from "lucide-react";
+import { ImageCarousel } from "./ImageCarousel";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
 
+const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
+const BODY    = "var(--font-inter, 'system-ui', sans-serif)";
+const C = {
+  ink:    "#0D0D0D",
+  cream:  "#F7F2EC",
+  muted:  "#EFE7DE",
+  white:  "#FFFFFF",
+  green:  "#63A694",
+  coffee: "#82554D",
+  border: "rgba(130,85,77,0.14)",
+};
+
 const PropertyMap = dynamic(() => import("./PropertyMap"), {
   ssr: false,
-  loading: () => <div className="w-full h-full bg-secondary animate-pulse" />,
+  loading: () => <div style={{ width: "100%", height: "100%", background: C.muted }} />,
 });
 
 interface Match {
@@ -26,11 +36,7 @@ interface Match {
     image_url: string;
     description: string;
   };
-  owners: {
-    owner_id: string;
-    name: string;
-    email: string;
-  };
+  owners: { owner_id: string; name: string; email: string };
 }
 
 interface LikedProperty {
@@ -45,6 +51,7 @@ interface LikedProperty {
     city: string;
     bedrooms: number;
     image_url: string;
+    images?: string[];
     description: string;
     tags: string[];
     address?: string | null;
@@ -63,9 +70,7 @@ export function Conexiones({ defaultTab = "matches" }: { defaultTab?: Tab }) {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedProperty, setExpandedProperty] = useState<LikedProperty | null>(null);
 
-  useEffect(() => {
-    fetchAll();
-  }, []);
+  useEffect(() => { fetchAll(); }, []);
 
   const fetchAll = async () => {
     const userId = localStorage.getItem("rentai_user_id");
@@ -78,221 +83,167 @@ export function Conexiones({ defaultTab = "matches" }: { defaultTab?: Tab }) {
       ]);
       const matchesData: Match[] = matchesRes.ok ? await matchesRes.json() : [];
       const likesData: LikedProperty[] = likesRes.ok ? await likesRes.json() : [];
-
       setMatches(matchesData);
-
-      // Excluir de Guardados los que ya tienen match bilateral
-      const matchedPropertyIds = new Set(matchesData.map((m) => m.properties?.property_id));
-      setLikes(likesData.filter((l) => !matchedPropertyIds.has(l.property_id)));
-    } catch {
-      // silent
-    } finally {
-      setIsLoading(false);
-    }
+      const matchedIds = new Set(matchesData.map((m) => m.properties?.property_id));
+      setLikes(likesData.filter((l) => !matchedIds.has(l.property_id)));
+    } catch { /* silent */ }
+    finally { setIsLoading(false); }
   };
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    const diffDays = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
     if (diffDays === 0) return "Hoy";
     if (diffDays === 1) return "Ayer";
     return `Hace ${diffDays} días`;
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.cream, overflow: "hidden" }}>
       {/* Header */}
-      <header className="bg-white border-b border-border sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 md:px-6 pt-5 pb-0">
-          <h1 className="text-2xl md:text-3xl font-semibold text-foreground mb-4">Conexiones</h1>
-
-          {/* Tabs — full width 50/50 */}
-          <div className="flex w-full">
-            <button
-              onClick={() => setActiveTab("matches")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold border-b-2 transition-colors ${
-                activeTab === "matches"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Sparkles className="w-4 h-4" />
-              Matches
-              {matches.length > 0 && (
-                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                  activeTab === "matches" ? "bg-primary text-white" : "bg-secondary text-muted-foreground"
-                }`}>
-                  {matches.length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab("guardados")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold border-b-2 transition-colors ${
-                activeTab === "guardados"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Heart className="w-4 h-4" />
-              Guardados
-              {likes.length > 0 && (
-                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                  activeTab === "guardados" ? "bg-primary text-white" : "bg-secondary text-muted-foreground"
-                }`}>
-                  {likes.length}
-                </span>
-              )}
-            </button>
+      <header style={{ flexShrink: 0, background: C.white, borderBottom: `1.5px solid ${C.border}`, padding: "20px 20px 0" }}>
+        <div style={{ maxWidth: 600, margin: "0 auto" }}>
+          <div style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, fontWeight: 600, letterSpacing: 0.4 }}>
+            Tus conexiones
+          </div>
+          <div style={{ fontFamily: DISPLAY, fontSize: 30, fontWeight: 500, color: C.ink, letterSpacing: -1.2, lineHeight: 1, marginTop: 4, marginBottom: 16 }}>
+            Conexiones
+          </div>
+          {/* Tabs */}
+          <div style={{ display: "flex" }}>
+            {([
+              ["matches", Sparkles, "Matches", matches.length],
+              ["guardados", Heart, "Guardados", likes.length],
+            ] as const).map(([tab, Icon, label, count]) => (
+              <button key={tab} onClick={() => setActiveTab(tab as Tab)}
+                style={{
+                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  padding: "10px 0", background: "none", border: "none", cursor: "pointer",
+                  fontFamily: BODY, fontSize: 13, fontWeight: 600,
+                  color: activeTab === tab ? C.green : C.coffee,
+                  borderBottom: `2px solid ${activeTab === tab ? C.green : "transparent"}`,
+                  transition: "all 0.12s",
+                }}>
+                <Icon style={{ width: 14, height: 14 }} />
+                {label}
+                {count > 0 && (
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 9999,
+                    background: activeTab === tab ? C.green : C.muted,
+                    color: activeTab === tab ? C.white : C.coffee,
+                  }}>{count}</span>
+                )}
+              </button>
+            ))}
           </div>
         </div>
       </header>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto p-4 md:p-6 pb-24 md:pb-6">
-        {isLoading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        ) : (
-          <AnimatePresence mode="wait">
-            {activeTab === "matches" ? (
-              <motion.div
-                key="matches"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.15 }}
-              >
-                {matches.length === 0 ? (
-                  <EmptyState
-                    icon={<Sparkles className="w-12 h-12 text-muted-foreground" />}
-                    title="No tienes matches aún"
-                    subtitle="Cuando un propietario acepte tu solicitud aparecerá aquí"
-                  />
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {matches.map((match) => (
-                      <div
-                        key={match.id}
-                        onClick={() => navigate.push(`/app/chat/${match.id}`)}
-                        className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all cursor-pointer group"
-                      >
-                        <div className="relative h-52">
-                          <img
-                            src={match.properties?.image_url || "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=400"}
-                            alt={match.properties?.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                          {match.match_score && (
-                            <div className="absolute top-3 right-3 bg-primary text-white px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
-                              <Sparkles className="w-3.5 h-3.5" />
-                              <span className="font-bold text-sm">{match.match_score}%</span>
-                            </div>
-                          )}
-                          <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
-                            <div>
-                              <p className="text-white font-semibold text-base leading-tight drop-shadow">
-                                {match.properties?.title}
-                              </p>
-                              <div className="flex items-center gap-1 text-white/80 text-xs mt-0.5">
-                                <MapPin className="w-3 h-3" />
-                                <span>{match.properties?.neighborhood}, {match.properties?.city}</span>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "20px 16px 80px" }}>
+          {isLoading ? (
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: 60 }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", border: `3px solid ${C.green}`, borderTopColor: "transparent", animation: "spin 0.7s linear infinite" }} />
+              <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+            </div>
+          ) : (
+            <AnimatePresence mode="wait">
+              {activeTab === "matches" ? (
+                <motion.div key="matches" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }}>
+                  {matches.length === 0 ? (
+                    <EmptyState icon={<Sparkles style={{ width: 32, height: 32, color: C.coffee, opacity: 0.4 }} />}
+                      title="No tienes matches aún"
+                      subtitle="Cuando un propietario acepte tu solicitud aparecerá aquí" />
+                  ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
+                      {matches.map((match) => (
+                        <button key={match.id} onClick={() => navigate.push(`/app/chat/${match.id}`)}
+                          style={{ background: C.white, borderRadius: 20, overflow: "hidden", border: `1.5px solid ${C.border}`, cursor: "pointer", textAlign: "left", boxShadow: "0 2px 8px rgba(130,85,77,0.06)", transition: "box-shadow 0.12s" }}
+                          onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 6px 20px rgba(130,85,77,0.12)")}
+                          onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 2px 8px rgba(130,85,77,0.06)")}>
+                          <div style={{ position: "relative", height: 160 }}>
+                            <img src={match.properties?.image_url || "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=400"}
+                              alt={match.properties?.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.55), transparent)" }} />
+                            {match.match_score && (
+                              <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(255,255,255,0.92)", borderRadius: 9999, padding: "3px 10px", display: "flex", alignItems: "center", gap: 4 }}>
+                                <Sparkles style={{ width: 11, height: 11, color: C.green }} />
+                                <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.green }}>{match.match_score}%</span>
+                              </div>
+                            )}
+                            <div style={{ position: "absolute", bottom: 10, left: 12, right: 40 }}>
+                              <div style={{ fontFamily: BODY, fontSize: 13, fontWeight: 700, color: C.white }}>{match.properties?.title}</div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                                <MapPin style={{ width: 11, height: 11, color: "rgba(255,255,255,0.7)", flexShrink: 0 }} />
+                                <span style={{ fontFamily: BODY, fontSize: 11, color: "rgba(255,255,255,0.7)" }}>{match.properties?.neighborhood}, {match.properties?.city}</span>
                               </div>
                             </div>
-                            <div className="bg-primary rounded-full p-2 shadow-lg flex-shrink-0">
-                              <MessageCircle className="w-4 h-4 text-white" />
+                            <div style={{ position: "absolute", bottom: 10, right: 10, width: 30, height: 30, borderRadius: 15, background: C.green, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <MessageCircle style={{ width: 15, height: 15, color: C.white }} />
                             </div>
                           </div>
-                        </div>
-                        <div className="px-4 py-3 flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">
-                            {match.owners?.name} · {formatDate(match.created_at)}
-                          </span>
-                          <span className="text-xs font-semibold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
-                            ¡Es un match!
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-            ) : (
-              <motion.div
-                key="guardados"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.15 }}
-              >
-                {likes.length === 0 ? (
-                  <EmptyState
-                    icon={<Heart className="w-12 h-12 text-muted-foreground" />}
-                    title="No hay guardados aún"
-                    subtitle="Dale like a los apartamentos que te interesen para guardarlos aquí"
-                  />
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {likes.map((fav) => {
-                      const p = fav.properties;
-                      return (
-                        <div
-                          key={fav.id}
-                          onClick={() => setExpandedProperty(fav)}
-                          className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all cursor-pointer group"
-                        >
-                          <div className="relative h-44">
-                            <img
-                              src={p?.image_url || "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=400"}
-                              alt={p?.title}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                            <div className="absolute bottom-2 right-2 bg-white/90 rounded-full p-1.5">
-                              <Sparkles className="w-4 h-4 text-primary" />
-                            </div>
+                          <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee }}>{match.owners?.name} · {formatDate(match.created_at)}</span>
+                            <span style={{ fontFamily: BODY, fontSize: 10, fontWeight: 700, color: C.green, background: `${C.green}18`, padding: "3px 8px", borderRadius: 9999 }}>¡Match!</span>
                           </div>
-                          <div className="p-4">
-                            <h3 className="font-semibold text-base mb-1 line-clamp-1">{p?.title}</h3>
-                            <div className="flex items-center gap-1 text-muted-foreground text-sm mb-2">
-                              <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
-                              <span className="truncate">{p?.neighborhood}, {p?.city}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div key="guardados" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }}>
+                  {likes.length === 0 ? (
+                    <EmptyState icon={<Heart style={{ width: 32, height: 32, color: C.coffee, opacity: 0.4 }} />}
+                      title="No hay guardados aún"
+                      subtitle="Dale like a los apartamentos que te interesen para guardarlos aquí" />
+                  ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
+                      {likes.map((fav) => {
+                        const p = fav.properties;
+                        return (
+                          <button key={fav.id} onClick={() => setExpandedProperty(fav)}
+                            style={{ background: C.white, borderRadius: 20, overflow: "hidden", border: `1.5px solid ${C.border}`, cursor: "pointer", textAlign: "left", boxShadow: "0 2px 8px rgba(130,85,77,0.06)", transition: "box-shadow 0.12s" }}
+                            onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 6px 20px rgba(130,85,77,0.12)")}
+                            onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 2px 8px rgba(130,85,77,0.06)")}>
+                            <div style={{ position: "relative", height: 140 }}>
+                              <img src={p?.image_url || "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=400"}
+                                alt={p?.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.35), transparent)" }} />
                             </div>
-                            <div className="flex items-center justify-between">
-                              {p?.monthly_rent && (
-                                <span className="text-primary font-bold text-sm">
-                                  ${Number(p.monthly_rent).toLocaleString()} COP/mes
-                                </span>
-                              )}
-                              {p?.bedrooms && (
-                                <div className="flex items-center gap-1 text-muted-foreground text-xs">
-                                  <Bed className="w-3.5 h-3.5" />
-                                  <span>{p.bedrooms} hab.</span>
-                                </div>
-                              )}
+                            <div style={{ padding: "12px 14px" }}>
+                              <div style={{ fontFamily: BODY, fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p?.title}</div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 8 }}>
+                                <MapPin style={{ width: 11, height: 11, color: C.coffee, flexShrink: 0 }} />
+                                <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p?.neighborhood}, {p?.city}</span>
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                {p?.monthly_rent && (
+                                  <span style={{ fontFamily: BODY, fontSize: 13, fontWeight: 700, color: C.green }}>${Number(p.monthly_rent).toLocaleString()} COP/mes</span>
+                                )}
+                                {p?.bedrooms && (
+                                  <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                                    <Bed style={{ width: 12, height: 12, color: C.coffee }} />
+                                    <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee }}>{p.bedrooms} hab.</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          )}
+        </div>
       </div>
 
-      {/* Detail bottom sheet */}
       <AnimatePresence>
         {expandedProperty && (
-          <PropertyDetailSheet
-            property={expandedProperty}
-            onClose={() => setExpandedProperty(null)}
-          />
+          <PropertyDetailSheet property={expandedProperty} onClose={() => setExpandedProperty(null)} />
         )}
       </AnimatePresence>
     </div>
@@ -301,12 +252,12 @@ export function Conexiones({ defaultTab = "matches" }: { defaultTab?: Tab }) {
 
 function EmptyState({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
   return (
-    <div className="text-center py-20">
-      <div className="w-24 h-24 mx-auto mb-6 bg-secondary rounded-full flex items-center justify-center">
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", gap: 12 }}>
+      <div style={{ width: 72, height: 72, borderRadius: "50%", background: C.muted, display: "flex", alignItems: "center", justifyContent: "center" }}>
         {icon}
       </div>
-      <h2 className="text-xl font-semibold mb-2">{title}</h2>
-      <p className="text-muted-foreground text-sm max-w-xs mx-auto">{subtitle}</p>
+      <div style={{ fontFamily: DISPLAY, fontSize: 22, fontWeight: 500, color: C.ink, letterSpacing: -0.8 }}>{title}</div>
+      <p style={{ fontFamily: BODY, fontSize: 13, color: C.coffee, textAlign: "center", maxWidth: 260 }}>{subtitle}</p>
     </div>
   );
 }
@@ -317,136 +268,144 @@ function PropertyDetailSheet({ property, onClose }: { property: LikedProperty; o
 
   return (
     <>
-      {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="fixed inset-0 bg-black/60 z-40"
-      />
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        onClick={onClose} className="fixed inset-0 bg-black/60 z-40" />
 
-      {/* Centered modal */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ type: "spring", damping: 28, stiffness: 320 }}
-        className="fixed z-50 inset-0 flex items-center justify-center p-4 pointer-events-none"
+        initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+        transition={{ type: "spring", damping: 32, stiffness: 300 }}
+        className="fixed z-50 bottom-0 left-0 right-0 md:inset-0 md:flex md:items-center md:justify-center md:p-6 pointer-events-none"
       >
-        <div
-          className="bg-white rounded-3xl shadow-2xl w-full pointer-events-auto overflow-hidden relative"
-          style={{ maxWidth: "95vw", height: "88vh" }}
-        >
-          {/* Close button */}
-          <button
-            onClick={onClose}
-            className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow"
-          >
-            <X className="w-4 h-4 text-gray-600" />
+        <div className="bg-white rounded-t-3xl md:rounded-3xl shadow-2xl w-full md:max-w-3xl pointer-events-auto overflow-hidden relative flex flex-col"
+          style={{ height: "88vh" }}>
+          <div className="md:hidden flex-shrink-0 flex justify-center pt-3 pb-1">
+            <div style={{ width: 36, height: 4, borderRadius: 9999, background: C.border }} />
+          </div>
+          <button onClick={onClose} className="absolute top-3 right-3 z-10 rounded-full p-1.5 shadow"
+            style={{ background: "rgba(255,255,255,0.92)" }}>
+            <X style={{ width: 16, height: 16, color: C.coffee }} />
           </button>
 
-          <div className="flex h-full">
-            {/* ── Left column: map or image fallback ── */}
+          {/* Mobile */}
+          <div className="flex flex-col flex-1 min-h-0 md:hidden">
+            <div className="relative flex-shrink-0" style={{ height: 260 }}>
+              <ImageCarousel
+                images={p?.images && p.images.length > 0 ? p.images : (p?.image_url ? [p.image_url] : [])}
+                height={260}
+                style={{ position: "absolute", inset: 0 }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute bottom-3 left-4 right-10 pointer-events-none" style={{ zIndex: 3 }}>
+                <h2 className="text-white font-bold text-xl leading-tight drop-shadow">{p?.title}</h2>
+                <div className="flex items-center gap-1 text-white/80 text-xs mt-0.5">
+                  <MapPin className="w-3 h-3 flex-shrink-0" />
+                  <span className="truncate">{[p?.neighborhood, p?.city].filter(Boolean).join(", ")}</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex-shrink-0 flex items-center gap-4 px-4 py-3 border-b" style={{ borderColor: C.border, background: C.cream }}>
+              {p?.monthly_rent && <span style={{ fontFamily: BODY, fontSize: 15, fontWeight: 700, color: C.green }}>${Number(p.monthly_rent).toLocaleString()} COP/mes</span>}
+              {p?.bedrooms && <div className="flex items-center gap-1" style={{ color: C.coffee }}><Bed className="w-3.5 h-3.5" /><span style={{ fontFamily: BODY, fontSize: 12 }}>{p.bedrooms} hab.</span></div>}
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {hasMap && (
+                <div className="relative flex-shrink-0" style={{ height: 180 }}>
+                  <PropertyMap lat={p.latitude!} lng={p.longitude!} title={p.title} />
+                  {p.address && (
+                    <div className="absolute bottom-0 left-0 right-0 px-3 py-2" style={{ background: "rgba(255,255,255,0.92)" }}>
+                      <div className="flex items-start gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: C.green }} />
+                        <p style={{ fontFamily: BODY, fontSize: 11, color: C.coffee }} className="line-clamp-2">{p.address}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="px-4 py-4 space-y-4">
+                {p?.description && (
+                  <div>
+                    <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Descripción</p>
+                    <p style={{ fontFamily: BODY, fontSize: 14, lineHeight: 1.65, color: C.ink }}>{p.description}</p>
+                  </div>
+                )}
+                {p?.tags && p.tags.length > 0 && (
+                  <div>
+                    <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
+                      <Tag className="w-3 h-3" /> Características
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {p.tags.map((tag) => <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium" style={{ background: C.cream, color: C.coffee }}>{tag}</span>)}
+                    </div>
+                  </div>
+                )}
+                <p style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, opacity: 0.7 }}>
+                  Guardado el {new Date(property.created_at).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop */}
+          <div className="hidden md:flex flex-1 min-h-0">
             {hasMap ? (
               <div className="w-2/5 flex-shrink-0 relative">
-                <PropertyMap
-                  lat={p.latitude!}
-                  lng={p.longitude!}
-                  title={p.title}
-                />
+                <PropertyMap lat={p.latitude!} lng={p.longitude!} title={p.title} />
                 {p.address && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm px-3 py-2">
+                  <div className="absolute bottom-0 left-0 right-0 px-3 py-2" style={{ background: "rgba(255,255,255,0.9)" }}>
                     <div className="flex items-start gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
-                      <p className="text-xs text-gray-600 leading-tight line-clamp-2">{p.address}</p>
+                      <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: C.green }} />
+                      <p style={{ fontFamily: BODY, fontSize: 11, color: C.coffee }} className="line-clamp-2">{p.address}</p>
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="w-2/5 flex-shrink-0 relative">
-                <img
-                  src={p?.image_url || "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=800"}
-                  alt={p?.title}
-                  className="w-full h-full object-cover"
+              <div className="w-2/5 flex-shrink-0 relative overflow-hidden">
+                <ImageCarousel
+                  images={p?.images && p.images.length > 0 ? p.images : (p?.image_url ? [p.image_url] : [])}
+                  style={{ position: "absolute", inset: 0, height: "100%" }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
               </div>
             )}
-
-            {/* ── Right column: photo + scrollable info ── */}
             <div className="flex-1 flex flex-col min-w-0">
-              {/* Hero photo */}
-              <div className="relative h-52 flex-shrink-0">
-                <img
-                  src={p?.image_url || "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=800"}
-                  alt={p?.title}
-                  className="w-full h-full object-cover"
+              <div className="relative flex-shrink-0" style={{ height: 200 }}>
+                <ImageCarousel
+                  images={p?.images && p.images.length > 0 ? p.images : (p?.image_url ? [p.image_url] : [])}
+                  height={200}
+                  style={{ position: "absolute", inset: 0 }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
-                <div className="absolute bottom-3 left-3 right-8">
-                  <h2 className="text-white font-bold text-base leading-tight drop-shadow">
-                    {p?.title}
-                  </h2>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute bottom-3 left-3 right-8 pointer-events-none" style={{ zIndex: 3 }}>
+                  <h2 className="text-white font-bold text-base leading-tight drop-shadow">{p?.title}</h2>
                   <div className="flex items-center gap-1 text-white/80 text-xs mt-0.5">
-                    <MapPin className="w-3 h-3" />
-                    <span className="truncate">
-                      {[p?.neighborhood, p?.city].filter(Boolean).join(", ")}
-                    </span>
+                    <MapPin className="w-3 h-3" /><span className="truncate">{[p?.neighborhood, p?.city].filter(Boolean).join(", ")}</span>
                   </div>
                 </div>
               </div>
-
-              {/* Price + beds */}
-              <div className="flex-shrink-0 flex items-center gap-4 px-4 py-2.5 border-b border-gray-100 bg-gray-50">
-                {p?.monthly_rent && (
-                  <span className="text-primary font-bold text-sm">
-                    ${Number(p.monthly_rent).toLocaleString()} COP/mes
-                  </span>
-                )}
-                {p?.bedrooms && (
-                  <div className="flex items-center gap-1 text-muted-foreground text-xs">
-                    <Bed className="w-3.5 h-3.5" />
-                    <span>{p.bedrooms} {p.bedrooms === 1 ? "hab." : "habs."}</span>
-                  </div>
-                )}
+              <div className="flex-shrink-0 flex items-center gap-4 px-4 py-2.5 border-b" style={{ borderColor: C.border, background: C.cream }}>
+                {p?.monthly_rent && <span style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.green }}>${Number(p.monthly_rent).toLocaleString()} COP/mes</span>}
+                {p?.bedrooms && <div className="flex items-center gap-1" style={{ color: C.coffee }}><Bed className="w-3.5 h-3.5" /><span style={{ fontFamily: BODY, fontSize: 12 }}>{p.bedrooms} hab.</span></div>}
               </div>
-
-              {/* Scrollable description + tags */}
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
                 {p?.description && (
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                      Descripción
-                    </p>
-                    <p className="text-xs leading-relaxed text-foreground">{p.description}</p>
+                    <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Descripción</p>
+                    <p style={{ fontFamily: BODY, fontSize: 13, lineHeight: 1.65, color: C.ink }}>{p.description}</p>
                   </div>
                 )}
                 {p?.tags && p.tags.length > 0 && (
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">
+                    <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
                       <Tag className="w-3 h-3" /> Características
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      {p.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="px-2 py-0.5 bg-secondary text-secondary-foreground rounded-full text-xs font-medium"
-                        >
-                          {tag}
-                        </span>
-                      ))}
+                      {p.tags.map((tag) => <span key={tag} className="px-2.5 py-1 rounded-full text-xs font-medium" style={{ background: C.cream, color: C.coffee }}>{tag}</span>)}
                     </div>
                   </div>
                 )}
-                <p className="text-xs text-muted-foreground pt-1">
-                  Guardado el{" "}
-                  {new Date(property.created_at).toLocaleDateString("es-CO", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
+                <p style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, opacity: 0.7 }}>
+                  Guardado el {new Date(property.created_at).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })}
                 </p>
               </div>
             </div>

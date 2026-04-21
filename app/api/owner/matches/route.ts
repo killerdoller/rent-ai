@@ -28,7 +28,8 @@ export async function GET(request: Request) {
         monthly_rent,
         neighborhood,
         city,
-        image_url
+        image_url,
+        images
       )
     `)
     .eq("owner_id", ownerId)

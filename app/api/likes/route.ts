@@ -29,6 +29,7 @@ export async function GET(request: Request) {
         city,
         bedrooms,
         image_url,
+        images,
         description,
         tags,
         address,

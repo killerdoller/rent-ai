@@ -1,10 +1,41 @@
 "use client";
-import { useState, useEffect } from "react";
-import { Camera, Edit2, MapPin, Briefcase, DollarSign, Heart, Zap, Moon, Sun, Save, X, Plus, Home, LogOut } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import {
+  Camera, Edit2, MapPin, Briefcase, Save, X, LogOut,
+  Moon, Sun, Zap, Home, Users, Heart, ChevronDown, ChevronUp,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { supabase } from "../../utils/supabaseClient";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+
+const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
+const BODY    = "var(--font-inter, 'system-ui', sans-serif)";
+const C = {
+  ink:    "#0D0D0D",
+  cream:  "#F7F2EC",
+  muted:  "#EFE7DE",
+  white:  "#FFFFFF",
+  green:  "#63A694",
+  coffee: "#82554D",
+  border: "rgba(130,85,77,0.14)",
+};
+
+const LIFESTYLE_OPTIONS = [
+  { label: "No fumador", icon: "🚭" },
+  { label: "Fumador",    icon: "🚬" },
+  { label: "Mascotas",   icon: "🐾" },
+  { label: "Noctámbulo", icon: "🌙" },
+  { label: "Madrugador", icon: "☀️" },
+  { label: "Trabajo desde casa", icon: "💻" },
+  { label: "Deportista", icon: "🏃" },
+  { label: "Cocinero",   icon: "🍳" },
+];
+
+const INTEREST_OPTIONS = [
+  "Música","Cine","Lectura","Viajes","Cocina",
+  "Arte","Yoga","Gaming","Fotografía","Deporte",
+];
 
 interface UserProfile {
   id: string;
@@ -25,40 +56,30 @@ interface UserProfile {
   profile_images: string[];
 }
 
-const PLUM_COLOR = "#935B7E";
-const BG_LIGHT = "#FDFBFC";
-
 export function Profile() {
   const navigate = useRouter();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<Partial<UserProfile>>({});
+  const [form, setForm] = useState<Partial<UserProfile>>({});
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  useEffect(() => { fetchProfile(); }, []);
 
   const fetchProfile = async () => {
     setIsLoading(true);
     try {
       const userId = localStorage.getItem("rentai_user_id");
-      if (!userId) {
-        toast.error("No hay sesión activa");
-        setIsLoading(false);
-        return;
-      }
+      if (!userId) { setIsLoading(false); return; }
       const res = await fetch(`/api/profile?user_id=${userId}`);
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Error al cargar el perfil");
-      }
+      if (!res.ok) throw new Error((await res.json()).error || "Error al cargar");
       const data = await res.json();
       setProfile(data);
-      setEditForm(data);
+      setForm(data);
     } catch (err: any) {
-      toast.error(err.message || "Error al cargar el perfil");
+      toast.error(err.message);
     } finally {
       setIsLoading(false);
     }
@@ -71,367 +92,368 @@ export function Profile() {
     navigate.push("/app");
   };
 
-  const handleUpdate = async () => {
+  const handleSave = async () => {
     setIsSaving(true);
-    
-    // DEVELOPMENT HACK: If we are in mock mode, simulate a successful save locally
-    if (profile?.id === "mock") {
-      setTimeout(() => {
-        setProfile(editForm as UserProfile);
-        setIsEditing(false);
-        setIsSaving(false);
-        toast.success("¡Perfil actualizado localmente! (Modo Desarrollo)");
-      }, 500);
-      return;
-    }
-
     try {
       const userId = localStorage.getItem("rentai_user_id");
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, ...editForm }),
+        body: JSON.stringify({ user_id: userId, ...form }),
       });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Update failed");
-      }
-
+      if (!res.ok) throw new Error((await res.json()).error || "Error al guardar");
       const updated = await res.json();
       setProfile(updated);
+      setForm(updated);
       setIsEditing(false);
-      toast.success("¡Perfil actualizado en Supabase!");
+      toast.success("¡Perfil actualizado!");
     } catch (err: any) {
-      console.error("Save error:", err);
-      toast.error(`Error: ${err.message}`);
+      toast.error(err.message);
     } finally {
       setIsSaving(false);
     }
   };
 
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const userId = localStorage.getItem("rentai_user_id");
+
+      // Try Supabase Storage first; fall back to base64 for demo
+      let url: string;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(`${userId}/${Date.now()}_${file.name}`, file, { upsert: true });
+
+      if (!uploadError && uploadData) {
+        const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(uploadData.path);
+        url = publicUrl;
+      } else {
+        // Fallback: base64 data URL (works without storage bucket)
+        url = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => resolve(ev.target?.result as string);
+          reader.readAsDataURL(file);
+        });
+      }
+
+      setForm(f => ({ ...f, avatar_url: url }));
+      // Save immediately
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, avatar_url: url }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setProfile(updated);
+        setForm(updated);
+        toast.success("Foto actualizada");
+      }
+    } catch {
+      toast.error("No se pudo subir la foto");
+    } finally {
+      setUploadingPhoto(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const set = (key: keyof UserProfile, value: any) => setForm(f => ({ ...f, [key]: value }));
+  const toggleTag = (arr: string[], val: string) => arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val];
+
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="w-12 h-12 border-4 border-[#935B7E]/20 border-t-[#935B7E] rounded-full animate-spin"></div>
+      <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: C.cream }}>
+        <div style={{ width: 36, height: 36, borderRadius: "50%", border: `3px solid ${C.green}`, borderTopColor: "transparent", animation: "spin 0.7s linear infinite" }} />
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     );
   }
 
-  const data = isEditing ? editForm : profile;
+  const d = isEditing ? form : profile;
 
   return (
-    <div className="min-h-screen pb-20 overflow-x-hidden" style={{ backgroundColor: BG_LIGHT }}>
-      {/* --- HERO SECTION --- */}
-      <section className="relative h-[45vh] w-full overflow-hidden">
-        {/* Cover Image */}
-        <img
-          src={data?.profile_images?.[0] || data?.avatar_url || "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=1080"}
-          alt="Cover"
-          className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+    <div style={{ height: "100%", overflowY: "auto", background: C.cream }}>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
-        {/* Edit Button */}
-        <div className="absolute top-6 right-6 z-20">
+      {/* Hidden file input */}
+      <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoChange} />
+
+      {/* ── Hero ── */}
+      <section style={{ position: "relative", height: 260, overflow: "hidden", flexShrink: 0 }}>
+        <img
+          src={d?.avatar_url || d?.profile_images?.[0] || "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=1080"}
+          alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.1) 55%, transparent 100%)" }} />
+
+        {/* Camera button */}
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={uploadingPhoto}
+          style={{
+            position: "absolute", top: 16, left: 16,
+            width: 38, height: 38, borderRadius: 19,
+            background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)",
+            border: "1px solid rgba(255,255,255,0.25)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer",
+          }}>
+          {uploadingPhoto
+            ? <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.6)", borderTopColor: "transparent", animation: "spin 0.7s linear infinite" }} />
+            : <Camera style={{ width: 16, height: 16, color: C.white }} />}
+        </button>
+
+        {/* Edit / Save */}
+        <div style={{ position: "absolute", top: 16, right: 16, display: "flex", gap: 8 }}>
           {!isEditing ? (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full text-white font-bold backdrop-blur-md transition-all hover:scale-105 active:scale-95 shadow-lg"
-              style={{ backgroundColor: `${PLUM_COLOR}CC` }}
-            >
-              <Edit2 className="w-4 h-4" />
-              <span>Editar</span>
+            <button onClick={() => setIsEditing(true)} style={{
+              display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
+              borderRadius: 9999, background: "rgba(255,255,255,0.18)", backdropFilter: "blur(8px)",
+              border: "1px solid rgba(255,255,255,0.3)", color: C.white, cursor: "pointer",
+              fontFamily: BODY, fontSize: 13, fontWeight: 700,
+            }}>
+              <Edit2 style={{ width: 13, height: 13 }} /> Editar
             </button>
           ) : (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setIsEditing(false)}
-                className="p-2.5 rounded-full bg-white/20 text-white backdrop-blur-md hover:bg-white/30"
-              >
-                <X className="w-5 h-5" />
+            <>
+              <button onClick={() => { setIsEditing(false); setForm(profile!); }} style={{
+                width: 36, height: 36, borderRadius: 18,
+                background: "rgba(255,255,255,0.18)", backdropFilter: "blur(8px)",
+                border: "1px solid rgba(255,255,255,0.3)",
+                display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+              }}>
+                <X style={{ width: 15, height: 15, color: C.white }} />
               </button>
-              <button
-                onClick={handleUpdate}
-                disabled={isSaving}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white font-bold transition-all hover:bg-opacity-90 active:scale-95 shadow-lg"
-                style={{ color: PLUM_COLOR }}
-              >
-                {isSaving ? <div className="w-5 h-5 animate-spin border-2 border-current border-t-transparent rounded-full" /> : <Save className="w-4 h-4" />}
-                <span>Guardar</span>
+              <button onClick={handleSave} disabled={isSaving} style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
+                borderRadius: 9999, background: C.white, border: "none",
+                color: C.green, fontFamily: BODY, fontSize: 13, fontWeight: 700, cursor: "pointer",
+              }}>
+                {isSaving
+                  ? <div style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${C.green}`, borderTopColor: "transparent", animation: "spin 0.7s linear infinite" }} />
+                  : <Save style={{ width: 13, height: 13 }} />}
+                Guardar
               </button>
-            </div>
+            </>
           )}
         </div>
 
-        {/* Floating Info */}
-        <div className="absolute bottom-10 left-8 right-8 text-white z-10">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            {isEditing ? (
-              <div className="flex gap-4 mb-4">
-                <input
-                  value={editForm.first_name || ""}
-                  onChange={e => setEditForm({ ...editForm, first_name: e.target.value })}
-                  placeholder="Nombre"
-                  className="bg-white/20 border-white/40 border-2 rounded-xl px-4 py-2 text-2xl font-black focus:outline-none w-1/2"
-                />
-                <input
-                  value={editForm.age || ""}
-                  type="number"
-                  onChange={e => setEditForm({ ...editForm, age: Number(e.target.value) })}
-                  placeholder="Edad"
-                  className="bg-white/20 border-white/40 border-2 rounded-xl px-4 py-2 text-2xl font-black focus:outline-none w-24"
-                />
-              </div>
-            ) : (
-              <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight drop-shadow-xl">
-                {profile?.first_name}, {profile?.age}
-              </h1>
-            )}
-
-            {/* Badges */}
-            <div className="flex flex-wrap gap-2">
-              <Badge icon={<Briefcase className="w-3.5 h-3.5" />} text={data?.job_title || "Profesión"} />
-              <Badge icon={<MapPin className="w-3.5 h-3.5" />} text={data?.city || "Ubicación"} />
-              <Badge icon={<DollarSign className="w-3.5 h-3.5" />} text={`${(data?.monthly_budget || 0).toLocaleString("es-CO")} COP/mes`} />
-            </div>
-          </motion.div>
+        {/* Name — always shown as text, editing happens in the card below */}
+        <div style={{ position: "absolute", bottom: 18, left: 20, right: 20 }}>
+          <h1 style={{ fontFamily: DISPLAY, fontSize: 34, fontWeight: 500, color: C.white, letterSpacing: -1, lineHeight: 1 }}>
+            {d?.first_name || "Tu nombre"}{d?.age ? `, ${d.age}` : ""}
+          </h1>
         </div>
       </section>
 
-      <div className="max-w-4xl mx-auto px-6 -mt-6 relative z-30">
-        
-        {/* --- PHOTOS SECTION --- */}
-        <section className="mb-10">
-          <h3 className="text-xl font-black mb-4 flex items-center gap-2" style={{ color: PLUM_COLOR }}>
-            Fotos
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {data?.profile_images?.slice(0, 4).map((img, i) => (
-              <motion.div
-                key={i}
-                whileHover={{ scale: 1.02 }}
-                className="aspect-square rounded-3xl overflow-hidden shadow-md bg-white/50 relative group"
-              >
-                <img src={img} alt={`Profile ${i}`} className="w-full h-full object-cover" />
+      {/* ── Sections ── */}
+      <div style={{ maxWidth: 600, margin: "0 auto", padding: "20px 16px 80px", display: "flex", flexDirection: "column", gap: 14 }}>
+
+        {/* Sobre ti */}
+        <Card title="Sobre ti">
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <Field label="Nombre">
+                {isEditing
+                  ? <input value={form.first_name || ""} onChange={e => set("first_name", e.target.value)} placeholder="Nombre" style={inputStyle} />
+                  : <span style={valueStyle}>{d?.first_name || <Placeholder>—</Placeholder>}</span>}
+              </Field>
+              <Field label="Edad">
+                {isEditing
+                  ? <input type="number" value={form.age || ""} onChange={e => set("age", Number(e.target.value))} placeholder="22" style={inputStyle} />
+                  : <span style={valueStyle}>{d?.age || <Placeholder>—</Placeholder>}</span>}
+              </Field>
+            </div>
+            <Field label="Bio">
+              {isEditing
+                ? <textarea value={form.bio || ""} onChange={e => set("bio", e.target.value)} placeholder="Cuéntanos sobre ti..." rows={3}
+                    style={textareaStyle} />
+                : <p style={valueStyle}>{d?.bio || <Placeholder>Sin descripción</Placeholder>}</p>}
+            </Field>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <Field label="Ciudad" icon={<MapPin style={{ width: 13, height: 13 }} />}>
+                {isEditing
+                  ? <input value={form.city || ""} onChange={e => set("city", e.target.value)} placeholder="Bogotá" style={inputStyle} />
+                  : <span style={valueStyle}>{d?.city || <Placeholder>—</Placeholder>}</span>}
+              </Field>
+              <Field label="Apellido">
+                {isEditing
+                  ? <input value={form.last_name || ""} onChange={e => set("last_name", e.target.value)} placeholder="Apellido" style={inputStyle} />
+                  : <span style={valueStyle}>{d?.last_name || <Placeholder>—</Placeholder>}</span>}
+              </Field>
+            </div>
+            <Field label="Ocupación / Universidad" icon={<Briefcase style={{ width: 13, height: 13 }} />}>
+              {isEditing
+                ? <input value={form.job_title || ""} onChange={e => set("job_title", e.target.value)} placeholder="Estudiante de Derecho — U. Javeriana" style={inputStyle} />
+                : <span style={valueStyle}>{d?.job_title || <Placeholder>—</Placeholder>}</span>}
+            </Field>
+          </div>
+        </Card>
+
+        {/* Estilo de vida */}
+        <Card title="Estilo de vida">
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {/* Tags */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {LIFESTYLE_OPTIONS.map(({ label, icon }) => {
+                const active = d?.lifestyle_tags?.includes(label);
+                return (
+                  <div key={label}
+                    onClick={isEditing ? () => set("lifestyle_tags", toggleTag(form.lifestyle_tags || [], label)) : undefined}
+                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: 12, border: `1.5px solid ${active ? C.green : C.border}`, background: active ? `${C.green}12` : C.cream, color: active ? C.green : C.coffee, cursor: isEditing ? "pointer" : "default" }}>
+                    <span style={{ fontSize: 14 }}>{icon}</span>
+                    <span style={{ fontFamily: BODY, fontSize: 12, fontWeight: 600 }}>{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Sliders */}
+            {[
+              { label: "Limpieza", key: "cleanliness_level" as const, left: "Relajado", right: "Impecable" },
+              { label: "Social",   key: "social_level" as const,        left: "Tranquilo", right: "Muy social" },
+            ].map(({ label, key, left, right }) => (
+              <div key={key}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</span>
+                  <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.green }}>{d?.[key] ?? 5}/10</span>
+                </div>
+                <div style={{ height: 8, background: C.muted, borderRadius: 9999, overflow: "hidden", position: "relative" }}>
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${(d?.[key] ?? 5) * 10}%` }}
+                    style={{ position: "absolute", inset: "0 auto 0 0", background: C.green, borderRadius: 9999 }} />
+                  {isEditing && (
+                    <input type="range" min={1} max={10} value={d?.[key] ?? 5}
+                      onChange={e => set(key, Number(e.target.value))}
+                      style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
+                  )}
+                </div>
                 {isEditing && (
-                  <button className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Camera className="text-white w-6 h-6" />
-                  </button>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}>
+                    <span style={{ fontFamily: BODY, fontSize: 10, color: C.coffee, opacity: 0.55 }}>{left}</span>
+                    <span style={{ fontFamily: BODY, fontSize: 10, color: C.coffee, opacity: 0.55 }}>{right}</span>
+                  </div>
                 )}
-              </motion.div>
-            ))}
-            {isEditing && (data?.profile_images?.length || 0) < 6 && (
-              <div className="aspect-square rounded-3xl border-4 border-dashed border-zinc-200 flex items-center justify-center text-zinc-300 hover:border-[#935B7E] hover:text-[#935B7E] cursor-pointer transition-colors">
-                <Plus className="w-10 h-10" />
               </div>
-            )}
-          </div>
-        </section>
-
-        {/* --- ABOUT SECTION --- */}
-        <section className="mb-10 bg-white p-8 rounded-[40px] shadow-sm">
-          <h3 className="text-xl font-black mb-4" style={{ color: PLUM_COLOR }}>Sobre mí</h3>
-          {isEditing ? (
-            <textarea
-              value={editForm.bio || ""}
-              onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
-              className="w-full bg-zinc-50 border-0 rounded-2xl p-4 focus:ring-2 focus:ring-[#935B7E]/20 font-medium text-zinc-600 h-32 outline-none"
-              placeholder="Cuéntanos sobre ti..."
-            />
-          ) : (
-            <p className="text-lg leading-relaxed font-bold opacity-80" style={{ color: PLUM_COLOR }}>
-              {profile?.bio || "Añade una descripción."}
-            </p>
-          )}
-        </section>
-
-        {/* --- LIFESTYLE SECTION --- */}
-        <section className="mb-10">
-          <h3 className="text-xl font-black mb-4" style={{ color: PLUM_COLOR }}>Estilo de vida</h3>
-          
-          {/* Tags Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-            <LifeTag 
-              icon={<Zap className="w-4 h-4" />} 
-              label="Fumador" 
-              active={data?.lifestyle_tags?.includes("Fumador")} 
-              isEdit={isEditing} 
-              onClick={() => {
-                const current = editForm.lifestyle_tags || [];
-                const next = current.includes("Fumador") ? current.filter(t => t !== "Fumador") : [...current, "Fumador"];
-                setEditForm({ ...editForm, lifestyle_tags: next });
-              }}
-            />
-            <LifeTag 
-              icon={<Zap className="w-4 h-4" />} 
-              label="Mascotas" 
-              active={data?.lifestyle_tags?.includes("Mascotas")} 
-              isEdit={isEditing} 
-              onClick={() => {
-                const current = editForm.lifestyle_tags || [];
-                const next = current.includes("Mascotas") ? current.filter(t => t !== "Mascotas") : [...current, "Mascotas"];
-                setEditForm({ ...editForm, lifestyle_tags: next });
-              }}
-            />
-            <LifeTag 
-              icon={<Moon className="w-4 h-4" />} 
-              label="Noctámbulo" 
-              active={data?.lifestyle_tags?.includes("Noctámbulo")} 
-              isEdit={isEditing} 
-              onClick={() => {
-                const current = editForm.lifestyle_tags || [];
-                const next = current.includes("Noctámbulo") ? current.filter(t => t !== "Noctámbulo") : [...current, "Noctámbulo"];
-                setEditForm({ ...editForm, lifestyle_tags: next });
-              }}
-            />
-            <LifeTag 
-              icon={<Sun className="w-4 h-4" />} 
-              label="Madrugador" 
-              active={data?.lifestyle_tags?.includes("Madrugador")} 
-              isEdit={isEditing} 
-              onClick={() => {
-                const current = editForm.lifestyle_tags || [];
-                const next = current.includes("Madrugador") ? current.filter(t => t !== "Madrugador") : [...current, "Madrugador"];
-                setEditForm({ ...editForm, lifestyle_tags: next });
-              }}
-            />
-          </div>
-
-          {/* Progress Bars */}
-          <div className="space-y-6">
-            <ProgressItem 
-              icon={<Home className="w-5 h-5" />} 
-              label="Limpieza" 
-              value={data?.cleanliness_level || 5} 
-              isEdit={isEditing} 
-              onChange={(v) => setEditForm({...editForm, cleanliness_level: v})}
-            />
-            <ProgressItem 
-              icon={<Heart className="w-5 h-5" />} 
-              label="Social" 
-              value={data?.social_level || 5} 
-              isEdit={isEditing}
-              onChange={(v) => setEditForm({...editForm, social_level: v})}
-            />
-          </div>
-        </section>
-
-        {/* --- INTERESTS SECTION --- */}
-        <section className="mb-10">
-          <h3 className="text-xl font-black mb-4" style={{ color: PLUM_COLOR }}>Intereses</h3>
-          <div className="flex flex-wrap gap-3">
-            {(isEditing ? editForm.interests : profile?.interests)?.map((interest, i) => (
-              <button
-                key={i}
-                onClick={() => {
-                  if (!isEditing) return;
-                  const current = editForm.interests || [];
-                  const next = current.includes(interest)
-                    ? current.filter(t => t !== interest)
-                    : [...current, interest];
-                  setEditForm({ ...editForm, interests: next });
-                }}
-                className={`px-6 py-2.5 rounded-full font-bold text-sm shadow-md transition-all active:scale-95
-                  ${(isEditing ? editForm.interests : profile?.interests)?.includes(interest)
-                    ? "text-white"
-                    : "bg-zinc-100 text-zinc-400 shadow-none border-2 border-zinc-200"
-                  }
-                `}
-                style={{ backgroundColor: (isEditing ? editForm.interests : profile?.interests)?.includes(interest) ? PLUM_COLOR : undefined }}
-              >
-                {interest}
-              </button>
             ))}
+          </div>
+        </Card>
+
+        {/* Intereses */}
+        <Card title="Intereses">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {INTEREST_OPTIONS.map(interest => {
+              const active = d?.interests?.includes(interest);
+              return (
+                <button key={interest}
+                  onClick={isEditing ? () => set("interests", toggleTag(form.interests || [], interest)) : undefined}
+                  style={{ padding: "7px 16px", borderRadius: 9999, fontFamily: BODY, fontSize: 12, fontWeight: 700, border: "none", cursor: isEditing ? "pointer" : "default", background: active ? C.green : C.muted, color: active ? C.white : C.coffee }}>
+                  {interest}
+                </button>
+              );
+            })}
             {isEditing && (
-              <button 
-                onClick={() => {
-                  const newInterest = prompt("Añadir nuevo interés:");
-                  if (newInterest) {
-                    setEditForm({ ...editForm, interests: [...(editForm.interests || []), newInterest] });
-                  }
-                }}
-                className="px-6 py-2.5 rounded-full border-2 border-dashed border-zinc-300 text-zinc-400 font-bold text-sm hover:border-[#935B7E] hover:text-[#935B7E]"
-              >
+              <button onClick={() => {
+                const n = prompt("Añadir interés:");
+                if (n) set("interests", [...(form.interests || []), n]);
+              }}
+                style={{ padding: "7px 16px", borderRadius: 9999, fontFamily: BODY, fontSize: 12, fontWeight: 700, background: "none", border: `1.5px dashed ${C.border}`, color: C.coffee, cursor: "pointer" }}>
                 + Añadir
               </button>
             )}
+            {!isEditing && !d?.interests?.length && <Placeholder>Sin intereses añadidos</Placeholder>}
           </div>
-        </section>
+        </Card>
 
-        {/* --- LOGOUT BUTTON --- */}
-        <div className="mt-10 flex justify-center">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-6 py-3 rounded-full border-2 border-zinc-200 text-zinc-500 font-semibold text-sm hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition-all"
-          >
-            <LogOut className="w-4 h-4" />
-            Cerrar sesión
+        {/* ¿Qué buscas? */}
+        <Card title="¿Qué buscas?">
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {[
+                { icon: <Home style={{ width: 20, height: 20 }} />, label: "Apartamento o habitación", value: "find-room" },
+                { icon: <Users style={{ width: 20, height: 20 }} />, label: "Roommate compatible", value: "find-roommate" },
+              ].map(({ icon, label, value }) => {
+                const selected = d?.user_mode === value;
+                return (
+                  <div key={value}
+                    onClick={isEditing ? () => set("user_mode", value) : undefined}
+                    style={{ padding: "14px 12px", borderRadius: 14, border: `1.5px solid ${selected ? C.green : C.border}`, background: selected ? `${C.green}10` : C.cream, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, cursor: isEditing ? "pointer" : "default", color: selected ? C.green : C.coffee }}>
+                    {icon}
+                    <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, textAlign: "center", lineHeight: 1.3 }}>{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <Field label="Presupuesto mensual (COP)">
+              {isEditing ? (
+                <div style={{ position: "relative" }}>
+                  <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.coffee, opacity: 0.5 }}>$</span>
+                  <input type="number" value={form.monthly_budget || ""} onChange={e => set("monthly_budget", Number(e.target.value))} placeholder="1.200.000"
+                    style={{ ...inputStyle, paddingLeft: 26 }} />
+                </div>
+              ) : (
+                <span style={valueStyle}>
+                  {d?.monthly_budget ? `$${Number(d.monthly_budget).toLocaleString("es-CO")} COP/mes` : <Placeholder>—</Placeholder>}
+                </span>
+              )}
+            </Field>
+          </div>
+        </Card>
+
+        {/* Logout */}
+        <div style={{ display: "flex", justifyContent: "center", paddingTop: 4 }}>
+          <button onClick={handleLogout} style={{
+            display: "flex", alignItems: "center", gap: 8, padding: "10px 20px",
+            borderRadius: 9999, background: "none", border: `1.5px solid ${C.border}`,
+            fontFamily: BODY, fontSize: 13, fontWeight: 600, color: C.coffee, cursor: "pointer",
+          }}>
+            <LogOut style={{ width: 14, height: 14 }} /> Cerrar sesión
           </button>
         </div>
-
       </div>
     </div>
   );
 }
 
-/* Helper Components */
+/* ── Helpers ── */
 
-function Badge({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
-      {icon}
-      <span className="text-xs font-bold uppercase tracking-wider">{text}</span>
-    </div>
-  );
+const inputStyle: React.CSSProperties = {
+  width: "100%", boxSizing: "border-box", padding: "10px 12px",
+  background: "#EFE7DE", border: "none", borderRadius: 10,
+  fontFamily: "var(--font-inter, 'system-ui', sans-serif)", fontSize: 14, color: "#0D0D0D", outline: "none",
+};
+const textareaStyle: React.CSSProperties = {
+  ...inputStyle, resize: "none",
+};
+const valueStyle: React.CSSProperties = {
+  fontFamily: "var(--font-inter, 'system-ui', sans-serif)", fontSize: 14, color: "#0D0D0D",
+};
+
+function Placeholder({ children }: { children: React.ReactNode }) {
+  return <span style={{ color: "rgba(130,85,77,0.4)", fontStyle: "italic" }}>{children}</span>;
 }
 
-
-function LifeTag({ icon, label, active, isEdit, onClick }: { icon: React.ReactNode; label: string; active?: boolean; isEdit?: boolean; onClick?: () => void }) {
+function Field({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div 
-      onClick={isEdit ? onClick : undefined}
-      className={`flex items-center gap-2 px-4 py-3 rounded-2xl border-2 transition-all select-none
-        ${active 
-          ? `bg-[#935B7E]/10 border-[#935B7E] text-[#935B7E]` 
-          : `bg-white border-zinc-100 text-zinc-400`
-        }
-        ${isEdit ? 'cursor-pointer hover:scale-105 active:scale-95' : 'cursor-default'}
-      `}
-    >
-      <div className={active ? "text-[#935B7E]" : "text-zinc-300"}>{icon}</div>
-      <span className="text-xs font-black">{label}</span>
-    </div>
-  );
-}
-
-function ProgressItem({ icon, label, value, isEdit, onChange }: { icon: React.ReactNode; label: string; value: number; isEdit?: boolean; onChange?: (v: number) => void }) {
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-center px-1">
-        <div className="flex items-center gap-2 font-black text-xs uppercase" style={{ color: PLUM_COLOR }}>
-          {icon}
-          {label}
-        </div>
-        <span className="font-black text-xs" style={{ color: PLUM_COLOR }}>{value}/10</span>
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "var(--font-inter,'system-ui',sans-serif)", fontSize: 10, fontWeight: 700, color: "#82554D", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>
+        {icon}{label}
       </div>
-      <div className="h-3 w-full bg-zinc-200/50 rounded-full overflow-hidden relative">
-        <motion.div 
-          initial={{ width: 0 }}
-          animate={{ width: `${value * 10}%` }}
-          className="absolute inset-y-0 left-0 rounded-full"
-          style={{ backgroundColor: PLUM_COLOR }}
-        />
-        {isEdit && (
-          <input 
-            type="range" min="1" max="10" value={value} 
-            onChange={(e) => onChange?.(Number(e.target.value))}
-            className="absolute inset-0 opacity-0 cursor-pointer w-full"
-          />
-        )}
-      </div>
+      {children}
     </div>
   );
 }
 
-
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ background: "#FFFFFF", borderRadius: 20, padding: "18px 16px", border: "1.5px solid rgba(130,85,77,0.14)" }}>
+      <div style={{ fontFamily: "var(--font-fraunces,'Georgia',serif)", fontSize: 17, fontWeight: 500, color: "#0D0D0D", letterSpacing: -0.4, marginBottom: 14 }}>
+        {title}
+      </div>
+      {children}
+    </div>
+  );
+}

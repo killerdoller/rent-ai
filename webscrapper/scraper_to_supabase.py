@@ -1,6 +1,6 @@
 """
 scraper_to_supabase.py
-Scrape apartments from Finca Raiz, upload cover images to Supabase Storage,
+Scrape apartments from Finca Raiz, upload ALL images to Supabase Storage,
 and insert properties into the 'properties' table.
 
 Usage:
@@ -50,7 +50,6 @@ def resolve_owner_id(supabase: Client, owner_id_or_email: str) -> str:
             oid = result.data["owner_id"]
             print(f"[owner] Owner existente encontrado: {oid}")
             return oid
-        # Create new owner
         created = supabase.table("owners").insert({
             "name": "Demo Owner (Scraper)",
             "email": email,
@@ -59,7 +58,6 @@ def resolve_owner_id(supabase: Client, owner_id_or_email: str) -> str:
         print(f"[owner] Owner creado: {oid}")
         return oid
     else:
-        # Assume it's a UUID — verify it exists
         result = supabase.table("owners").select("owner_id").eq("owner_id", owner_id_or_email).maybe_single().execute()
         if not result.data:
             raise ValueError(
@@ -79,13 +77,19 @@ def extract_price(price_field) -> float:
         return 0.0
 
 
-def extract_image_url(item: dict) -> str | None:
-    """Extract the cover image URL from a Finca Raiz listing."""
+def extract_all_image_urls(item: dict) -> list[str]:
+    """Extract ALL image URLs from a Finca Raiz listing."""
     images = item.get("images") or []
+    urls = []
     if images and isinstance(images, list):
-        return images[0].get("image")
+        for img in images:
+            url = img.get("image") if isinstance(img, dict) else img
+            if url and isinstance(url, str):
+                urls.append(url)
     # Fallback: top-level img field
-    return item.get("img") or None
+    if not urls and item.get("img"):
+        urls.append(item["img"])
+    return urls
 
 
 async def download_image(url: str) -> bytes | None:
@@ -103,11 +107,9 @@ async def download_image(url: str) -> bytes | None:
 def upload_image_to_storage(supabase: Client, image_bytes: bytes, filename: str) -> str | None:
     """
     Upload image bytes to Supabase Storage and return the public URL.
-    The bucket must exist and be PUBLIC. Create it once in the Supabase dashboard
-    or with: supabase.storage.create_bucket(BUCKET, {"public": True})
+    The bucket must exist and be PUBLIC.
     """
     try:
-        # Ensure bucket exists (idempotent)
         try:
             supabase.storage.create_bucket(BUCKET, options={"public": True})
         except Exception:
@@ -118,11 +120,50 @@ def upload_image_to_storage(supabase: Client, image_bytes: bytes, filename: str)
             file=image_bytes,
             file_options={"content-type": "image/jpeg", "upsert": "true"},
         )
-        url = supabase.storage.from_(BUCKET).get_public_url(filename)
-        return url
+        return supabase.storage.from_(BUCKET).get_public_url(filename)
     except Exception as e:
         print(f"    [warn] Error subiendo imagen a Storage: {e}")
         return None
+
+
+async def download_and_upload_all(
+    supabase: Client,
+    raw_urls: list[str],
+    fincaraiz_id: str,
+    dry_run: bool,
+) -> tuple[str | None, list[str]]:
+    """
+    Download and upload ALL images for a listing.
+    Returns (cover_url, all_urls_list).
+    In dry-run mode returns the original URLs without uploading.
+    """
+    if dry_run:
+        return (raw_urls[0] if raw_urls else None, raw_urls)
+
+    uploaded: list[str] = []
+    tasks = []
+    for i, url in enumerate(raw_urls):
+        tasks.append(download_image(url))
+
+    results = await asyncio.gather(*tasks)
+
+    for i, (img_bytes, raw_url) in enumerate(zip(results, raw_urls)):
+        if img_bytes:
+            filename = f"{fincaraiz_id}_{i}.jpg"
+            public_url = upload_image_to_storage(supabase, img_bytes, filename)
+            if public_url:
+                uploaded.append(public_url)
+                if i == 0:
+                    print(f"    Imagen {i+1}/{len(raw_urls)} subida ✓")
+                else:
+                    print(f"    Imagen {i+1}/{len(raw_urls)} subida ✓")
+            else:
+                print(f"    Imagen {i+1}/{len(raw_urls)} falló al subir")
+        else:
+            print(f"    Imagen {i+1}/{len(raw_urls)} falló al descargar")
+
+    cover = uploaded[0] if uploaded else None
+    return cover, uploaded
 
 
 def insert_property(supabase: Client, prop: dict) -> bool:
@@ -167,7 +208,6 @@ async def scrape_and_upload(url: str, owner_id: str, limit: int = 100, dry_run: 
             try:
                 listings = data["props"]["pageProps"]["fetchResult"]["searchFast"]["data"]
             except KeyError:
-                # Dump top-level keys to help debug structure changes
                 print("[error] Estructura JSON inesperada. Claves disponibles:")
                 print(list(data.get("props", {}).get("pageProps", {}).keys()))
                 return
@@ -200,19 +240,10 @@ async def scrape_and_upload(url: str, owner_id: str, limit: int = 100, dry_run: 
                 latitude = item.get("latitude") or None
                 longitude = item.get("longitude") or None
 
-                # --- Image ---
-                image_url = None
-                raw_img = extract_image_url(item)
-                if raw_img:
-                    print(f"  [{fincaraiz_id}] Descargando imagen...")
-                    img_bytes = await download_image(raw_img)
-                    if img_bytes and not dry_run:
-                        filename = f"{fincaraiz_id}.jpg"
-                        image_url = upload_image_to_storage(supabase, img_bytes, filename)
-                        if image_url:
-                            print(f"  [{fincaraiz_id}] Imagen subida: {image_url}")
-                    elif dry_run:
-                        image_url = raw_img  # Keep original URL in dry-run
+                # --- All images ---
+                raw_urls = extract_all_image_urls(item)
+                print(f"  [{fincaraiz_id}] {len(raw_urls)} imagen(es) encontrada(s) — descargando...")
+                cover_url, all_urls = await download_and_upload_all(supabase, raw_urls, fincaraiz_id, dry_run)
 
                 prop = {
                     "owner_id": owner_id,
@@ -223,7 +254,8 @@ async def scrape_and_upload(url: str, owner_id: str, limit: int = 100, dry_run: 
                     "bedrooms": int(rooms),
                     "description": description,
                     "tags": tags,
-                    "image_url": image_url,
+                    "image_url": cover_url,
+                    "images": all_urls,
                     "address": address,
                     "latitude": latitude,
                     "longitude": longitude,
@@ -233,13 +265,13 @@ async def scrape_and_upload(url: str, owner_id: str, limit: int = 100, dry_run: 
 
                 if dry_run:
                     print(f"  [DRY RUN] {title} — ${price:,.0f} COP — {neighborhood}, {city}")
+                    print(f"           {len(all_urls)} imagen(es): {cover_url or '(sin imagen)'}")
                     print(f"           dirección: {address or '(sin dirección)'} | coords: {latitude}, {longitude}")
-                    print(f"           imagen: {image_url or '(sin imagen)'}")
                 else:
                     ok = insert_property(supabase, prop)
                     if ok:
                         inserted += 1
-                        print(f"  [OK] Insertada: {title} — ${price:,.0f} COP")
+                        print(f"  [OK] Insertada: {title} — ${price:,.0f} COP — {len(all_urls)} foto(s)")
                     else:
                         print(f"  [SKIP] {title}")
 
@@ -261,14 +293,14 @@ if __name__ == "__main__":
     )
 
     parser = argparse.ArgumentParser(
-        description="Scraper Finca Raiz → Supabase Storage + DB"
+        description="Scraper Finca Raiz → Supabase Storage + DB (todas las imágenes)"
     )
     parser.add_argument("--url", default=default_url, help="URL de búsqueda de Finca Raiz")
-    parser.add_argument("--owner_id", required=True, help="UUID del owner en la tabla owners")
+    parser.add_argument("--owner_id", required=True, help="UUID o email del owner")
     parser.add_argument(
         "--debug",
         action="store_true",
-        help="Imprime el JSON crudo del primer apartamento y sale (para inspeccionar campos)",
+        help="Imprime el JSON crudo del primer apartamento y sale",
     )
     parser.add_argument(
         "--limit",
