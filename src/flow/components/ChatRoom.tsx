@@ -238,22 +238,22 @@ export function ChatRoom({
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
             placeholder="Escribe un mensaje..."
-            disabled={!room || !!loadError}
+            disabled={!room?.conversation_id || !!loadError}
             style={{
               flex: 1, minWidth: 0, padding: "11px 16px",
               background: C.muted, border: "none", borderRadius: 22,
               fontFamily: BODY, fontSize: 14, color: C.ink, outline: "none",
-              opacity: (!room || !!loadError) ? 0.5 : 1,
+              opacity: (!room?.conversation_id || !!loadError) ? 0.5 : 1,
             }}
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim() || !room || sending || !!loadError}
+            disabled={!input.trim() || !room?.conversation_id || sending || !!loadError}
             style={{
               width: 42, height: 42, borderRadius: 21, flexShrink: 0,
-              background: input.trim() && room && !loadError ? accent : C.muted,
+              background: input.trim() && room?.conversation_id && !loadError ? accent : C.muted,
               border: "none", display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: input.trim() && room && !loadError ? "pointer" : "default",
+              cursor: input.trim() && room?.conversation_id && !loadError ? "pointer" : "default",
               transition: "background 0.15s",
             }}
           >
