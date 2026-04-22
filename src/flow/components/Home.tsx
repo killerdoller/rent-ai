@@ -338,7 +338,13 @@ export function Home() {
         ) : (
           <>
             {/* Card stack */}
-            <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+            <div style={{ 
+              flex: 1, 
+              minHeight: "360px", // Garantiza que las tarjetas no colapsen en móvil
+              position: "relative",
+              width: "100%",
+              margin: "0 auto"
+            }}>
               {cards.slice(index, index + 2).reverse().map((card, i) => {
                 const isTop = i === 1;
                 return (
@@ -530,12 +536,19 @@ function SwipeCard({
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
       onDragEnd={handleDragEnd}
       style={{
+        position: "absolute",
+        inset: 0,
         x: isTop ? x : 0,
         rotate: isTop ? rotate : 0,
         opacity: isTop ? opacity : 0.8,
+        scale: isTop ? 1 : 0.95,
+        borderRadius: "1.5rem",
+        overflow: "hidden",
+        background: C.white,
+        boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+        cursor: isTop ? "grab" : "default",
+        zIndex: isTop ? 2 : 1
       }}
-      className={`absolute inset-0 rounded-3xl shadow-2xl overflow-hidden ${isTop ? "cursor-grab active:cursor-grabbing" : "scale-95"
-        }`}
     >
       {/* Full-card image */}
       <img
