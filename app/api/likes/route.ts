@@ -70,7 +70,7 @@ export async function POST(request: Request) {
   }
 
   // Verificar si se creó un match bilateral (el trigger de la DB lo crea automáticamente)
-  const { data: match } = await supabase
+  let { data: match } = await supabase
     .from("property_matches")
     .select(`
       id,
@@ -81,12 +81,23 @@ export async function POST(request: Request) {
     .eq("property_id", property_id)
     .maybeSingle();
 
+  // --- HACK PARA LOCAL DEV: Si no hay match (porque nadie te ha dado like), lo creamos a la fuerza ---
+  if (!match && user_id === "guest_local_dev") {
+    const { data: prop } = await supabase.from("properties").select("owner_id").eq("property_id", property_id).single();
+    const { data: forcedMatch } = await supabase
+      .from("property_matches")
+      .insert({ user_id, property_id, owner_id: prop?.owner_id, match_score: 95 })
+      .select("id, match_score, owners(name)")
+      .single();
+    match = forcedMatch;
+  }
+
   return NextResponse.json({
     ...data,
     isMatch: !!match,
     match_id: match?.id,
     match_score: match?.match_score,
-    owner_name: (match?.owners as any)?.name
+    owner_name: match?.owners ? (match.owners as any).name : "Propietario"
   }, { status: 201 });
 }
 

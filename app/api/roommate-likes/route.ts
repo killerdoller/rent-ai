@@ -32,12 +32,22 @@ export async function POST(request: Request) {
     }
 
     // Check if it created a match (via trigger)
-    const { data: match } = await supabase
+    let { data: match } = await supabase
       .from("roommate_matches")
       .select("*")
       .or(`and(student_1_id.eq.${user_id},student_2_id.eq.${liked_user_id}),and(student_1_id.eq.${liked_user_id},student_2_id.eq.${user_id})`)
       .eq("status", "matched")
       .maybeSingle();
+
+    // --- HACK PARA LOCAL DEV: Forzamos el match de roomies ---
+    if (!match && user_id === "guest_local_dev") {
+      const { data: forcedMatch } = await supabase
+        .from("roommate_matches")
+        .insert({ student_1_id: user_id, student_2_id: liked_user_id, status: "matched", compatibility_score: 98 })
+        .select("*")
+        .single();
+      match = forcedMatch;
+    }
 
     return NextResponse.json({ 
       success: true, 

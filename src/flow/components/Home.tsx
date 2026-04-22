@@ -2,9 +2,10 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, PanInfo, useMotionValue, useTransform } from "motion/react";
-import { X, Heart, MapPin, Bed, Sparkles, Tag, Building2, Users } from "lucide-react";
+import { X, Heart, MapPin, Bed, Sparkles, Tag, Building2, Users, MessageSquare } from "lucide-react";
 import dynamic from "next/dynamic";
 import { AnimatePresence } from "motion/react";
+import confetti from "canvas-confetti";
 import { ImageCarousel } from "./ImageCarousel";
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
@@ -152,6 +153,12 @@ export function Home() {
         .then(r => r.ok ? r.json() : null)
         .then(res => {
           if (res?.isMatch) {
+            confetti({
+              particleCount: 150,
+              spread: 70,
+              origin: { y: 0.6 },
+              colors: [C.green, C.coffee, "#FDBB2D"]
+            });
             setMatchData({
               id: res.match_id,
               propertyTitle: card.title,
@@ -185,6 +192,12 @@ export function Home() {
       .then(r => r.ok ? r.json() : null)
       .then(res => {
         if (res?.isMatch) {
+          confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: [C.green, C.coffee, "#FDBB2D"]
+          });
           setMatchData({
             id: res.match_id,
             propertyTitle: "Match de Roomies",
@@ -395,36 +408,93 @@ function MatchCelebration({ data, onClose, onChat }: {
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(13,13,13,0.94)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+      style={{ 
+        position: "fixed", inset: 0, zIndex: 100, 
+        background: "rgba(13,13,13,0.96)", 
+        backdropFilter: "blur(10px)",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 20 
+      }}
     >
       <motion.div
-        initial={{ scale: 0.8, y: 20 }} animate={{ scale: 1, y: 0 }}
-        style={{ width: "100%", maxWidth: 400, textAlign: "center" }}
+        initial={{ scale: 0.5, opacity: 0, y: 100 }} 
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ type: "spring", damping: 15, stiffness: 100 }}
+        style={{ width: "100%", maxWidth: 420, textAlign: "center" }}
       >
-        <Sparkles style={{ width: 48, height: 48, color: C.green, margin: "0 auto 20px" }} />
-        <h2 style={{ fontFamily: DISPLAY, fontSize: 42, color: C.white, lineHeight: 1, marginBottom: 12 }}>
-          ¡Es un Match!
-        </h2>
-        <p style={{ fontFamily: BODY, fontSize: 15, color: "rgba(255,255,255,0.7)", marginBottom: 40 }}>
-          {data.ownerName} aceptó tu interés en <strong>{data.propertyTitle}</strong>.
-        </p>
-
-        <div style={{ position: "relative", width: 180, height: 180, margin: "0 auto 40px" }}>
-          <div style={{ position: "absolute", inset: -10, borderRadius: "50%", border: `2px dashed ${C.green}`, animation: "spin 10s linear infinite" }} />
-          <img src={data.img} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", border: `4px solid ${C.white}` }} alt="Match" />
+        <div style={{ position: "relative", marginBottom: 32 }}>
+           <motion.div 
+            animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
+            transition={{ repeat: Infinity, duration: 4 }}
+            style={{ display: "inline-block" }}
+           >
+            <Sparkles style={{ width: 64, height: 64, color: C.green }} />
+           </motion.div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <button onClick={onChat} style={{
-            padding: "16px", borderRadius: 16, background: C.green, color: C.white, border: "none", cursor: "pointer",
-            fontFamily: BODY, fontSize: 15, fontWeight: 700, boxShadow: `0 8px 24px ${C.green}44`
-          }}>
+        <h2 style={{ 
+          fontFamily: DISPLAY, fontSize: 48, color: C.white, 
+          lineHeight: 1.1, marginBottom: 16, letterSpacing: -1.5 
+        }}>
+          ¡Increíble!<br/>Es un Match
+        </h2>
+        
+        <p style={{ 
+          fontFamily: BODY, fontSize: 16, color: "rgba(255,255,255,0.8)", 
+          marginBottom: 48, lineHeight: 1.5, padding: "0 20px"
+        }}>
+          Parece que {data.ownerName} también quiere conectar contigo para <strong>{data.propertyTitle}</strong>.
+        </p>
+
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: -20, marginBottom: 50 }}>
+          {/* User Avatar Placeholder */}
+          <motion.div
+            initial={{ x: -50, rotate: -10 }} animate={{ x: 10, rotate: -5 }}
+            style={{ 
+              width: 140, height: 140, borderRadius: "50%", 
+              border: `4px solid ${C.white}`, overflow: "hidden",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.4)", zIndex: 2
+            }}
+          >
+            <img src="/profile.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="Tú" />
+          </motion.div>
+
+          {/* Property Avatar */}
+          <motion.div
+            initial={{ x: 50, rotate: 10 }} animate={{ x: -10, rotate: 5 }}
+            style={{ 
+              width: 140, height: 140, borderRadius: "50%", 
+              border: `4px solid ${C.white}`, overflow: "hidden",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.4)", zIndex: 1
+            }}
+          >
+            <img src={data.img} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="Match" />
+          </motion.div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "0 20px" }}>
+          <button 
+            onClick={onChat} 
+            style={{
+              padding: "20px", borderRadius: 20, background: C.green, color: C.white, 
+              border: "none", cursor: "pointer",
+              fontFamily: BODY, fontSize: 16, fontWeight: 700, 
+              boxShadow: `0 12px 30px ${C.green}55`,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10
+            }}
+          >
+            <MessageSquare style={{ width: 20, height: 20 }} />
             Enviar mensaje ahora
           </button>
-          <button onClick={onClose} style={{
-            padding: "16px", borderRadius: 16, background: "transparent", color: C.white, border: "1px solid rgba(255,255,255,0.2)", cursor: "pointer",
-            fontFamily: BODY, fontSize: 15, fontWeight: 600
-          }}>
+          
+          <button 
+            onClick={onClose} 
+            style={{
+              padding: "18px", borderRadius: 20, background: "rgba(255,255,255,0.05)", 
+              color: C.white, border: "1px solid rgba(255,255,255,0.2)", cursor: "pointer",
+              fontFamily: BODY, fontSize: 16, fontWeight: 600,
+              transition: "all 0.2s"
+            }}
+          >
             Seguir explorando
           </button>
         </div>

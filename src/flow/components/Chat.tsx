@@ -213,7 +213,7 @@ export function Chat({ mode = "user" }: { mode?: "user" | "owner" }) {
                       >
                         <div style={{ 
                           width: 64, height: 64, borderRadius: "50%", padding: 3,
-                          background: `linear-gradient(45deg, ${accent}, #FDBB2D)`,
+                          background: C.green,
                         }}>
                            <img 
                             src={match.other_party_avatar || match.property_image || "/profile.jpg"} 
