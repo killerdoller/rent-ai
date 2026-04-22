@@ -2,14 +2,17 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error("Supabase env vars not configured");
+  return createClient(url, key);
+}
 
 // POST { clerk_id, email, first_name?, mode?, role? }
 // Returns { role, profile_id, email?, is_new }
 export async function POST(request: Request) {
+  const supabase = getSupabase();
   const { clerk_id, email, first_name, last_name, avatar_url, mode, role } = await request.json();
 
   if (!clerk_id) {
