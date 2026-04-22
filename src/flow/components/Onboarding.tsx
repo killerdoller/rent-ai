@@ -17,18 +17,17 @@ async function googleAuth(
     const params = new URLSearchParams();
     if (role) params.set("role", role);
     if (mode) params.set("mode", mode);
+    
     const syncUrl = `/app/sync${params.toString() ? `?${params.toString()}` : ""}`;
-
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     const callbackUrl = `${origin}/sso-callback`;
     const finalUrl = `${origin}${syncUrl}`;
 
     // Intentar diferentes métodos de redirección para máxima compatibilidad con v7
     const common = {
-      strategy: "oauth_google",
+      strategy: "oauth_google" as any,
       redirectUrl: callbackUrl,
       redirectUrlComplete: finalUrl,
-      // Los nombres de parámetros pueden variar entre sso() y authenticateWithRedirect()
       redirectCallbackUrl: callbackUrl,
     };
 
@@ -41,12 +40,13 @@ async function googleAuth(
     } else {
       throw new Error("No se encontró un método de autenticación compatible");
     }
-
-    // authenticateWithRedirect no devuelve un resultado, redirige la página completa.
-    // Los errores se capturarán en el bloque catch de abajo.
   } catch (e: any) {
     if (e.message?.includes("already signed in")) {
-       window.location.href = finalUrl;
+       const params = new URLSearchParams();
+       if (role) params.set("role", role);
+       if (mode) params.set("mode", mode);
+       const syncUrl = `/app/sync${params.toString() ? `?${params.toString()}` : ""}`;
+       window.location.href = syncUrl;
        return;
     }
     const clerkError = e.errors?.[0];
@@ -71,7 +71,7 @@ const C = {
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
 const BODY    = "var(--font-inter, 'system-ui', sans-serif)";
 
-type Screen = "splash" | "login" | "register" | "otp" | "mode";
+type Screen = "splash" | "login" | "register" | "otp" | "mode" | "forgot-password";
 type Role   = "student" | "owner" | "roomie";
 
 // ─── Interactive city (isometric SVG) ────────────────────────────────────────
@@ -527,8 +527,8 @@ function SplashScreen({ onStart, onGoogle }: { onStart:(t:"login"|"register")=>v
 }
 
 // ─── Login ────────────────────────────────────────────────────────────────────
-function LoginScreen({ onBack, onSuccess, onGoRegister, onLoading, onGoogle }: {
-  onBack:()=>void; onSuccess:(role:Role)=>void; onGoRegister:()=>void; onLoading:(v:boolean)=>void; onGoogle:()=>void;
+function LoginScreen({ onBack, onSuccess, onGoRegister, onGoForgotPassword, onLoading, onGoogle }: {
+  onBack:()=>void; onSuccess:(role:Role)=>void; onGoRegister:()=>void; onGoForgotPassword:(email?:string)=>void; onLoading:(v:boolean)=>void; onGoogle:()=>void;
 }) {
   const { signIn } = useSignIn();
   const { setActive } = useClerk();
@@ -542,18 +542,8 @@ function LoginScreen({ onBack, onSuccess, onGoRegister, onLoading, onGoogle }: {
     if (password.length < 4) { setErr("Contraseña muy corta"); return; }
     setErr(""); setLoading(true); onLoading(true);
     try {
-      const res = await signIn!.create({ identifier: email, password });
+      const res = await signIn!.authenticateWithRedirect ? await (signIn as any).create({ identifier: email, password }) : await signIn!.create({ identifier: email, password });
       
-      if (res.error) {
-        let msg = res.error.longMessage || res.error.message || "Credenciales incorrectas";
-        if (msg.includes("identifier") || msg.includes("email")) msg = "El correo ingresado no es correcto.";
-        else if (msg.includes("password")) msg = "La contraseña es incorrecta.";
-        
-        setErr(msg);
-        setLoading(false); onLoading(false);
-        return;
-      }
-
       if (res.status === "complete") {
         await setActive!({ session: res.createdSessionId });
         onSuccess("student");
@@ -561,8 +551,11 @@ function LoginScreen({ onBack, onSuccess, onGoRegister, onLoading, onGoogle }: {
         setErr("Se requiere verificación adicional para esta cuenta.");
       }
     } catch (e: any) {
-      console.error("Error inesperado en login:", e);
-      setErr("Ocurrió un error al iniciar sesión. Intenta de nuevo.");
+      console.error("Error en login:", e);
+      let msg = e.errors?.[0]?.longMessage || e.errors?.[0]?.message || e.message || "Credenciales incorrectas";
+      if (msg.includes("identifier") || msg.includes("email")) msg = "El correo ingresado no es correcto.";
+      else if (msg.includes("password")) msg = "La contraseña es incorrecta.";
+      setErr(msg);
     } finally { setLoading(false); onLoading(false); }
   };
 
@@ -579,6 +572,14 @@ function LoginScreen({ onBack, onSuccess, onGoRegister, onLoading, onGoogle }: {
           <SketchInput label="Contraseña" value={password}
             onChange={v => { setPassword(v); setErr(""); }}
             placeholder="••••••••" type="password" error={err}/>
+          <div style={{ textAlign:"right", marginTop:-4 }}>
+            <button type="button" onClick={() => onGoForgotPassword(email)}
+              style={{ background:"none", border:"none", cursor:"pointer",
+                fontFamily:BODY, fontSize:12, fontWeight:600, color:C.coffee,
+                textDecoration:"underline", textUnderlineOffset:2 }}>
+              ¿Olvidaste tu contraseña?
+            </button>
+          </div>
         </div>
         <div style={{ marginTop:"auto", paddingTop:16 }}>
           <SketchBtn onClick={submit} bg={C.green} disabled={loading}>
@@ -912,9 +913,7 @@ function ModeScreen({ onSelect }: { onSelect:(mode:string)=>void }) {
                 </div>
                 <div style={{ fontFamily:DISPLAY, fontSize:30, lineHeight:0.95, fontWeight:500,
                   letterSpacing:-1.2, marginTop:10, whiteSpace:"pre-line" }}>
-                  {m.label.split("\n").map((line,i) => (
-                    <div key={i}>{i===1 ? <span style={{ fontStyle:"italic" }}>{line}</span> : line}</div>
-                  ))}
+                  {m.label.split("\n").map((line,i) => (line.includes("\n") ? line.split("\n").map((l,idx) => <div key={idx}>{l}</div>) : <div key={i}>{line}</div>))}
                 </div>
                 <div style={{ fontFamily:BODY, fontSize:13, lineHeight:1.4, marginTop:8, opacity:0.85 }}>{m.sub}</div>
               </button>
@@ -926,6 +925,100 @@ function ModeScreen({ onSelect }: { onSelect:(mode:string)=>void }) {
             <span style={{ color:C.cream }}>Continuar →</span>
           </SketchBtn>
         </div>
+      </FormPanel>
+    </AuthLayout>
+  );
+}
+
+// ─── Forgot Password ──────────────────────────────────────────────────────────
+function ForgotPasswordScreen({ initialEmail, onBack, onSuccess }: { initialEmail: string; onBack: () => void; onSuccess: () => void }) {
+  const { signIn } = useSignIn();
+  const [email, setEmail] = useState(initialEmail);
+  const [code, setCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [step, setStep] = useState<"email" | "verify">("email");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const sendCode = async () => {
+    if (!email.includes("@")) { setError("Email inválido"); return; }
+    setLoading(true); setError("");
+    try {
+      await signIn!.create({ identifier: email });
+      await signIn!.resetPasswordEmailCode.sendCode();
+      setStep("verify");
+    } catch (e: any) {
+      setError(e.errors?.[0]?.longMessage || "Error al enviar el código");
+    } finally { setLoading(true); setLoading(false); }
+  };
+
+  const submitReset = async () => {
+    if (code.length < 6) { setError("Código incompleto"); return; }
+    if (newPassword.length < 8) { setError("Contraseña muy corta"); return; }
+    setLoading(true); setError("");
+    try {
+      await signIn!.resetPasswordEmailCode.verifyCode({ code });
+      const res = await signIn!.resetPasswordEmailCode.submitPassword({ password: newPassword });
+      if (res.status === "complete") {
+        onSuccess();
+      } else {
+        setError("Error al finalizar el restablecimiento.");
+      }
+    } catch (e: any) {
+      setError(e.errors?.[0]?.longMessage || "Código o contraseña inválida");
+    } finally { setLoading(false); }
+  };
+
+  const pwStrength = newPassword.length===0 ? 0 : newPassword.length<6 ? 1 : newPassword.length<10 ? 2 : 3;
+  const pwColors = ["transparent", C.terra, C.coffee, C.green];
+  const pwLabels = ["","Débil","Media","Fuerte"];
+
+  return (
+    <AuthLayout
+      headline={<>Recuperar<br/><span style={{ fontStyle:"italic", color:C.terraDeep }}>acceso.</span></>}
+      sub={step === "email" ? "Te enviaremos un código de seguridad." : `Código enviado a ${email}`}
+      backBtn={onBack}
+    >
+      <FormPanel>
+        {step === "email" ? (
+          <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+            <SketchInput label="Tu Email" value={email} onChange={setEmail} placeholder="tu@uni.edu.co" error={error}/>
+            <div style={{ marginTop:24 }}>
+              <SketchBtn onClick={sendCode} bg={C.green} disabled={loading}>
+                {loading ? "Enviando…" : "Enviar código de seguridad →"}
+              </SketchBtn>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+            <SketchInput label="Código" value={code} onChange={setCode} placeholder="123456" error={error}/>
+            <div>
+              <SketchInput label="Nueva Contraseña" value={newPassword} onChange={setNewPassword} placeholder="Mínimo 8 caracteres" type="password"/>
+              {newPassword.length > 0 && (
+                <div style={{ marginTop:8, display:"flex", alignItems:"center", gap:8 }}>
+                  <div style={{ flex:1, display:"flex", gap:3 }}>
+                    {[1,2,3].map(i => (
+                      <div key={i} style={{ flex:1, height:4, borderRadius:2, transition:"background 0.2s",
+                        background: i<=pwStrength ? pwColors[pwStrength] : "rgba(0,0,0,0.1)" }}/>
+                    ))}
+                  </div>
+                  <span style={{ fontFamily:BODY, fontSize:11, fontWeight:700,
+                    color:pwColors[pwStrength], textTransform:"uppercase", letterSpacing:1 }}>
+                    {pwLabels[pwStrength]}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div style={{ marginTop:24 }}>
+              <SketchBtn onClick={submitReset} bg={C.green} disabled={loading}>
+                {loading ? "Cambiando…" : "Restablecer contraseña →"}
+              </SketchBtn>
+            </div>
+            <button onClick={() => setStep("email")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:BODY, fontSize:13, color:C.coffee, textAlign:"center", marginTop:10 }}>
+              Reenviar código
+            </button>
+          </div>
+        )}
       </FormPanel>
     </AuthLayout>
   );
@@ -1000,6 +1093,7 @@ export function Onboarding() {
         onBack={() => go("splash")} 
         onSuccess={handleLoginSuccess}
         onGoRegister={() => go("register")} 
+        onGoForgotPassword={(e) => { if(e) setRegEmail(e); go("forgot-password"); }}
         onLoading={setGlobalLoading}
         onGoogle={() => googleAuth(clerk, signIn, setGlobalError, setGlobalLoading)}
       />
@@ -1015,6 +1109,7 @@ export function Onboarding() {
     ),
     otp:  <OTPScreen email={regEmail} onBack={() => go("register")} onSuccess={handleOTPSuccess}/>,
     mode: <ModeScreen onSelect={handleModeSelect}/>,
+    "forgot-password": <ForgotPasswordScreen initialEmail={regEmail} onBack={() => go("login")} onSuccess={() => go("login")}/>,
   };
 
   return (
