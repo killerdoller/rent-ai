@@ -224,20 +224,13 @@ export function ChatRoom({
         </div>
       </div>
 
-      {/* Input */}
       <div style={{
         flexShrink: 0, background: C.white,
         borderTop: `1.5px solid ${C.border}`,
         padding: "12px 16px",
         // Ajuste para que la barra de chat no se quede detrás de la nav inferior en móvil
         paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
-        marginBottom: "var(--chat-bottom-offset, 0px)",
       }}>
-        <style>{`
-          @media (max-width: 767px) {
-            :root { --chat-bottom-offset: 64px; }
-          }
-        `}</style>
         <div style={{ maxWidth: 600, margin: "0 auto", display: "flex", alignItems: "center", gap: 10 }}>
           <input
             type="text"

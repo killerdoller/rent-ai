@@ -95,7 +95,16 @@ export function OwnerLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <div className="flex flex-col flex-1 min-h-0 md:ml-[240px]">
-        <main className="flex-1 min-h-0 overflow-y-auto flex flex-col">{children}</main>
+        <main className="flex-1 min-h-0 overflow-y-auto flex flex-col" style={{ 
+          paddingBottom: "var(--owner-nav-height, 0px)" 
+        }}>
+          <style>{`
+            @media (max-width: 767px) {
+              :root { --owner-nav-height: 72px; }
+            }
+          `}</style>
+          {children}
+        </main>
 
         {/* Mobile Bottom Nav */}
         <nav style={{

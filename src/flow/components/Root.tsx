@@ -113,7 +113,18 @@ export function Root({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <div className={`flex flex-col flex-1 min-h-0 ${!hideNav ? "md:ml-60" : ""}`}>
-        <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <main style={{ 
+          flex: 1, 
+          display: "flex", 
+          flexDirection: "column",
+          // Padding inferior para que el contenido no quede debajo de la nav móvil
+          paddingBottom: hideNav ? 0 : "var(--nav-height, 0px)"
+        }}>
+          <style>{`
+          @media (max-width: 767px) {
+            :root { --chat-bottom-offset: 0px; }
+          }
+        `}</style>
           {children}
         </main>
 
