@@ -30,10 +30,31 @@
 
 /* Custom Base Styles */
 @layer base {
-  body {
-    @apply bg-bg-light text-text-main antialiased overflow-x-hidden;
-    font-family: var(--font-sans);
+  *, *::before, *::after {
+    box-sizing: border-box;
   }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior: none;
+  }
+
+  body {
+    @apply bg-bg-light text-text-main antialiased;
+    font-family: var(--font-sans);
+    min-height: 100dvh;
+    /* Use dynamic viewport height for mobile browsers */
+    height: 100dvh;
+    font-size: 0.9rem;
+  }
+
+  h1 { font-size: 2.5rem; }
+  h2 { font-size: 2rem; }
+  h3 { font-size: 1.75rem; }
 
   h1,
   h2,

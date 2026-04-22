@@ -37,7 +37,7 @@ export function OwnerLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div style={{ display:"flex", height:"100vh", overflow:"hidden", background:C.cream }}>
+    <div className="flex h-[100dvh] w-full overflow-hidden" style={{ background: C.cream, position: "fixed", inset: 0 }}>
       {/* Desktop Sidebar */}
       <div style={{
         position:"fixed", top:0, left:0, bottom:0, width:240,
@@ -94,16 +94,17 @@ export function OwnerLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main Content */}
-      <div style={{ display:"flex", flexDirection:"column", flex:1, minHeight:0 }}
-        className="md:ml-60">
-        <main style={{ flex:1, overflowY:"auto", minHeight:0 }}>{children}</main>
+      <div className="flex flex-col flex-1 min-h-0 md:ml-[240px]">
+        <main className="flex-1 min-h-0 overflow-y-auto flex flex-col">{children}</main>
 
         {/* Mobile Bottom Nav */}
         <nav style={{
           justifyContent:"space-around", alignItems:"center",
-          height:64, paddingBottom:"env(safe-area-inset-bottom)",
+          height:64, 
+          paddingBottom:"max(12px, env(safe-area-inset-bottom))",
           background:C.white, borderTop:`1.5px solid ${C.border}`,
           flexShrink:0,
+          zIndex: 50,
         }} className="flex md:hidden">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -116,7 +117,7 @@ export function OwnerLayout({ children }: { children: React.ReactNode }) {
                   color: isActive ? C.terra : C.coffee,
                 }}>
                 <Icon style={{ width:22, height:22 }} strokeWidth={isActive ? 2.2 : 1.8}/>
-                <span style={{ fontFamily:BODY, fontSize:9, fontWeight:600 }}>{item.label}</span>
+                <span style={{ fontFamily:BODY, fontSize:10, fontWeight:600 }}>{item.label}</span>
               </button>
             );
           })}

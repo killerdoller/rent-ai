@@ -79,7 +79,7 @@ export function OwnerDashboard() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: C.cream, fontFamily: BODY }}>
+    <div style={{ minHeight: "100dvh", background: C.cream, fontFamily: BODY }}>
       {/* Header */}
       <header style={{
         background: C.white, borderBottom: `1.5px solid ${C.border}`,

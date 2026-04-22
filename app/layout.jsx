@@ -5,6 +5,14 @@ import { ClerkProvider } from '@clerk/nextjs';
 const fraunces = Fraunces({ subsets: ['latin'], variable: '--font-fraunces', display: 'swap', axes: ['SOFT','WONK','opsz'], weight: 'variable' });
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+};
+
 export const metadata = {
   title: 'RentAI | Encuentra tu hogar en pocos clicks',
   description: 'Optimiza tu búsqueda de arriendo con Inteligencia Artificial. Encuentra apartamentos rankeados por match con tu estilo de vida.',

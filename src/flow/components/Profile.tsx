@@ -188,7 +188,7 @@ export function Profile() {
   const d = isEditing ? form : profile;
 
   return (
-    <div style={{ height: "100%", overflowY: "auto", background: C.cream }}>
+    <div style={{ minHeight: "100%", background: C.cream }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
       {/* Hidden file input */}

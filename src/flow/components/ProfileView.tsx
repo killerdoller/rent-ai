@@ -59,7 +59,7 @@ export function ProfileView({ userId }: { userId: string }) {
 
   if (isLoading) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: C.cream }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100dvh", background: C.cream }}>
         <div style={{ width: 36, height: 36, borderRadius: "50%", border: `3px solid ${C.green}`, borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
@@ -68,7 +68,7 @@ export function ProfileView({ userId }: { userId: string }) {
 
   if (!profile) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", background: C.cream, gap: 12 }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100dvh", background: C.cream, gap: 12 }}>
         <p style={{ fontFamily: BODY, fontSize: 15, color: C.coffee }}>Perfil no encontrado.</p>
         <button onClick={() => navigate.back()} style={{ padding: "8px 20px", borderRadius: 9999, background: C.green, color: C.white, border: "none", fontFamily: BODY, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
           Volver
@@ -81,7 +81,7 @@ export function ProfileView({ userId }: { userId: string }) {
   const tags = [...(profile.lifestyle_tags || []), ...(profile.interests || [])];
 
   return (
-    <div style={{ minHeight: "100vh", background: C.cream, paddingBottom: 40 }}>
+    <div style={{ minHeight: "100dvh", background: C.cream, paddingBottom: 40 }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
       {/* Photo hero */}

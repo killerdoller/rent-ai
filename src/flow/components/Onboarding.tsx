@@ -318,9 +318,10 @@ function SketchInput({ label, value, onChange, placeholder, type="text", error }
     <div>
       {label && <div style={{ fontFamily:BODY, fontSize:10, fontWeight:800, color:C.ink,
         textTransform:"uppercase", letterSpacing:1.5, marginBottom:6 }}>{label}</div>}
-      <div style={{ display:"flex", alignItems:"center", gap:10, height:50, padding:"0 14px",
+        <div style={{ display:"flex", alignItems:"center", gap:10, height:50, padding:"0 14px",
         background:C.white, border:`2px solid ${error ? C.terra : C.ink}`,
         borderRadius:14, boxShadow: focused ? `3px 3px 0 ${C.ink}` : `2px 2px 0 ${C.ink}`,
+        marginRight: 4, // Safety space for shadow
         transform: focused ? "translate(-1px,-1px)" : "translate(0,0)", transition:"all 0.1s" }}>
         <input type={inputType} value={value} onChange={e => onChange(e.target.value)}
           placeholder={placeholder} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
@@ -347,11 +348,13 @@ function SketchBtn({ children, onClick, bg=C.green, disabled=false, type="button
     <button type={type} onClick={onClick} disabled={disabled}
       onMouseDown={() => setPressed(true)} onMouseUp={() => setPressed(false)} onMouseLeave={() => setPressed(false)}
       onTouchStart={() => setPressed(true)} onTouchEnd={() => setPressed(false)}
-      style={{ width:"100%", height:54, border:`2.5px solid ${C.ink}`, background:bg, color:C.ink,
+      style={{ height:54, border:`2.5px solid ${C.ink}`, background:bg, color:C.ink,
         borderRadius:16, cursor: disabled ? "not-allowed" : "pointer",
         fontFamily:BODY, fontSize:15, fontWeight:700,
         display:"inline-flex", alignItems:"center", justifyContent:"center", gap:9,
         boxShadow: pressed ? `1px 1px 0 ${C.ink}` : `4px 4px 0 ${C.ink}`,
+        width: "calc(100% - 8px)", // Safety for shadow
+        margin: "0 auto",
         transform: pressed ? "translate(3px,3px)" : "translate(0,0)",
         opacity: disabled ? 0.5 : 1, transition:"box-shadow 0.08s, transform 0.08s" }}>
       {children}
@@ -379,10 +382,11 @@ function SketchSocial({ provider, onClick }: { provider: SocialProvider; onClick
     <button type="button" onClick={onClick}
       onMouseDown={() => setPressed(true)} onMouseUp={() => setPressed(false)} onMouseLeave={() => setPressed(false)}
       onTouchStart={() => setPressed(true)} onTouchEnd={() => setPressed(false)}
-      style={{ width:"100%", height:50, border:`2px solid ${C.ink}`, background:C.white, borderRadius:14,
+      style={{ width: "calc(100% - 8px)", height:50, border:`2px solid ${C.ink}`, background:C.white, borderRadius:14,
         cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10,
         fontFamily:BODY, fontSize:14, fontWeight:600, color:C.ink,
         boxShadow: pressed ? `1px 1px 0 ${C.ink}` : `3px 3px 0 ${C.ink}`,
+        margin: "0 auto",
         transform: pressed ? "translate(2px,2px)" : "translate(0,0)",
         transition:"box-shadow 0.08s, transform 0.08s" }}>
       {SOCIAL_ICONS[provider]}
@@ -412,13 +416,13 @@ function AuthLayout({ headline, sub, leftExtra, backBtn, mobileTopContent, child
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ position:"relative", minHeight:"100vh", background:C.cream, display:"flex", justifyContent:"center", overflowX:"hidden" }}>
+    <div style={{ position:"relative", minHeight:"100%", background:C.cream, display:"flex", justifyContent:"center" }}>
       <DotBg/>
-      <div className="relative z-10 flex flex-col md:flex-row w-full max-w-[1440px]" style={{ minHeight:"100vh" }}>
+      <div className="relative z-10 flex flex-col md:flex-row w-full max-w-[1440px] min-h-full">
 
         {/* Left — desktop only */}
         <div className="hidden md:flex flex-col justify-center flex-1 overflow-hidden"
-          style={{ padding:"64px 56px", position:"sticky", top:0, height:"100vh" }}>
+          style={{ padding:"64px 56px", position:"sticky", top:0, height:"100dvh" }}>
           <div style={{ display:"inline-flex", alignItems:"center", gap:8, alignSelf:"flex-start",
             padding:"6px 14px 6px 8px", borderRadius:9999, marginBottom:52,
             background:C.white, border:`2px solid ${C.ink}`, boxShadow:`3px 3px 0 ${C.ink}` }}>
@@ -432,7 +436,7 @@ function AuthLayout({ headline, sub, leftExtra, backBtn, mobileTopContent, child
         </div>
 
         {/* Right — form card */}
-        <div className="flex flex-col flex-1 md:flex-none md:w-[480px] md:overflow-y-auto"
+        <div className="flex flex-col flex-1 md:flex-none md:w-[480px] overflow-y-auto"
           style={{ position:"relative" }}>
           <div className="hidden md:block" style={{
             position:"absolute", inset:0, zIndex:0,
@@ -450,24 +454,24 @@ function AuthLayout({ headline, sub, leftExtra, backBtn, mobileTopContent, child
             </>
           ) : (
             <div className="flex flex-col flex-1" style={{ position:"relative", zIndex:1 }}>
-              <div className="md:hidden" style={{ padding:"52px 24px 0" }}>
+              <div className="md:hidden" style={{ padding:"24px 24px 0", flexShrink:0 }}>
                 {backBtn ? (
                   <button type="button" onClick={backBtn}
-                    style={{ width:40, height:40, borderRadius:12, background:C.white,
+                    style={{ width:36, height:36, borderRadius:12, background:C.white,
                       border:`2px solid ${C.ink}`, cursor:"pointer", boxShadow:`3px 3px 0 ${C.ink}`,
                       display:"flex", alignItems:"center", justifyContent:"center",
-                      fontSize:16, marginBottom:20 }}>←</button>
+                      fontSize:16, marginBottom:14 }}>←</button>
                 ) : (
                   <div style={{ display:"inline-flex", alignItems:"center", gap:6,
-                    padding:"6px 12px 6px 8px", borderRadius:9999, alignSelf:"flex-start", marginBottom:20,
+                    padding:"6px 12px 6px 8px", borderRadius:9999, alignSelf:"flex-start", marginBottom:14,
                     background:C.white, border:`2px solid ${C.ink}`, boxShadow:`3px 3px 0 ${C.ink}` }}>
                     <img src="/Logo_finalfinal.png" alt="RentAI" style={{ width:22, height:22, objectFit:"contain" }}/>
                     <span style={{ fontFamily:BODY, fontSize:12, fontWeight:700, color:C.ink }}>RentAI</span>
                   </div>
                 )}
-                <div style={{ fontFamily:DISPLAY, fontSize:46, lineHeight:0.92, fontWeight:500,
-                  color:C.ink, letterSpacing:-2, marginBottom:6 }}>{headline}</div>
-                {sub && <div style={{ fontFamily:BODY, fontSize:14, color:C.coffee }}>{sub}</div>}
+                <div style={{ fontFamily:DISPLAY, fontSize:"min(32px, 8vw)", lineHeight:0.92, fontWeight:500,
+                  color:C.ink, letterSpacing:-1.5, marginBottom:4 }}>{headline}</div>
+                {sub && <div style={{ fontFamily:BODY, fontSize:13, color:C.coffee }}>{sub}</div>}
               </div>
               {children}
             </div>
@@ -480,7 +484,7 @@ function AuthLayout({ headline, sub, leftExtra, backBtn, mobileTopContent, child
 
 function FormPanel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col flex-1 px-6 pb-9 pt-4 md:px-11 md:pt-14 md:pb-12">
+    <div className="flex flex-col flex-1 px-5 pb-6 pt-3 md:px-11 md:pt-14 md:pb-12" style={{ boxSizing: "border-box", overflowX: "hidden" }}>
       {children}
     </div>
   );
@@ -498,10 +502,10 @@ function SplashScreen({ onStart, onGoogle }: { onStart:(t:"login"|"register")=>v
       mobileTopContent={
         <div style={{ padding:"52px 28px 36px", display:"flex", flexDirection:"column", flex:1 }}>
           <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <img src="/Logo_finalfinal.png" alt="RentAI" style={{ width:160, height:160, objectFit:"contain" }}/>
+            <img src="/Logo_finalfinal.png" alt="RentAI" style={{ width:120, height:120, objectFit:"contain" }}/>
           </div>
           <div>
-            <div style={{ fontFamily:DISPLAY, fontSize:52, lineHeight:0.95, fontWeight:500,
+            <div style={{ fontFamily:DISPLAY, fontSize:36, lineHeight:0.95, fontWeight:500,
               color:C.ink, letterSpacing:-2 }}>
               Hola.<br/><span style={{ fontStyle:"italic", color:C.terraDeep }}>bienvenido.</span>
             </div>
@@ -835,14 +839,14 @@ function OTPScreen({ email, onBack, onSuccess }: { email:string; onBack:()=>void
       backBtn={onBack}
     >
       <FormPanel>
-        <div style={{ marginTop:32, display:"flex", gap:8, justifyContent:"space-between" }}>
+        <div style={{ marginTop:32, display:"flex", gap:6, justifyContent:"space-between" }}>
           {code.map((d, i) => (
             <input key={i} ref={refs[i]} value={d} inputMode="numeric" maxLength={1}
               onChange={e => setDigit(i, e.target.value)}
               onKeyDown={e => onKey(i, e)}
               autoFocus={i===0}
-              style={{ width:46, height:58, textAlign:"center",
-                fontFamily:DISPLAY, fontSize:26, fontWeight:500, color:C.ink,
+              style={{ flex:1, minWidth:0, height:54, textAlign:"center",
+                fontFamily:DISPLAY, fontSize:22, fontWeight:500, color:C.ink,
                 background:C.white, border:`2px solid ${d ? C.green : C.ink}`,
                 borderRadius:14, outline:"none", transition:"border-color 0.15s",
                 boxShadow:`2px 2px 0 ${C.ink}` }}/>
@@ -1113,14 +1117,14 @@ export function Onboarding() {
   };
 
   return (
-    <div style={{ position: "relative", minHeight: "100vh" }}>
+    <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column" }}>
       {globalError && (
-        <div style={{ padding: 12, background: "#FEE2E2", color: "#B91C1C", borderBottom: "1px solid #EF4444", textAlign: "center", fontFamily: BODY, fontSize: 13, fontWeight: 700 }}>
+        <div style={{ padding: 12, background: "#FEE2E2", color: "#B91C1C", borderBottom: "1px solid #EF4444", textAlign: "center", fontFamily: BODY, fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
           {globalError}
           <button onClick={() => setGlobalError("")} style={{ marginLeft: 12, background: "none", border: "none", color: "#B91C1C", cursor: "pointer", fontWeight: 900 }}>✕</button>
         </div>
       )}
-      <div key={screen}>
+      <div key={screen} style={{ flex: 1, minHeight: 0 }}>
         {screenMap[screen]}
       </div>
 

@@ -240,7 +240,7 @@ export function ChatRoom({
             placeholder="Escribe un mensaje..."
             disabled={!room || !!loadError}
             style={{
-              flex: 1, padding: "11px 16px",
+              flex: 1, minWidth: 0, padding: "11px 16px",
               background: C.muted, border: "none", borderRadius: 22,
               fontFamily: BODY, fontSize: 14, color: C.ink, outline: "none",
               opacity: (!room || !!loadError) ? 0.5 : 1,

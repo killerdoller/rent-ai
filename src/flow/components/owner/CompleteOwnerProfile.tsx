@@ -37,7 +37,7 @@ export function CompleteOwnerProfile() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "#F5EDE8" }}>
+    <div className="min-h-[100dvh] flex items-center justify-center p-4" style={{ backgroundColor: "#F5EDE8" }}>
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">

@@ -68,7 +68,7 @@ export function Root({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: C.cream }}>
+    <div className="flex h-[100dvh] w-full overflow-hidden" style={{ background: C.cream, position: "fixed", inset: 0 }}>
 
       {/* Desktop Sidebar — Tailwind controls visibility */}
       {!hideNav && (
@@ -102,7 +102,7 @@ export function Root({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <div className={`flex flex-col flex-1 min-h-0 ${!hideNav ? "md:ml-60" : ""}`}>
-        <main style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+        <main style={{ flex: 1, minHeight: 0, overflowY: "auto", height: hideNav ? "100%" : undefined, display: "flex", flexDirection: "column" }}>
           {children}
         </main>
 
@@ -111,7 +111,9 @@ export function Root({ children }: { children: React.ReactNode }) {
           <nav className="flex md:hidden" style={{
             justifyContent: "space-around", alignItems: "center",
             height: 64, flexShrink: 0,
+            paddingBottom: "max(12px, env(safe-area-inset-bottom))",
             background: C.white, borderTop: `1.5px solid ${C.border}`,
+            zIndex: 50,
           }}>
             {navItems.map(({ path, icon: Icon, label }) => {
               const isActive = pathname?.startsWith(path);

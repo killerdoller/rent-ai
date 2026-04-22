@@ -91,12 +91,12 @@ export function CompleteProfile() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.cream, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div style={{ width: "100%", maxWidth: 480 }}>
+    <div style={{ minHeight: "100dvh", background: C.cream, display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 20px" }}>
+      <div style={{ width: "100%", maxWidth: 480, margin: "auto 0" }}>
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 24 }}>
           <img src="/Logo_finalfinal.png" alt="RentAI" style={{ width: 44, height: 44, objectFit: "contain", margin: "0 auto 10px" }} />
-          <div style={{ fontFamily: DISPLAY, fontSize: 26, fontWeight: 500, color: C.ink, letterSpacing: -0.8 }}>Completa tu perfil</div>
+          <div style={{ fontFamily: DISPLAY, fontSize: 22, fontWeight: 500, color: C.ink, letterSpacing: -0.8 }}>Completa tu perfil</div>
           <p style={{ fontFamily: BODY, fontSize: 13, color: C.coffee, marginTop: 4 }}>
             Paso {step + 1} de {steps.length} — {steps[step].label}
           </p>

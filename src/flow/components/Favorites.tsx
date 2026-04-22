@@ -47,7 +47,7 @@ export function Favorites() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background pb-20">
       <header className="bg-white border-b border-border p-4 md:p-6 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Guardados</h1>

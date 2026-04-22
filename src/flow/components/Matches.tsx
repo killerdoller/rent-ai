@@ -80,7 +80,7 @@ export function Matches() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="bg-background pb-20">
       <header className="bg-white border-b border-border sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 pt-6 pb-2">
           <h1 className="text-2xl font-bold text-foreground">Conexiones</h1>

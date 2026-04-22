@@ -309,7 +309,7 @@ function PropertyDetailSheet({ property, onClose }: { property: LikedProperty; o
         className="fixed z-50 bottom-0 left-0 right-0 md:inset-0 md:flex md:items-center md:justify-center md:p-6 pointer-events-none"
       >
         <div className="bg-white rounded-t-3xl md:rounded-3xl shadow-2xl w-full md:max-w-3xl pointer-events-auto overflow-hidden relative flex flex-col"
-          style={{ height: "88vh" }}>
+          style={{ height: "88svh", maxHeight: "88svh" }}>
           <div className="md:hidden flex-shrink-0 flex justify-center pt-3 pb-1">
             <div style={{ width: 36, height: 4, borderRadius: 9999, background: C.border }} />
           </div>
@@ -419,7 +419,7 @@ function PropertyDetailSheet({ property, onClose }: { property: LikedProperty; o
                 {p?.monthly_rent && <span style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.green }}>${Number(p.monthly_rent).toLocaleString()} COP/mes</span>}
                 {p?.bedrooms && <div className="flex items-center gap-1" style={{ color: C.coffee }}><Bed className="w-3.5 h-3.5" /><span style={{ fontFamily: BODY, fontSize: 12 }}>{p.bedrooms} hab.</span></div>}
               </div>
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
                 {p?.description && (
                   <div>
                     <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Descripción</p>

@@ -85,7 +85,7 @@ export function RoommateProfileSheet({ userId, profileData, onClose, onChat, onL
       >
         <div style={{
           background: C.white, borderRadius: "24px 24px 0 0", width: "100%",
-          maxWidth: 600, margin: "0 auto", height: "88vh",
+          maxWidth: 600, margin: "0 auto", height: "88dvh",
           display: "flex", flexDirection: "column", overflow: "hidden",
           pointerEvents: "auto",
         }}
@@ -159,7 +159,7 @@ export function RoommateProfileSheet({ userId, profileData, onClose, onChat, onL
               </div>
 
               {/* Scrollable content */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 0", display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 0", display: "flex", flexDirection: "column", gap: 16, overscrollBehaviorY: "contain" }}>
 
                 {profile.monthly_budget && (
                   <div style={{ display: "flex", alignItems: "center", gap: 12, background: C.cream, borderRadius: 14, padding: "12px 16px" }}>

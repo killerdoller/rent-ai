@@ -633,7 +633,7 @@ function PropertyDetailSheet({ card, onClose }: { card: CardData; onClose: () =>
       >
         <div
           className="bg-white rounded-t-3xl md:rounded-3xl shadow-2xl w-full md:max-w-3xl pointer-events-auto overflow-hidden relative flex flex-col"
-          style={{ height: "88vh" }}
+          style={{ height: "88dvh", maxHeight: "88dvh" }}
         >
           {/* Drag handle (mobile only) */}
           <div className="md:hidden flex-shrink-0 flex justify-center pt-3 pb-1">
@@ -667,7 +667,7 @@ function PropertyDetailSheet({ card, onClose }: { card: CardData; onClose: () =>
                   </div>
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4" style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom))", overscrollBehaviorY: "contain" }}>
                 {card.description && (
                   <div>
                     <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Sobre mí</p>
@@ -732,7 +732,7 @@ function PropertyDetailSheet({ card, onClose }: { card: CardData; onClose: () =>
                 </div>
 
                 {/* Scrollable: map + info */}
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto" style={{ overscrollBehaviorY: "contain" }}>
                   {hasMap && (
                     <div className="relative flex-shrink-0" style={{ height: 180 }}>
                       <PropertyMap lat={card.latitude!} lng={card.longitude!} title={card.title} />
@@ -831,7 +831,7 @@ function PropertyDetailSheet({ card, onClose }: { card: CardData; onClose: () =>
                       </div>
                     )}
                   </div>
-                  <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                  <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
                     {card.description && (
                       <div>
                         <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Descripción</p>
