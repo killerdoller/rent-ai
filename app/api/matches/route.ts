@@ -76,8 +76,13 @@ export async function GET(request: Request) {
 
     roommateMatches.forEach(m => {
       const otherId = m.student_1_id.toLowerCase() === uid ? m.student_2_id : m.student_1_id;
-      const other   = profileById[otherId];
-      if (!other) return;
+      const other = profileById[otherId] || {
+        id: otherId,
+        first_name: "Tu",
+        last_name: "Roomie",
+        profile_images: ["https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=640"],
+        university_name: "Usuario Demo"
+      };
       formattedRM.push({
         id:          m.match_id,
         created_at:  m.created_at,

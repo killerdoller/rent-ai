@@ -133,6 +133,9 @@ export function Chat({ mode = "user" }: { mode?: "user" | "owner" }) {
     c.property_title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const newMatches = filtered.filter(c => !c.last_message);
+  const activeChats = filtered.filter(c => !!c.last_message);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.cream, overflow: "hidden" }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
@@ -187,76 +190,130 @@ export function Chat({ mode = "user" }: { mode?: "user" | "owner" }) {
               </p>
             </div>
           ) : (
-            filtered.map(conv => {
-              const unread = isUnread(conv);
-              return (
-                <button
-                  key={conv.match_id}
-                  onClick={() => {
-                    localStorage.setItem(READ_KEY(conv.match_id), new Date().toISOString());
-                    setConversations(prev => [...prev]); // re-render to clear badge
-                    navigate.push(`${basePath}/${conv.match_id}`);
-                  }}
-                  style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: 14,
-                    padding: "14px 20px",
-                    background: unread ? `${accent}08` : "none",
-                    border: "none", borderBottom: `1px solid ${C.border}`,
-                    cursor: "pointer", textAlign: "left",
-                  }}
-                >
-                  {/* Avatar with unread dot */}
-                  <div style={{ position: "relative", flexShrink: 0 }}>
-                    <img
-                      src={conv.other_party_avatar || conv.property_image || "/profile.jpg"}
-                      alt={conv.other_party_name}
-                      style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover" }}
-                    />
-                    {unread && (
-                      <div style={{
-                        position: "absolute", bottom: 1, right: 1,
-                        width: 14, height: 14, borderRadius: "50%",
-                        background: accent, border: `2px solid ${C.cream}`,
-                      }} />
-                    )}
+            <>
+              {/* Top Bar for New Matches (Tinder Style) */}
+              {newMatches.length > 0 && !searchQuery && (
+                <div style={{ padding: "0 20px" }}>
+                  <div style={{ fontFamily: BODY, fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 12, marginTop: 10 }}>
+                    Nuevos Matches
                   </div>
+                  <div style={{ 
+                    display: "flex", gap: 16, overflowX: "auto", 
+                    paddingBottom: 16, scrollbarWidth: "none", msOverflowStyle: "none" 
+                  }}>
+                    {newMatches.map(match => (
+                      <button
+                        key={match.match_id}
+                        onClick={() => navigate.push(`${basePath}/${match.match_id}`)}
+                        style={{
+                          background: "none", border: "none", cursor: "pointer", 
+                          display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                          flexShrink: 0, width: 72, padding: 0
+                        }}
+                      >
+                        <div style={{ 
+                          width: 64, height: 64, borderRadius: "50%", padding: 3,
+                          background: `linear-gradient(45deg, ${accent}, #FDBB2D)`,
+                        }}>
+                           <img 
+                            src={match.other_party_avatar || match.property_image || "/profile.jpg"} 
+                            alt={match.other_party_name}
+                            style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", border: `2px solid ${C.white}` }}
+                           />
+                        </div>
+                        <span style={{ 
+                          fontFamily: BODY, fontSize: 12, fontWeight: 600, color: C.ink,
+                          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%", textAlign: "center"
+                        }}>
+                          {match.other_party_name.split(" ")[0]}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                  {/* Info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
-                      <span style={{
-                        fontFamily: BODY, fontSize: 14,
-                        fontWeight: unread ? 800 : 700,
-                        color: C.ink,
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "65%",
-                      }}>
-                        {conv.other_party_name}
-                      </span>
-                      <span style={{
-                        fontFamily: BODY, fontSize: 11,
-                        color: unread ? accent : C.coffee,
-                        fontWeight: unread ? 700 : 400,
-                        flexShrink: 0,
-                      }}>
-                        {formatTime(conv.last_message_at)}
-                      </span>
-                    </div>
-                    <div style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 2 }}>
-                      {conv.property_title}{conv.property_neighborhood ? ` · ${conv.property_neighborhood}` : ""}
-                    </div>
-                    <p style={{
-                      fontFamily: BODY, fontSize: 13,
-                      color: unread ? C.ink : C.coffee,
-                      fontWeight: unread ? 600 : 400,
-                      opacity: conv.last_message ? 1 : 0.5,
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0,
-                    }}>
-                      {conv.last_message || "Empieza la conversación"}
-                    </p>
-                  </div>
-                </button>
-              );
-            })
+              {/* Vertical List for Active Conversations */}
+              <div style={{ padding: "0" }}>
+                <div style={{ fontFamily: BODY, fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 12, marginTop: 10, padding: "0 20px" }}>
+                  Mensajes
+                </div>
+                {activeChats.length === 0 ? (
+                  <p style={{ fontFamily: BODY, fontSize: 13, color: C.coffee, textAlign: "center", marginTop: 20 }}>Empieza enviándole un mensaje a tus nuevos matches.</p>
+                ) : (
+                  activeChats.map(conv => {
+                    const unread = isUnread(conv);
+                    return (
+                      <button
+                        key={conv.match_id}
+                        onClick={() => {
+                          localStorage.setItem(READ_KEY(conv.match_id), new Date().toISOString());
+                          setConversations(prev => [...prev]); // re-render to clear badge
+                          navigate.push(`${basePath}/${conv.match_id}`);
+                        }}
+                        style={{
+                          width: "100%", display: "flex", alignItems: "center", gap: 14,
+                          padding: "14px 20px",
+                          background: unread ? `${accent}08` : "none",
+                          border: "none", borderBottom: `1px solid ${C.border}`,
+                          cursor: "pointer", textAlign: "left",
+                        }}
+                      >
+                        {/* Avatar with unread dot */}
+                        <div style={{ position: "relative", flexShrink: 0 }}>
+                          <img
+                            src={conv.other_party_avatar || conv.property_image || "/profile.jpg"}
+                            alt={conv.other_party_name}
+                            style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover" }}
+                          />
+                          {unread && (
+                            <div style={{
+                              position: "absolute", bottom: 1, right: 1,
+                              width: 14, height: 14, borderRadius: "50%",
+                              background: accent, border: `2px solid ${C.cream}`,
+                            }} />
+                          )}
+                        </div>
+
+                        {/* Info */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
+                            <span style={{
+                              fontFamily: BODY, fontSize: 14,
+                              fontWeight: unread ? 800 : 700,
+                              color: C.ink,
+                              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "65%",
+                            }}>
+                              {conv.other_party_name}
+                            </span>
+                            <span style={{
+                              fontFamily: BODY, fontSize: 11,
+                              color: unread ? accent : C.coffee,
+                              fontWeight: unread ? 700 : 400,
+                              flexShrink: 0,
+                            }}>
+                              {formatTime(conv.last_message_at)}
+                            </span>
+                          </div>
+                          <div style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 2 }}>
+                            {conv.property_title}{conv.property_neighborhood ? ` · ${conv.property_neighborhood}` : ""}
+                          </div>
+                          <p style={{
+                            fontFamily: BODY, fontSize: 13,
+                            color: unread ? C.ink : C.coffee,
+                            fontWeight: unread ? 600 : 400,
+                            opacity: conv.last_message ? 1 : 0.5,
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0,
+                          }}>
+                            {conv.last_message || "Empieza la conversación"}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
