@@ -235,7 +235,7 @@ export function ChatRoom({
       }}>
         <style>{`
           @media (max-width: 767px) {
-            :root { --chat-bottom-offset: 72px; }
+            :root { --chat-bottom-offset: 64px; }
           }
         `}</style>
         <div style={{ maxWidth: 600, margin: "0 auto", display: "flex", alignItems: "center", gap: 10 }}>

@@ -272,7 +272,7 @@ export function Home() {
       {/* Content */}
       <div style={{
         flex: 1, minHeight: 0, display: "flex", flexDirection: "column",
-        padding: "16px 20px 8px", maxWidth: 520, margin: "0 auto", width: "100%"
+        padding: "8px 16px 8px", maxWidth: 520, margin: "0 auto", width: "100%"
       }}>
         {loading ? (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
@@ -340,7 +340,7 @@ export function Home() {
             {/* Card stack */}
             <div style={{ 
               flex: 1, 
-              minHeight: "360px", // Garantiza que las tarjetas no colapsen en móvil
+              minHeight: "460px", // Aumentado para que se vea más grande
               position: "relative",
               width: "100%",
               margin: "0 auto"
