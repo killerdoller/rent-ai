@@ -26,11 +26,12 @@ export const metadata = {
   },
   icons: {
     icon: [
-      { url: '/Logo_finalfinal.png', sizes: '32x32', type: 'image/png' },
-      { url: '/Logo_finalfinal.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon_square.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon_square.png', sizes: '192x192', type: 'image/png' },
     ],
-    apple: '/Logo_finalfinal.png',
+    apple: '/icon_square.png',
   },
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({ children }) {

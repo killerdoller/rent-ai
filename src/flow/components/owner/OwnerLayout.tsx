@@ -99,12 +99,19 @@ export function OwnerLayout({ children }: { children: React.ReactNode }) {
 
         {/* Mobile Bottom Nav */}
         <nav style={{
-          justifyContent:"space-around", alignItems:"center",
-          height:64, 
-          paddingBottom:"max(12px, env(safe-area-inset-bottom))",
-          background:C.white, borderTop:`1.5px solid ${C.border}`,
-          flexShrink:0,
-          zIndex: 50,
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          display: "flex",
+          justifyContent:"space-around", 
+          alignItems:"center",
+          height: 72, 
+          paddingBottom:"env(safe-area-inset-bottom)",
+          background:C.white, 
+          borderTop:`1.5px solid ${C.border}`,
+          boxShadow: "0 -4px 12px rgba(0,0,0,0.03)",
+          zIndex: 100,
         }} className="flex md:hidden">
           {navItems.map((item) => {
             const Icon = item.icon;

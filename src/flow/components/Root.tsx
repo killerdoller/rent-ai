@@ -68,11 +68,22 @@ export function Root({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="flex h-[100dvh] w-full overflow-hidden" style={{ background: C.cream, position: "fixed", inset: 0 }}>
+    <div className="flex flex-col md:flex-row w-full overflow-x-hidden" style={{ background: C.cream, minHeight: "100dvh", position: "relative" }}>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
 
       {/* Desktop Sidebar — Tailwind controls visibility */}
       {!hideNav && (
-        <div className="hidden md:flex" style={sidebarStyle}>
+        <div className="hidden md:flex flex-col" style={{
+          position: "fixed", top: 0, left: 0, bottom: 0, width: 240,
+          background: C.white, borderRight: `1.5px solid ${C.border}`,
+          padding: "32px 20px 28px", zIndex: 40
+        }}>
           <div style={logoPillStyle}>
             <img src="/Logo_finalfinal.png" alt="RentAI" style={{ width: 24, height: 24, objectFit: "contain" }}/>
             <span style={{ fontFamily: DISPLAY, fontSize: 15, fontWeight: 500, color: C.ink, letterSpacing: -0.4 }}>RentAI</span>
@@ -102,18 +113,18 @@ export function Root({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <div className={`flex flex-col flex-1 min-h-0 ${!hideNav ? "md:ml-60" : ""}`}>
-        <main style={{ flex: 1, minHeight: 0, overflowY: "auto", height: hideNav ? "100%" : undefined, display: "flex", flexDirection: "column" }}>
+        <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           {children}
         </main>
 
         {/* Mobile Bottom Nav — Tailwind controls visibility */}
         {!hideNav && (
           <nav className="flex md:hidden" style={{
+            position: "fixed", bottom: 0, left: 0, right: 0,
             justifyContent: "space-around", alignItems: "center",
-            height: 64, flexShrink: 0,
+            height: 64, zIndex: 50,
             paddingBottom: "max(12px, env(safe-area-inset-bottom))",
             background: C.white, borderTop: `1.5px solid ${C.border}`,
-            zIndex: 50,
           }}>
             {navItems.map(({ path, icon: Icon, label }) => {
               const isActive = pathname?.startsWith(path);

@@ -23,34 +23,28 @@ async function googleAuth(
     const callbackUrl = `${origin}/sso-callback`;
     const finalUrl = `${origin}${syncUrl}`;
 
-    // Intentar diferentes métodos de redirección para máxima compatibilidad con v7
     const common = {
       strategy: "oauth_google" as any,
       redirectUrl: callbackUrl,
       redirectUrlComplete: finalUrl,
-      redirectCallbackUrl: callbackUrl,
     };
 
     if (typeof resource.authenticateWithRedirect === "function") {
       await resource.authenticateWithRedirect(common);
     } else if (typeof resource.sso === "function") {
       await resource.sso(common);
-    } else if (clerk.client && typeof clerk.client.authenticateWithRedirect === "function") {
-      await clerk.client.authenticateWithRedirect(common);
     } else {
-      throw new Error("No se encontró un método de autenticación compatible");
+      throw new Error("No compatible authentication method found");
     }
   } catch (e: any) {
     if (e.message?.includes("already signed in")) {
        const params = new URLSearchParams();
        if (role) params.set("role", role);
        if (mode) params.set("mode", mode);
-       const syncUrl = `/app/sync${params.toString() ? `?${params.toString()}` : ""}`;
-       window.location.href = syncUrl;
+       window.location.href = `/app/sync${params.toString() ? `?${params.toString()}` : ""}`;
        return;
     }
-    const clerkError = e.errors?.[0];
-    const msg = clerkError?.longMessage || clerkError?.message || e.message || "Error con Google";
+    const msg = e.errors?.[0]?.longMessage || e.message || "Error con Google";
     onError(msg);
     onLoading(false);
   }
@@ -321,7 +315,7 @@ function SketchInput({ label, value, onChange, placeholder, type="text", error }
         <div style={{ display:"flex", alignItems:"center", gap:10, height:50, padding:"0 14px",
         background:C.white, border:`2px solid ${error ? C.terra : C.ink}`,
         borderRadius:14, boxShadow: focused ? `3px 3px 0 ${C.ink}` : `2px 2px 0 ${C.ink}`,
-        marginRight: 4, // Safety space for shadow
+        marginRight: 4, width: "calc(100% - 4px)", // Safety space for shadow
         transform: focused ? "translate(-1px,-1px)" : "translate(0,0)", transition:"all 0.1s" }}>
         <input type={inputType} value={value} onChange={e => onChange(e.target.value)}
           placeholder={placeholder} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
@@ -407,37 +401,40 @@ function Divider() {
 }
 
 // ─── AuthLayout (responsive: mobile full-screen / desktop split) ─────────────
-function AuthLayout({ headline, sub, leftExtra, backBtn, mobileTopContent, children }: {
+function AuthLayout({ headline, sub, leftExtra, backBtn, mobileTopContent, children, isMobile }: {
   headline: React.ReactNode;
   sub?: string;
   leftExtra?: React.ReactNode;
   backBtn?: () => void;
   mobileTopContent?: React.ReactNode;
   children: React.ReactNode;
+  isMobile?: boolean;
 }) {
   return (
-    <div style={{ position:"relative", minHeight:"100%", background:C.cream, display:"flex", justifyContent:"center" }}>
+    <div style={{ position:"relative", minHeight:"100dvh", background:C.cream, display:"block" }}>
       <DotBg/>
-      <div className="relative z-10 flex flex-col md:flex-row w-full max-w-[1440px] min-h-full">
+      <div className="relative z-10 w-full md:max-w-[1440px] md:mx-auto md:flex md:flex-row min-h-[100dvh]">
 
         {/* Left — desktop only */}
-        <div className="hidden md:flex flex-col justify-center flex-1 overflow-hidden"
-          style={{ padding:"64px 56px", position:"sticky", top:0, height:"100dvh" }}>
-          <div style={{ display:"inline-flex", alignItems:"center", gap:8, alignSelf:"flex-start",
-            padding:"6px 14px 6px 8px", borderRadius:9999, marginBottom:52,
-            background:C.white, border:`2px solid ${C.ink}`, boxShadow:`3px 3px 0 ${C.ink}` }}>
-            <img src="/Logo_finalfinal.png" alt="RentAI" style={{ width:26, height:26, objectFit:"contain" }}/>
-            <span style={{ fontFamily:BODY, fontSize:13, fontWeight:700, color:C.ink }}>RentAI</span>
+        {!isMobile && (
+          <div className="hidden md:flex flex-col justify-center flex-1 overflow-hidden"
+            style={{ padding:"64px 56px", position:"sticky", top:0, height:"100dvh" }}>
+            <div style={{ display:"inline-flex", alignItems:"center", gap:8, alignSelf:"flex-start",
+              padding:"6px 14px 6px 8px", borderRadius:9999, marginBottom:52,
+              background:C.white, border:`2px solid ${C.ink}`, boxShadow:`3px 3px 0 ${C.ink}` }}>
+              <img src="/Logo_finalfinal.png" alt="RentAI" style={{ width:26, height:26, objectFit:"contain" }}/>
+              <span style={{ fontFamily:BODY, fontSize:13, fontWeight:700, color:C.ink }}>RentAI</span>
+            </div>
+            <div style={{ fontFamily:DISPLAY, fontSize:72, lineHeight:0.9, fontWeight:500,
+              color:C.ink, letterSpacing:-3 }}>{headline}</div>
+            {sub && <div style={{ fontFamily:BODY, fontSize:16, color:C.coffee, marginTop:18 }}>{sub}</div>}
+            {leftExtra && <div style={{ marginTop:44 }}>{leftExtra}</div>}
           </div>
-          <div style={{ fontFamily:DISPLAY, fontSize:72, lineHeight:0.9, fontWeight:500,
-            color:C.ink, letterSpacing:-3 }}>{headline}</div>
-          {sub && <div style={{ fontFamily:BODY, fontSize:16, color:C.coffee, marginTop:18 }}>{sub}</div>}
-          {leftExtra && <div style={{ marginTop:44 }}>{leftExtra}</div>}
-        </div>
+        )}
 
         {/* Right — form card */}
-        <div className="flex flex-col flex-1 md:flex-none md:w-[480px] overflow-y-auto"
-          style={{ position:"relative" }}>
+        <div className="flex flex-col w-full md:w-[480px] min-h-[100dvh]"
+          style={{ position:"relative", background:C.white }}>
           <div className="hidden md:block" style={{
             position:"absolute", inset:0, zIndex:0,
             background:C.white, borderLeft:`2.5px solid ${C.ink}`
@@ -445,7 +442,7 @@ function AuthLayout({ headline, sub, leftExtra, backBtn, mobileTopContent, child
 
           {mobileTopContent ? (
             <>
-              <div className="flex flex-col flex-1 md:hidden" style={{ position:"relative", zIndex:1 }}>
+              <div className="flex flex-col flex-1 md:hidden min-h-[100dvh]" style={{ position:"relative", zIndex:1 }}>
                 {mobileTopContent}
               </div>
               <div className="hidden md:flex flex-col flex-1" style={{ position:"relative", zIndex:1 }}>
@@ -491,7 +488,7 @@ function FormPanel({ children }: { children: React.ReactNode }) {
 }
 
 // ─── Splash ───────────────────────────────────────────────────────────────────
-function SplashScreen({ onStart, onGoogle }: { onStart:(t:"login"|"register")=>void; onGoogle:()=>void }) {
+function SplashScreen({ onStart, onGoogle, isMobile }: { onStart:(t:"login"|"register")=>void; onGoogle:()=>void; isMobile?:boolean }) {
   return (
     <AuthLayout
       headline={<>Hola.<br/><span style={{ fontStyle:"italic", color:C.terraDeep }}>bienvenido.</span></>}
@@ -500,9 +497,9 @@ function SplashScreen({ onStart, onGoogle }: { onStart:(t:"login"|"register")=>v
         <img src="/Logo_finalfinal.png" alt="" style={{ width:200, height:200, objectFit:"contain" }}/>
       }
       mobileTopContent={
-        <div style={{ padding:"52px 28px 36px", display:"flex", flexDirection:"column", flex:1 }}>
-          <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <img src="/Logo_finalfinal.png" alt="RentAI" style={{ width:120, height:120, objectFit:"contain" }}/>
+        <div style={{ padding:"52px 28px 20px", display:"flex", flexDirection:"column", flex:1, minHeight:"100dvh" }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", marginBottom:40 }}>
+            <img src="/Logo_finalfinal.png" alt="RentAI" style={{ width:180, height:180, objectFit:"contain" }}/>
           </div>
           <div>
             <div style={{ fontFamily:DISPLAY, fontSize:36, lineHeight:0.95, fontWeight:500,
@@ -513,12 +510,13 @@ function SplashScreen({ onStart, onGoogle }: { onStart:(t:"login"|"register")=>v
               Tu próximo hogar te espera en la ciudad.
             </div>
           </div>
-          <div style={{ marginTop:28, display:"flex", flexDirection:"column", gap:12 }}>
+          <div style={{ marginTop:"auto", paddingTop:40, display:"flex", flexDirection:"column", gap:12 }}>
             <SketchBtn onClick={() => onStart("register")} bg={C.green}>Crear cuenta →</SketchBtn>
             <SketchBtn onClick={() => onStart("login")} bg={C.cream}>Ya tengo cuenta</SketchBtn>
           </div>
         </div>
       }
+      isMobile={isMobile}
     >
       <FormPanel>
         <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", gap:12 }}>
@@ -531,8 +529,8 @@ function SplashScreen({ onStart, onGoogle }: { onStart:(t:"login"|"register")=>v
 }
 
 // ─── Login ────────────────────────────────────────────────────────────────────
-function LoginScreen({ onBack, onSuccess, onGoRegister, onGoForgotPassword, onLoading, onGoogle }: {
-  onBack:()=>void; onSuccess:(role:Role)=>void; onGoRegister:()=>void; onGoForgotPassword:(email?:string)=>void; onLoading:(v:boolean)=>void; onGoogle:()=>void;
+function LoginScreen({ onBack, onSuccess, onGoRegister, onGoForgotPassword, onLoading, onGoogle, isMobile }: {
+  onBack:()=>void; onSuccess:(role:Role)=>void; onGoRegister:()=>void; onGoForgotPassword:(email?:string)=>void; onLoading:(v:boolean)=>void; onGoogle:()=>void; isMobile?:boolean;
 }) {
   const { signIn } = useSignIn();
   const { setActive } = useClerk();
@@ -546,8 +544,7 @@ function LoginScreen({ onBack, onSuccess, onGoRegister, onGoForgotPassword, onLo
     if (password.length < 4) { setErr("Contraseña muy corta"); return; }
     setErr(""); setLoading(true); onLoading(true);
     try {
-      const res = await signIn!.authenticateWithRedirect ? await (signIn as any).create({ identifier: email, password }) : await signIn!.create({ identifier: email, password });
-      
+      const res = await signIn!.create({ identifier: email, password });
       if (res.status === "complete") {
         await setActive!({ session: res.createdSessionId });
         onSuccess("student");
@@ -569,6 +566,7 @@ function LoginScreen({ onBack, onSuccess, onGoRegister, onGoForgotPassword, onLo
       sub="Tu ciudad te espera."
       backBtn={onBack}
       leftExtra={<InteractiveCity height={260}/>}
+      isMobile={isMobile}
     >
       <FormPanel>
         <div style={{ display:"flex", flexDirection:"column", gap:11 }}>
@@ -607,9 +605,9 @@ function LoginScreen({ onBack, onSuccess, onGoRegister, onGoForgotPassword, onLo
 }
 
 // ─── Register ─────────────────────────────────────────────────────────────────
-function RegisterScreen({ onBack, onSuccess, onGoLogin, onLoading, onGoogle }: {
+function RegisterScreen({ onBack, onSuccess, onGoLogin, onLoading, onGoogle, isMobile }: {
   onBack:()=>void; onSuccess:(email:string, role:Role)=>void;
-  onGoLogin:()=>void; onLoading:(v:boolean)=>void; onGoogle:()=>void;
+  onGoLogin:()=>void; onLoading:(v:boolean)=>void; onGoogle:()=>void; isMobile?:boolean;
 }) {
   const { signUp } = useSignUp();
   const [firstName, setFirstName] = useState("");
@@ -686,6 +684,7 @@ function RegisterScreen({ onBack, onSuccess, onGoLogin, onLoading, onGoogle }: {
       headline={<>Crea tu<br/><span style={{ fontStyle:"italic", color:C.green }}>cuenta.</span></>}
       sub="30 segundos y empezamos a matchear."
       backBtn={onBack}
+      isMobile={isMobile}
     >
       <FormPanel>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:8, marginBottom:20 }}>
@@ -715,14 +714,12 @@ function RegisterScreen({ onBack, onSuccess, onGoLogin, onLoading, onGoogle }: {
         <SketchSocial provider="google" onClick={onGoogle}/>
         <Divider/>
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1.4fr 0.6fr", gap:10 }}>
-            <SketchInput label="Nombre" value={firstName}
-              onChange={v => { setFirstName(v); setErrors({...errors,firstName:""}); }}
-              placeholder="María" error={errors.firstName}/>
-            <SketchInput label="Apellido" value={lastName}
-              onChange={v => { setLastName(v); setErrors({...errors,lastName:""}); }}
-              placeholder="G." error={errors.lastName}/>
-          </div>
+          <SketchInput label="Nombre" value={firstName}
+            onChange={v => { setFirstName(v); setErrors({...errors,firstName:""}); }}
+            placeholder="Ej: Juan" error={errors.firstName}/>
+          <SketchInput label="Apellido" value={lastName}
+            onChange={v => { setLastName(v); setErrors({...errors,lastName:""}); }}
+            placeholder="Ej: Pérez" error={errors.lastName}/>
           <SketchInput label="Email" value={email}
             onChange={v => { setEmail(v); setErrors({...errors,email:""}); }}
             placeholder="tu@uni.edu.co" error={errors.email}/>
@@ -782,7 +779,7 @@ function RegisterScreen({ onBack, onSuccess, onGoLogin, onLoading, onGoogle }: {
 }
 
 // ─── OTP ──────────────────────────────────────────────────────────────────────
-function OTPScreen({ email, onBack, onSuccess }: { email:string; onBack:()=>void; onSuccess:()=>void }) {
+function OTPScreen({ email, onBack, onSuccess, isMobile }: { email:string; onBack:()=>void; onSuccess:()=>void; isMobile?:boolean }) {
   const { signUp } = useSignUp();
   const { setActive } = useClerk();
   const [code, setCode] = useState(["","","","","",""]);
@@ -837,6 +834,7 @@ function OTPScreen({ email, onBack, onSuccess }: { email:string; onBack:()=>void
       headline={<>Revisa tu<br/><span style={{ fontStyle:"italic", color:C.green }}>correo.</span></>}
       sub={`Código enviado a ${email}`}
       backBtn={onBack}
+      isMobile={isMobile}
     >
       <FormPanel>
         <div style={{ marginTop:32, display:"flex", gap:6, justifyContent:"space-between" }}>
@@ -1040,6 +1038,14 @@ export function Onboarding() {
   const [regRole, setRegRole] = useState<Role>("student");
   const [globalLoading, setGlobalLoading] = useState(false);
   const [globalError, setGlobalError] = useState("");
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   // Redirigir automáticamente si ya hay una sesión activa a la sincronización
   useEffect(() => {
@@ -1071,7 +1077,19 @@ export function Onboarding() {
     navigate.push(`/app/sync?mode=${encodeURIComponent(mode)}`);
   };
 
-  const go = (s: Screen) => setScreen(s);
+  const go = async (s: Screen, reset = false) => {
+    if (reset) {
+      console.log("[Onboarding] Ejecutando reset de sesión...");
+      try {
+        await clerk.signOut();
+        localStorage.clear();
+        setGlobalError("");
+      } catch (e) {
+        console.error("Error en reset:", e);
+      }
+    }
+    setScreen(s);
+  };
 
   // Evitar parpadeo si ya está autenticado
   if (isAuthLoaded && isSignedIn) {
@@ -1088,13 +1106,15 @@ export function Onboarding() {
   const screenMap: Record<Screen, React.ReactNode> = {
     splash: (
       <SplashScreen 
+        isMobile={isMobile}
         onStart={type => go(type === "login" ? "login" : "register")}
         onGoogle={() => googleAuth(clerk, signIn, setGlobalError, setGlobalLoading)}
       />
     ),
     login:  (
       <LoginScreen 
-        onBack={() => go("splash")} 
+        isMobile={isMobile}
+        onBack={() => go("splash", true)} 
         onSuccess={handleLoginSuccess}
         onGoRegister={() => go("register")} 
         onGoForgotPassword={(e) => { if(e) setRegEmail(e); go("forgot-password"); }}
@@ -1104,27 +1124,28 @@ export function Onboarding() {
     ),
     register: (
       <RegisterScreen 
-        onBack={() => go("splash")} 
+        isMobile={isMobile}
+        onBack={() => go("splash", true)} 
         onSuccess={handleRegisterSuccess}
         onGoLogin={() => go("login")} 
         onLoading={setGlobalLoading}
         onGoogle={() => googleAuth(clerk, signUp, setGlobalError, setGlobalLoading, "student", "find-room")}
       />
     ),
-    otp:  <OTPScreen email={regEmail} onBack={() => go("register")} onSuccess={handleOTPSuccess}/>,
+    otp:  <OTPScreen isMobile={isMobile} email={regEmail} onBack={() => go("register")} onSuccess={handleOTPSuccess}/>,
     mode: <ModeScreen onSelect={handleModeSelect}/>,
     "forgot-password": <ForgotPasswordScreen initialEmail={regEmail} onBack={() => go("login")} onSuccess={() => go("login")}/>,
   };
 
   return (
-    <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "relative", minHeight: "100%", display: "flex", flexDirection: "column" }}>
       {globalError && (
         <div style={{ padding: 12, background: "#FEE2E2", color: "#B91C1C", borderBottom: "1px solid #EF4444", textAlign: "center", fontFamily: BODY, fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
           {globalError}
           <button onClick={() => setGlobalError("")} style={{ marginLeft: 12, background: "none", border: "none", color: "#B91C1C", cursor: "pointer", fontWeight: 900 }}>✕</button>
         </div>
       )}
-      <div key={screen} style={{ flex: 1, minHeight: 0 }}>
+      <div key={screen} style={{ display: "contents" }}>
         {screenMap[screen]}
       </div>
 

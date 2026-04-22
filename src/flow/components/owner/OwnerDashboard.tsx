@@ -121,8 +121,7 @@ export function OwnerDashboard() {
         ) : (
           <>
             {/* Stat cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 28 }}
-              className="grid-cols-1 sm:grid-cols-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-7">
               {statCards.map((card) => {
                 const Icon = card.icon;
                 return (
