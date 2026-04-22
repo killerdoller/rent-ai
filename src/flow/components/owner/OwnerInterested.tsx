@@ -359,14 +359,24 @@ export function OwnerInterested() {
                           <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenant.tenant.email}</span>
                         </div>
                       )}
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 6, background: C.muted, borderRadius: 8, padding: "4px 8px" }}>
-                        <Building2 style={{ width: 11, height: 11, color: C.coffee, flexShrink: 0 }} />
-                        <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenant.property?.title}</span>
-                        <span style={{ color: C.coffee, opacity: 0.4, fontSize: 10 }}>·</span>
-                        <MapPin style={{ width: 11, height: 11, color: C.coffee, flexShrink: 0 }} />
-                        <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, flexShrink: 0 }}>{tenant.property?.neighborhood}</span>
+                      <div style={{ 
+                        display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 8px", 
+                        marginTop: 6, background: C.muted, borderRadius: 8, padding: "6px 10px" 
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+                          <Building2 style={{ width: 11, height: 11, color: C.coffee, flexShrink: 0 }} />
+                          <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 600, color: C.coffee, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {tenant.property?.title}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+                          <MapPin style={{ width: 11, height: 11, color: C.coffee, flexShrink: 0 }} />
+                          <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {tenant.property?.neighborhood}
+                          </span>
+                        </div>
                       </div>
-                      <div style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, opacity: 0.6, marginTop: 4 }}>{formatDate(tenant.liked_at)}</div>
+                      <div style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, opacity: 0.6, marginTop: 6 }}>{formatDate(tenant.liked_at)}</div>
                     </div>
 
                     {/* Accept button */}
