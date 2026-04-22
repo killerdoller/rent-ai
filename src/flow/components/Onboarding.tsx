@@ -1,20 +1,57 @@
 "use client";
 import { useState, useEffect, useRef, memo } from "react";
 import { useRouter } from "next/navigation";
-import { useSignIn, useSignUp } from "@clerk/nextjs";
+import { useSignIn, useSignUp, useAuth, useClerk } from "@clerk/nextjs";
 
-async function googleOAuth(onError: (msg: string) => void, onLoading: (v: boolean) => void) {
+async function googleAuth(
+  clerk: any,
+  resource: any,
+  onError: (msg: string) => void,
+  onLoading: (v: boolean) => void,
+  role?: string,
+  mode?: string
+) {
+  if (!clerk || !resource) return;
   onLoading(true);
   try {
-    const clerk = (window as any).Clerk;
-    if (!clerk?.client) { onError("Clerk no inicializado"); onLoading(false); return; }
-    await clerk.client.signIn.authenticateWithRedirect({
+    const params = new URLSearchParams();
+    if (role) params.set("role", role);
+    if (mode) params.set("mode", mode);
+    const syncUrl = `/app/sync${params.toString() ? `?${params.toString()}` : ""}`;
+
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const callbackUrl = `${origin}/sso-callback`;
+    const finalUrl = `${origin}${syncUrl}`;
+
+    // Intentar diferentes métodos de redirección para máxima compatibilidad con v7
+    const common = {
       strategy: "oauth_google",
-      redirectUrl: `${window.location.origin}/sso-callback`,
-      redirectUrlComplete: `${window.location.origin}/app/sync`,
-    });
+      redirectUrl: callbackUrl,
+      redirectUrlComplete: finalUrl,
+      // Los nombres de parámetros pueden variar entre sso() y authenticateWithRedirect()
+      redirectCallbackUrl: callbackUrl,
+    };
+
+    if (typeof resource.authenticateWithRedirect === "function") {
+      await resource.authenticateWithRedirect(common);
+    } else if (typeof resource.sso === "function") {
+      await resource.sso(common);
+    } else if (clerk.client && typeof clerk.client.authenticateWithRedirect === "function") {
+      await clerk.client.authenticateWithRedirect(common);
+    } else {
+      throw new Error("No se encontró un método de autenticación compatible");
+    }
+
+    // authenticateWithRedirect no devuelve un resultado, redirige la página completa.
+    // Los errores se capturarán en el bloque catch de abajo.
   } catch (e: any) {
-    onError(e.errors?.[0]?.message || e.message || "Error con Google");
+    if (e.message?.includes("already signed in")) {
+       window.location.href = finalUrl;
+       return;
+    }
+    const clerkError = e.errors?.[0];
+    const msg = clerkError?.longMessage || clerkError?.message || e.message || "Error con Google";
+    onError(msg);
     onLoading(false);
   }
 }
@@ -35,7 +72,7 @@ const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
 const BODY    = "var(--font-inter, 'system-ui', sans-serif)";
 
 type Screen = "splash" | "login" | "register" | "otp" | "mode";
-type Role   = "student" | "owner";
+type Role   = "student" | "owner" | "roomie";
 
 // ─── Interactive city (isometric SVG) ────────────────────────────────────────
 const ISO_W = 26, ISO_H = 13;
@@ -375,9 +412,9 @@ function AuthLayout({ headline, sub, leftExtra, backBtn, mobileTopContent, child
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ minHeight:"100vh", background:C.cream, position:"relative" }}>
+    <div style={{ position:"relative", minHeight:"100vh", background:C.cream, display:"flex", justifyContent:"center", overflowX:"hidden" }}>
       <DotBg/>
-      <div className="relative z-10 flex flex-col md:flex-row" style={{ minHeight:"100vh" }}>
+      <div className="relative z-10 flex flex-col md:flex-row w-full max-w-[1440px]" style={{ minHeight:"100vh" }}>
 
         {/* Left — desktop only */}
         <div className="hidden md:flex flex-col justify-center flex-1 overflow-hidden"
@@ -450,7 +487,7 @@ function FormPanel({ children }: { children: React.ReactNode }) {
 }
 
 // ─── Splash ───────────────────────────────────────────────────────────────────
-function SplashScreen({ onStart }: { onStart: (type: "login" | "register") => void }) {
+function SplashScreen({ onStart, onGoogle }: { onStart:(t:"login"|"register")=>void; onGoogle:()=>void }) {
   return (
     <AuthLayout
       headline={<>Hola.<br/><span style={{ fontStyle:"italic", color:C.terraDeep }}>bienvenido.</span></>}
@@ -490,31 +527,42 @@ function SplashScreen({ onStart }: { onStart: (type: "login" | "register") => vo
 }
 
 // ─── Login ────────────────────────────────────────────────────────────────────
-function LoginScreen({ onBack, onSuccess, onGoRegister, onLoading }: {
-  onBack:()=>void; onSuccess:(role:Role)=>void; onGoRegister:()=>void; onLoading:(v:boolean)=>void;
+function LoginScreen({ onBack, onSuccess, onGoRegister, onLoading, onGoogle }: {
+  onBack:()=>void; onSuccess:(role:Role)=>void; onGoRegister:()=>void; onLoading:(v:boolean)=>void; onGoogle:()=>void;
 }) {
-  const { signIn, setActive } = useSignIn();
+  const { signIn } = useSignIn();
+  const { setActive } = useClerk();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const handleGoogle = () => googleOAuth(setErr, onLoading);
 
   const submit = async () => {
     if (!email.includes("@")) { setErr("Email inválido"); return; }
     if (password.length < 4) { setErr("Contraseña muy corta"); return; }
     setErr(""); setLoading(true); onLoading(true);
     try {
-      const result = await signIn!.create({ identifier: email, password });
-      if (result.status === "complete") {
-        await setActive!({ session: result.createdSessionId });
+      const res = await signIn!.create({ identifier: email, password });
+      
+      if (res.error) {
+        let msg = res.error.longMessage || res.error.message || "Credenciales incorrectas";
+        if (msg.includes("identifier") || msg.includes("email")) msg = "El correo ingresado no es correcto.";
+        else if (msg.includes("password")) msg = "La contraseña es incorrecta.";
+        
+        setErr(msg);
+        setLoading(false); onLoading(false);
+        return;
+      }
+
+      if (res.status === "complete") {
+        await setActive!({ session: res.createdSessionId });
         onSuccess("student");
       } else {
-        setErr("Se requiere verificación adicional");
+        setErr("Se requiere verificación adicional para esta cuenta.");
       }
     } catch (e: any) {
-      setErr(e.errors?.[0]?.longMessage || e.errors?.[0]?.message || "Credenciales incorrectas");
+      console.error("Error inesperado en login:", e);
+      setErr("Ocurrió un error al iniciar sesión. Intenta de nuevo.");
     } finally { setLoading(false); onLoading(false); }
   };
 
@@ -537,7 +585,7 @@ function LoginScreen({ onBack, onSuccess, onGoRegister, onLoading }: {
             {loading ? "Entrando…" : "Iniciar sesión →"}
           </SketchBtn>
           <Divider/>
-          <SketchSocial provider="google" onClick={handleGoogle}/>
+          <SketchSocial provider="google" onClick={onGoogle}/>
           <div style={{ textAlign:"center", marginTop:16 }}>
             <span style={{ fontFamily:BODY, fontSize:13, color:C.coffee }}>¿No tienes cuenta? </span>
             <button type="button" onClick={onGoRegister}
@@ -554,12 +602,13 @@ function LoginScreen({ onBack, onSuccess, onGoRegister, onLoading }: {
 }
 
 // ─── Register ─────────────────────────────────────────────────────────────────
-function RegisterScreen({ onBack, onSuccess, onGoLogin, onLoading }: {
+function RegisterScreen({ onBack, onSuccess, onGoLogin, onLoading, onGoogle }: {
   onBack:()=>void; onSuccess:(email:string, role:Role)=>void;
-  onGoLogin:()=>void; onLoading:(v:boolean)=>void;
+  onGoLogin:()=>void; onLoading:(v:boolean)=>void; onGoogle:()=>void;
 }) {
   const { signUp } = useSignUp();
   const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("student");
@@ -572,24 +621,59 @@ function RegisterScreen({ onBack, onSuccess, onGoLogin, onLoading }: {
   const pwColors = ["transparent", C.terra, C.coffee, C.green];
   const pwLabels = ["","Débil","Media","Fuerte"];
 
-  const handleGoogle = () => googleOAuth(setGlobalErr, onLoading);
-
   const submit = async () => {
     const e: Record<string,string> = {};
     if (firstName.length < 2) e.firstName = "Ingresa tu nombre";
+    if (lastName.length < 2) e.lastName = "Ingresa tu apellido";
     if (!email.includes("@")) e.email = "Email inválido";
     if (password.length < 8) e.password = "Mínimo 8 caracteres";
     if (!agreed) e.agreed = "Acepta los términos";
     setErrors(e);
     if (Object.keys(e).length > 0) return;
-    setLoading(true); onLoading(true); setGlobalErr("");
+    if (!signUp) {
+      setGlobalErr("El sistema de registro aún está cargando. Espera un momento.");
+      return;
+    }
+
+    setLoading(true); 
+    onLoading(true); 
+    setGlobalErr("");
+    console.log("Iniciando creación de cuenta para:", email);
+
     try {
-      await signUp!.create({ emailAddress: email, password, firstName });
-      await signUp!.prepareEmailAddressVerification({ strategy: "email_code" });
+      // 1. Crear el usuario en Clerk
+      const res = await signUp.create({ emailAddress: email, password, firstName, lastName });
+      
+      if (res.error) {
+        let msg = res.error.longMessage || res.error.message || "Error al crear la cuenta";
+        if (msg.includes("data breach")) msg = "Esta contraseña es poco segura (aparece en filtraciones). Por favor usa una diferente.";
+        else if (msg.includes("already exists") || msg.includes("in use")) msg = "Este correo ya está registrado. Intenta iniciar sesión.";
+        else if (msg.includes("short")) msg = "La contraseña es demasiado corta.";
+        
+        setGlobalErr(msg);
+        setLoading(false); onLoading(false);
+        return;
+      }
+
+      console.log("Usuario creado en Clerk:", signUp.status);
+      
+      // 2. Preparar verificación por email
+      const verifyRes = await signUp.verifications.sendEmailCode();
+      if (verifyRes.error) {
+        setGlobalErr(verifyRes.error.longMessage || "Error al enviar el código de verificación.");
+        setLoading(false); onLoading(false);
+        return;
+      }
+
+      console.log("Código de verificación enviado.");
       onSuccess(email, role);
     } catch (err: any) {
-      setGlobalErr(err.errors?.[0]?.longMessage || err.errors?.[0]?.message || "Error al crear la cuenta");
-    } finally { setLoading(false); onLoading(false); }
+      console.error("Error inesperado:", err);
+      setGlobalErr("Ocurrió un error inesperado. Por favor intenta de nuevo.");
+    } finally { 
+      setLoading(false); 
+      onLoading(false); 
+    }
   };
 
   return (
@@ -599,32 +683,41 @@ function RegisterScreen({ onBack, onSuccess, onGoLogin, onLoading }: {
       backBtn={onBack}
     >
       <FormPanel>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
-          {([["student","Arrendatario",C.green],["owner","Propietario",C.terra]] as const).map(([r,label,color]) => (
-            <button key={r} type="button" onClick={() => setRole(r)}
-              style={{ padding:"14px 10px", borderRadius:16,
-                border:`2px solid ${role===r ? color : "rgba(0,0,0,0.12)"}`,
-                background: role===r ? `${color}14` : C.white, cursor:"pointer",
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:8, marginBottom:20 }}>
+          {[
+            { id: "student", label: "Habitación", icon: "🏠", color: C.green },
+            { id: "roomie", label: "Roomie", icon: "🤝", color: "#6386A6" },
+            { id: "owner", label: "Propietario", icon: "🔑", color: C.terra }
+          ].map(({ id, label, icon, color }) => (
+            <button key={id} type="button" onClick={() => setRole(id as any)}
+              style={{ padding:"12px 6px", borderRadius:16,
+                border:`2px solid ${role===id ? color : "rgba(0,0,0,0.12)"}`,
+                background: role===id ? `${color}14` : C.white, cursor:"pointer",
                 display:"flex", flexDirection:"column", alignItems:"center", gap:6,
-                boxShadow: role===r ? `3px 3px 0 ${C.ink}` : "none",
+                boxShadow: role===id ? `3px 3px 0 ${C.ink}` : "none",
                 transition:"all 0.12s" }}>
-              <div style={{ width:36, height:36, borderRadius:10,
-                background: role===r ? color : "rgba(0,0,0,0.06)",
-                display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>
-                {r==="student" ? "🏠" : "🔑"}
+              <div style={{ width:32, height:32, borderRadius:10,
+                background: role===id ? color : "rgba(0,0,0,0.06)",
+                display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>
+                {icon}
               </div>
-              <span style={{ fontFamily:BODY, fontSize:11, fontWeight:800,
-                color: role===r ? color : C.coffee,
-                textTransform:"uppercase", letterSpacing:0.8 }}>{label}</span>
+              <span style={{ fontFamily:BODY, fontSize:9, fontWeight:800,
+                color: role===id ? color : C.coffee,
+                textTransform:"uppercase", letterSpacing:0.5, textAlign:"center" }}>{label}</span>
             </button>
           ))}
         </div>
-        <SketchSocial provider="google" onClick={handleGoogle}/>
+        <SketchSocial provider="google" onClick={onGoogle}/>
         <Divider/>
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-          <SketchInput label="Nombre" value={firstName}
-            onChange={v => { setFirstName(v); setErrors({...errors,firstName:""}); }}
-            placeholder="María González" error={errors.firstName}/>
+          <div style={{ display:"grid", gridTemplateColumns:"1.4fr 0.6fr", gap:10 }}>
+            <SketchInput label="Nombre" value={firstName}
+              onChange={v => { setFirstName(v); setErrors({...errors,firstName:""}); }}
+              placeholder="María" error={errors.firstName}/>
+            <SketchInput label="Apellido" value={lastName}
+              onChange={v => { setLastName(v); setErrors({...errors,lastName:""}); }}
+              placeholder="G." error={errors.lastName}/>
+          </div>
           <SketchInput label="Email" value={email}
             onChange={v => { setEmail(v); setErrors({...errors,email:""}); }}
             placeholder="tu@uni.edu.co" error={errors.email}/>
@@ -685,7 +778,8 @@ function RegisterScreen({ onBack, onSuccess, onGoLogin, onLoading }: {
 
 // ─── OTP ──────────────────────────────────────────────────────────────────────
 function OTPScreen({ email, onBack, onSuccess }: { email:string; onBack:()=>void; onSuccess:()=>void }) {
-  const { signUp, setActive } = useSignUp();
+  const { signUp } = useSignUp();
+  const { setActive } = useClerk();
   const [code, setCode] = useState(["","","","","",""]);
   const [timer, setTimer] = useState(42);
   const [err, setErr] = useState("");
@@ -709,19 +803,27 @@ function OTPScreen({ email, onBack, onSuccess }: { email:string; onBack:()=>void
   const verifyCode = async (fullCode: string) => {
     setLoading(true); setErr("");
     try {
-      const result = await signUp!.attemptEmailAddressVerification({ code: fullCode });
-      if (result.status === "complete") {
-        await setActive!({ session: result.createdSessionId });
-        onSuccess();
-      } else {
-        setErr("Código inválido. Intenta de nuevo.");
+      console.log("Verificando código:", fullCode);
+      const { error } = await signUp!.verifications.verifyEmailCode({ code: fullCode });
+      
+      if (error) {
+        console.error("Error verificando código:", error);
+        setErr(error.longMessage || "Código inválido o expirado. Intenta de nuevo.");
         setCode(["","","","","",""]);
         refs[0].current?.focus();
+        return;
       }
-    } catch {
-      setErr("Código inválido. Intenta de nuevo.");
-      setCode(["","","","","",""]);
-      refs[0].current?.focus();
+
+      if (signUp!.status === "complete") {
+        await setActive!({ session: signUp!.createdSessionId });
+        onSuccess();
+      } else {
+        console.log("Status incompleto:", signUp!.status);
+        setErr("El registro aún no está completo. Revisa los datos.");
+      }
+    } catch (e: any) {
+      console.error("Error inesperado en OTP:", e);
+      setErr("Ocurrió un error. Intenta reenviar el código.");
     } finally { setLoading(false); }
   };
 
@@ -753,7 +855,7 @@ function OTPScreen({ email, onBack, onSuccess }: { email:string; onBack:()=>void
             </div>
           ) : (
             <button type="button"
-              onClick={() => { setTimer(60); signUp?.prepareEmailAddressVerification({ strategy: "email_code" }); }}
+              onClick={() => { setTimer(60); signUp?.verifications.sendEmailCode(); }}
               style={{ background:"none", border:"none", cursor:"pointer",
                 fontFamily:BODY, fontSize:14, fontWeight:700, color:C.green,
                 textDecoration:"underline", textUnderlineOffset:3 }}>
@@ -832,10 +934,22 @@ function ModeScreen({ onSelect }: { onSelect:(mode:string)=>void }) {
 // ─── Root orchestrator ────────────────────────────────────────────────────────
 export function Onboarding() {
   const navigate = useRouter();
+  const clerk = useClerk();
+  const { signIn } = useSignIn();
+  const { signUp } = useSignUp();
+  const { isSignedIn, isLoaded: isAuthLoaded } = useAuth();
   const [screen, setScreen] = useState<Screen>("splash");
   const [regEmail, setRegEmail] = useState("");
   const [regRole, setRegRole] = useState<Role>("student");
   const [globalLoading, setGlobalLoading] = useState(false);
+  const [globalError, setGlobalError] = useState("");
+
+  // Redirigir automáticamente si ya hay una sesión activa a la sincronización
+  useEffect(() => {
+    if (isAuthLoaded && isSignedIn) {
+      navigate.push("/app/sync");
+    }
+  }, [isAuthLoaded, isSignedIn, navigate]);
 
   const handleLoginSuccess = (role: Role) => {
     navigate.push("/app/sync");
@@ -848,6 +962,8 @@ export function Onboarding() {
   const handleOTPSuccess = () => {
     if (regRole === "owner") {
       navigate.push("/app/sync?mode=landlord&role=owner");
+    } else if (regRole === "roomie") {
+      navigate.push("/app/sync?mode=find-roommate&role=student");
     } else {
       setScreen("mode");
     }
@@ -860,31 +976,76 @@ export function Onboarding() {
 
   const go = (s: Screen) => setScreen(s);
 
-  if (globalLoading) {
+  // Evitar parpadeo si ya está autenticado
+  if (isAuthLoaded && isSignedIn) {
     return (
       <div style={{ width:"100%", height:"100vh", background:C.cream, display:"flex",
-        alignItems:"center", justifyContent:"center",
-        backgroundImage:"radial-gradient(rgba(130,85,77,0.09) 1px, transparent 1px)",
-        backgroundSize:"18px 18px" }}>
-        <div style={{ display:"inline-flex", alignItems:"center", gap:8,
-          padding:"7px 16px 7px 10px", borderRadius:9999,
-          background:C.white, border:`2px solid ${C.ink}`, boxShadow:`3px 3px 0 ${C.ink}` }}>
-          <img src="/Logo_finalfinal.png" alt="RentAI" style={{ width:22, height:22, objectFit:"contain" }}/>
-          <span style={{ fontFamily:BODY, fontSize:13, fontWeight:700, color:C.ink }}>Entrando…</span>
-        </div>
+        alignItems:"center", justifyContent:"center" }}>
+        <img src="/Logo_finalfinal.png" alt="RentAI" style={{ width:40, height:40, objectFit:"contain", animation:"spin 2s linear infinite" }}/>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     );
   }
 
+
   const screenMap: Record<Screen, React.ReactNode> = {
-    splash: <SplashScreen onStart={type => go(type==="login" ? "login" : "register")}/>,
-    login:  <LoginScreen onBack={() => go("splash")} onSuccess={handleLoginSuccess}
-               onGoRegister={() => go("register")} onLoading={setGlobalLoading}/>,
-    register: <RegisterScreen onBack={() => go("splash")} onSuccess={handleRegisterSuccess}
-               onGoLogin={() => go("login")} onLoading={setGlobalLoading}/>,
+    splash: (
+      <SplashScreen 
+        onStart={type => go(type === "login" ? "login" : "register")}
+        onGoogle={() => googleAuth(clerk, signIn, setGlobalError, setGlobalLoading)}
+      />
+    ),
+    login:  (
+      <LoginScreen 
+        onBack={() => go("splash")} 
+        onSuccess={handleLoginSuccess}
+        onGoRegister={() => go("register")} 
+        onLoading={setGlobalLoading}
+        onGoogle={() => googleAuth(clerk, signIn, setGlobalError, setGlobalLoading)}
+      />
+    ),
+    register: (
+      <RegisterScreen 
+        onBack={() => go("splash")} 
+        onSuccess={handleRegisterSuccess}
+        onGoLogin={() => go("login")} 
+        onLoading={setGlobalLoading}
+        onGoogle={() => googleAuth(clerk, signUp, setGlobalError, setGlobalLoading, "student", "find-room")}
+      />
+    ),
     otp:  <OTPScreen email={regEmail} onBack={() => go("register")} onSuccess={handleOTPSuccess}/>,
     mode: <ModeScreen onSelect={handleModeSelect}/>,
   };
 
-  return <div key={screen}>{screenMap[screen]}</div>;
+  return (
+    <div style={{ position: "relative", minHeight: "100vh" }}>
+      {globalError && (
+        <div style={{ padding: 12, background: "#FEE2E2", color: "#B91C1C", borderBottom: "1px solid #EF4444", textAlign: "center", fontFamily: BODY, fontSize: 13, fontWeight: 700 }}>
+          {globalError}
+          <button onClick={() => setGlobalError("")} style={{ marginLeft: 12, background: "none", border: "none", color: "#B91C1C", cursor: "pointer", fontWeight: 900 }}>✕</button>
+        </div>
+      )}
+      <div key={screen}>
+        {screenMap[screen]}
+      </div>
+
+      {globalLoading && (
+        <div style={{ 
+          position: "fixed", inset: 0, zIndex: 999, 
+          background: "rgba(242, 236, 223, 0.7)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center" 
+        }}>
+          <div style={{ 
+            display: "inline-flex", alignItems: "center", gap: 8,
+            padding: "10px 20px", borderRadius: 9999,
+            background: C.white, border: `2px solid ${C.ink}`, boxShadow: `4px 4px 0 ${C.ink}` 
+          }}>
+            <img src="/Logo_finalfinal.png" alt="RentAI" style={{ width: 24, height: 24, objectFit: "contain", animation: "spin 2s linear infinite" }} />
+            <span style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink }}>Procesando…</span>
+          </div>
+        </div>
+      )}
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
 }

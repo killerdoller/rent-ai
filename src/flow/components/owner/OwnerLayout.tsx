@@ -1,5 +1,6 @@
 "use client";
 import { usePathname, useRouter } from "next/navigation";
+import { useClerk } from "@clerk/nextjs";
 import { LayoutDashboard, Building2, Users, Heart, MessageCircle, LogOut } from "lucide-react";
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
@@ -17,6 +18,7 @@ const C = {
 export function OwnerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const navigate = useRouter();
+  const { signOut } = useClerk();
 
   const navItems = [
     { path: "/owner/dashboard",  icon: LayoutDashboard,  label: "Dashboard" },
@@ -26,7 +28,8 @@ export function OwnerLayout({ children }: { children: React.ReactNode }) {
     { path: "/owner/chat",       icon: MessageCircle,    label: "Chats" },
   ];
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut();
     localStorage.removeItem("owner_id");
     localStorage.removeItem("owner_email");
     localStorage.removeItem("userMode");

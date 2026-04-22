@@ -27,14 +27,17 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <ClerkProvider>
-      <html lang="es" className={`${fraunces.variable} ${inter.variable}`}>
-        <body>
+    <html lang="es" className={`${fraunces.variable} ${inter.variable}`}>
+      <body>
+        <ClerkProvider dynamic>
           <div id="root">
             {children}
           </div>
-        </body>
-      </html>
-    </ClerkProvider>
+          {/* Requerido para la protección contra bots en flujos personalizados de Clerk.
+              Ubicado en el layout raíz para asegurar disponibilidad global. */}
+          <div id="clerk-captcha" style={{ display: "flex", justifyContent: "center", marginTop: 10 }} />
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }

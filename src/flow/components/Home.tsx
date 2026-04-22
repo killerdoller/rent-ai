@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, PanInfo, useMotionValue, useTransform } from "motion/react";
 import { X, Heart, MapPin, Bed, Sparkles, Tag, Building2, Users } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -7,12 +8,12 @@ import { AnimatePresence } from "motion/react";
 import { ImageCarousel } from "./ImageCarousel";
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
-const BODY    = "var(--font-inter, 'system-ui', sans-serif)";
+const BODY = "var(--font-inter, 'system-ui', sans-serif)";
 const C = {
-  ink:    "#0D0D0D",
-  cream:  "#F7F2EC",
-  white:  "#FFFFFF",
-  green:  "#63A694",
+  ink: "#0D0D0D",
+  cream: "#F7F2EC",
+  white: "#FFFFFF",
+  green: "#63A694",
   coffee: "#82554D",
   border: "rgba(130,85,77,0.14)",
 };
@@ -45,6 +46,7 @@ interface CardData {
 type TabId = "apartments" | "roommates";
 
 export function Home() {
+  const navigate = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>("apartments");
 
   // Apartments state
@@ -61,6 +63,7 @@ export function Home() {
   const [rmFetched, setRmFetched] = useState(false);
 
   const [detailCard, setDetailCard] = useState<CardData | null>(null);
+  const [matchData, setMatchData] = useState<{ id: string; propertyTitle: string; ownerName: string; img: string } | null>(null);
 
   useEffect(() => {
     fetchProperties();
@@ -145,12 +148,53 @@ export function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, property_id: card.id }),
-      }).catch(() => {});
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(res => {
+          if (res?.isMatch) {
+            setMatchData({
+              id: res.match_id,
+              propertyTitle: card.title,
+              ownerName: res.owner_name || "El propietario",
+              img: card.image
+            });
+          }
+        })
+        .catch(() => { });
     }
     setAptIndex(aptIndex + 1);
   };
 
-  const removeRm = (direction: "left" | "right") => {
+  const removeRm = async (direction: "left" | "right") => {
+    if (rmIndex >= rmCards.length) return;
+    const card = rmCards[rmIndex];
+    const userId =
+      typeof window !== "undefined"
+        ? localStorage.getItem("rentai_user_id")
+        : null;
+    
+    if (userId) {
+      const endpoint = direction === "right" ? "/api/roommate-likes" : "/api/roommate-rejections";
+      const bodyKey = direction === "right" ? "liked_user_id" : "rejected_user_id";
+      
+      fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, [bodyKey]: card.id }),
+      })
+      .then(r => r.ok ? r.json() : null)
+      .then(res => {
+        if (res?.isMatch) {
+          setMatchData({
+            id: res.match_id,
+            propertyTitle: "Match de Roomies",
+            ownerName: card.name || "Tu nuevo roomie",
+            img: card.image
+          });
+        }
+      })
+      .catch(() => {});
+    }
     setRmIndex(rmIndex + 1);
   };
 
@@ -162,52 +206,49 @@ export function Home() {
   const onSwipe = isApt ? removeApt : removeRm;
   const onRetry = isApt
     ? () => {
-        setAptIndex(0);
-        fetchProperties();
-      }
+      setAptIndex(0);
+      fetchProperties();
+    }
     : () => {
-        setRmIndex(0);
-        setRmFetched(false);
-        fetchRoommates();
-      };
+      setRmIndex(0);
+      setRmFetched(false);
+      fetchRoommates();
+    };
 
   return (
-    <div style={{ height:"100%", display:"flex", flexDirection:"column", background:C.cream, overflow:"hidden" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: C.cream, overflow: "hidden" }}>
       {/* Header */}
-      <header style={{ flexShrink:0, background:C.white, borderBottom:`1.5px solid ${C.border}`, padding:"20px 24px 0" }}>
-        <div style={{ maxWidth:520, margin:"0 auto" }}>
-          <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:16 }}>
+      <header style={{ flexShrink: 0, background: C.white, borderBottom: `1.5px solid ${C.border}`, padding: "20px 24px 0" }}>
+        <div style={{ maxWidth: 520, margin: "0 auto" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
             <div>
-              <div style={{ fontFamily:BODY, fontSize:12, color:C.coffee, fontWeight:600, letterSpacing:0.4 }}>
-                ¡Hola! 👋
-              </div>
-              <div style={{ fontFamily:DISPLAY, fontSize:30, fontWeight:500, color:C.ink, letterSpacing:-1.2, lineHeight:1, marginTop:4 }}>
+              <div style={{ fontFamily: DISPLAY, fontSize: 30, fontWeight: 500, color: C.ink, letterSpacing: -1.2, lineHeight: 1, marginTop: 4 }}>
                 Descubrir
               </div>
             </div>
             <button style={{
-              width:40, height:40, borderRadius:20,
-              background:C.cream, border:`1.5px solid ${C.border}`,
-              display:"flex", alignItems:"center", justifyContent:"center",
-              cursor:"pointer", marginTop:4,
+              width: 40, height: 40, borderRadius: 20,
+              background: C.cream, border: `1.5px solid ${C.border}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", marginTop: 4,
             }}>
-              <Sparkles style={{ width:16, height:16, color:C.green }}/>
+              <Sparkles style={{ width: 16, height: 16, color: C.green }} />
             </button>
           </div>
 
           {/* Tabs */}
-          <div style={{ display:"flex" }}>
+          <div style={{ display: "flex" }}>
             {([["apartments", Building2, "Apartamentos"], ["roommates", Users, "Roomies"]] as const).map(([tab, Icon, label]) => (
               <button key={tab} onClick={() => setActiveTab(tab)}
                 style={{
-                  flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6,
-                  padding:"10px 0", background:"none", border:"none", cursor:"pointer",
-                  fontFamily:BODY, fontSize:13, fontWeight:600,
+                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  padding: "10px 0", background: "none", border: "none", cursor: "pointer",
+                  fontFamily: BODY, fontSize: 13, fontWeight: 600,
                   color: activeTab === tab ? C.green : C.coffee,
                   borderBottom: `2px solid ${activeTab === tab ? C.green : "transparent"}`,
-                  transition:"all 0.12s",
+                  transition: "all 0.12s",
                 }}>
-                <Icon style={{ width:15, height:15 }}/>
+                <Icon style={{ width: 15, height: 15 }} />
                 {label}
               </button>
             ))}
@@ -216,73 +257,103 @@ export function Home() {
       </header>
 
       {/* Content */}
-      <div style={{ flex:1, minHeight:0, display:"flex", flexDirection:"column",
-        padding:"16px 20px 8px", maxWidth:520, margin:"0 auto", width:"100%" }}>
+      <div style={{
+        flex: 1, minHeight: 0, display: "flex", flexDirection: "column",
+        padding: "16px 20px 8px", maxWidth: 520, margin: "0 auto", width: "100%"
+      }}>
         {loading ? (
-          <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12 }}>
-            <div style={{ width:40, height:40, borderRadius:"50%",
-              border:`3px solid ${C.green}`, borderTopColor:"transparent",
-              animation:"spin 0.7s linear infinite" }}/>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: "50%",
+              border: `3px solid ${C.green}`, borderTopColor: "transparent",
+              animation: "spin 0.7s linear infinite"
+            }} />
             <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-            <p style={{ fontFamily:BODY, fontSize:13, color:C.coffee }}>
+            <p style={{ fontFamily: BODY, fontSize: 13, color: C.coffee }}>
               {isApt ? "Buscando las mejores opciones…" : "Cargando perfiles…"}
             </p>
           </div>
         ) : error ? (
-          <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16 }}>
-            <p style={{ fontFamily:BODY, fontSize:13, color:"#C0392B" }}>{error}</p>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+            <p style={{ fontFamily: BODY, fontSize: 13, color: "#C0392B" }}>{error}</p>
             <button onClick={onRetry} style={{
-              padding:"10px 24px", borderRadius:9999, background:C.green, color:C.white,
-              border:"none", cursor:"pointer", fontFamily:BODY, fontSize:13, fontWeight:700,
+              padding: "10px 24px", borderRadius: 9999, background: C.green, color: C.white,
+              border: "none", cursor: "pointer", fontFamily: BODY, fontSize: 13, fontWeight: 700,
             }}>Reintentar</button>
           </div>
         ) : index >= cards.length ? (
-          <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12 }}>
-            <div style={{ width:72, height:72, borderRadius:"50%", background:"#D4E8D8",
-              display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <Heart style={{ width:36, height:36, color:C.green }}/>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: "50%", background: "#D4E8D8",
+              display: "flex", alignItems: "center", justifyContent: "center"
+            }}>
+              <Heart style={{ width: 36, height: 36, color: C.green }} />
             </div>
-            <div style={{ fontFamily:DISPLAY, fontSize:24, fontWeight:500, color:C.ink, letterSpacing:-0.8 }}>¡Eso es todo!</div>
-            <p style={{ fontFamily:BODY, fontSize:13, color:C.coffee, textAlign:"center" }}>
+            <div style={{ fontFamily: DISPLAY, fontSize: 24, fontWeight: 500, color: C.ink, letterSpacing: -0.8 }}>¡Eso es todo!</div>
+            <p style={{ fontFamily: BODY, fontSize: 13, color: C.coffee, textAlign: "center" }}>
               No hay más {isApt ? "propiedades disponibles" : "perfiles disponibles"}. Vuelve pronto.
             </p>
             <button onClick={onRetry} style={{
-              padding:"10px 24px", borderRadius:9999, background:C.green, color:C.white,
-              border:"none", cursor:"pointer", fontFamily:BODY, fontSize:13, fontWeight:700,
+              padding: "10px 24px", borderRadius: 9999, background: C.green, color: C.white,
+              border: "none", cursor: "pointer", fontFamily: BODY, fontSize: 13, fontWeight: 700,
             }}>Reiniciar</button>
+
+            <button onClick={async () => {
+              const userId = localStorage.getItem("rentai_user_id");
+              if (!userId) return;
+              setAptLoading(true);
+              try {
+                // Borrar likes y rejections para este usuario (solo para demo)
+                await Promise.all([
+                  fetch(`/api/likes?user_id=${userId}`, { method: "DELETE" }),
+                  fetch(`/api/rejections?user_id=${userId}`, { method: "DELETE" })
+                ]);
+                setAptIndex(0);
+                fetchProperties();
+              } catch (e) {
+                setAptError("Error al reiniciar swipes");
+              } finally {
+                setAptLoading(false);
+              }
+            }} style={{
+              marginTop: 12, padding: "8px 16px", borderRadius: 9999, background: "transparent", color: C.coffee,
+              border: `1.5px solid ${C.border}`, cursor: "pointer", fontFamily: BODY, fontSize: 12, fontWeight: 600,
+            }}>
+              Limpiar historial (Modo Demo)
+            </button>
           </div>
         ) : (
           <>
             {/* Card stack */}
-            <div style={{ flex:1, minHeight:0, position:"relative" }}>
+            <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
               {cards.slice(index, index + 2).reverse().map((card, i) => {
                 const isTop = i === 1;
                 return (
                   <SwipeCard key={card.id} card={card} isTop={isTop}
-                    onSwipe={onSwipe} onDetail={() => setDetailCard(card)}/>
+                    onSwipe={onSwipe} onDetail={() => setDetailCard(card)} />
                 );
               })}
             </div>
 
             {/* Action buttons */}
-            <div style={{ flexShrink:0, display:"flex", justifyContent:"center", alignItems:"center", gap:24, padding:"12px 0 8px" }}>
+            <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 24, padding: "12px 0 8px" }}>
               <button onClick={() => onSwipe("left")} style={{
-                width:56, height:56, borderRadius:"50%",
-                background:C.white, border:`1.5px solid ${C.border}`,
-                display:"flex", alignItems:"center", justifyContent:"center",
-                cursor:"pointer", boxShadow:"0 4px 14px rgba(130,85,77,0.08)",
-                transition:"transform 0.1s",
+                width: 56, height: 56, borderRadius: "50%",
+                background: C.white, border: `1.5px solid ${C.border}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", boxShadow: "0 4px 14px rgba(130,85,77,0.08)",
+                transition: "transform 0.1s",
               }}>
-                <X style={{ width:26, height:26, color:"#D87D6F" }} strokeWidth={2.5}/>
+                <X style={{ width: 26, height: 26, color: "#D87D6F" }} strokeWidth={2.5} />
               </button>
               <button onClick={() => onSwipe("right")} style={{
-                width:68, height:68, borderRadius:"50%",
-                background:C.green, border:"none",
-                display:"flex", alignItems:"center", justifyContent:"center",
-                cursor:"pointer", boxShadow:`0 12px 32px ${C.green}55`,
-                transition:"transform 0.1s",
+                width: 68, height: 68, borderRadius: "50%",
+                background: C.green, border: "none",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", boxShadow: `0 12px 32px ${C.green}55`,
+                transition: "transform 0.1s",
               }}>
-                <Heart style={{ width:30, height:30, color:C.white }} strokeWidth={2.5}/>
+                <Heart style={{ width: 30, height: 30, color: C.white }} strokeWidth={2.5} />
               </button>
             </div>
           </>
@@ -298,7 +369,67 @@ export function Home() {
           />
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {matchData && (
+          <MatchCelebration
+            data={matchData}
+            onClose={() => setMatchData(null)}
+            onChat={() => {
+              const id = matchData.id;
+              setMatchData(null);
+              navigate.push(`/app/chat/${id}`);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+function MatchCelebration({ data, onClose, onChat }: {
+  data: { id: string; propertyTitle: string; ownerName: string; img: string };
+  onClose: () => void;
+  onChat: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(13,13,13,0.94)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+    >
+      <motion.div
+        initial={{ scale: 0.8, y: 20 }} animate={{ scale: 1, y: 0 }}
+        style={{ width: "100%", maxWidth: 400, textAlign: "center" }}
+      >
+        <Sparkles style={{ width: 48, height: 48, color: C.green, margin: "0 auto 20px" }} />
+        <h2 style={{ fontFamily: DISPLAY, fontSize: 42, color: C.white, lineHeight: 1, marginBottom: 12 }}>
+          ¡Es un Match!
+        </h2>
+        <p style={{ fontFamily: BODY, fontSize: 15, color: "rgba(255,255,255,0.7)", marginBottom: 40 }}>
+          {data.ownerName} aceptó tu interés en <strong>{data.propertyTitle}</strong>.
+        </p>
+
+        <div style={{ position: "relative", width: 180, height: 180, margin: "0 auto 40px" }}>
+          <div style={{ position: "absolute", inset: -10, borderRadius: "50%", border: `2px dashed ${C.green}`, animation: "spin 10s linear infinite" }} />
+          <img src={data.img} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", border: `4px solid ${C.white}` }} alt="Match" />
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <button onClick={onChat} style={{
+            padding: "16px", borderRadius: 16, background: C.green, color: C.white, border: "none", cursor: "pointer",
+            fontFamily: BODY, fontSize: 15, fontWeight: 700, boxShadow: `0 8px 24px ${C.green}44`
+          }}>
+            Enviar mensaje ahora
+          </button>
+          <button onClick={onClose} style={{
+            padding: "16px", borderRadius: 16, background: "transparent", color: C.white, border: "1px solid rgba(255,255,255,0.2)", cursor: "pointer",
+            fontFamily: BODY, fontSize: 15, fontWeight: 600
+          }}>
+            Seguir explorando
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -333,13 +464,12 @@ function SwipeCard({
         rotate: isTop ? rotate : 0,
         opacity: isTop ? opacity : 0.8,
       }}
-      className={`absolute inset-0 rounded-3xl shadow-2xl overflow-hidden ${
-        isTop ? "cursor-grab active:cursor-grabbing" : "scale-95"
-      }`}
+      className={`absolute inset-0 rounded-3xl shadow-2xl overflow-hidden ${isTop ? "cursor-grab active:cursor-grabbing" : "scale-95"
+        }`}
     >
       {/* Full-card image */}
       <img
-        src={card.image}
+        src={card.image || "/profile.jpg"}
         alt={card.title || ""}
         className="absolute inset-0 w-full h-full object-cover"
       />
@@ -348,12 +478,20 @@ function SwipeCard({
       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
 
       {/* Match badge */}
-      {card.matchScore && (
-        <div className="absolute top-4 right-4 bg-white/90 text-primary px-3 py-1.5 rounded-full shadow flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span className="font-bold text-sm">{card.matchScore}%</span>
-        </div>
-      )}
+      <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
+        {card.matchScore && (
+          <div className="bg-white/90 text-primary px-3 py-1.5 rounded-full shadow flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="font-bold text-sm">{card.matchScore}%</span>
+          </div>
+        )}
+        {(card as any).likedYou && (
+          <div className="bg-terra text-white px-3 py-1.5 rounded-full shadow flex items-center gap-1.5 animate-bounce">
+            <Heart className="w-3.5 h-3.5 fill-current" />
+            <span className="font-bold text-xs uppercase tracking-wider">Te dio like</span>
+          </div>
+        )}
+      </div>
 
       {/* Info overlay at bottom */}
       <div className="absolute bottom-0 left-0 right-0 p-5">
@@ -365,19 +503,19 @@ function SwipeCard({
 
         {card.location && (
           <div className="flex items-center gap-1.5 text-white/80 text-sm mb-3">
-            <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+            {card.type === "roommate" ? <Building2 className="w-3.5 h-3.5 flex-shrink-0" /> : <MapPin className="w-3.5 h-3.5 flex-shrink-0" />}
             <span>{card.location}</span>
           </div>
         )}
 
-        {card.type === "room" && (
+        {(card.type === "room" || card.type === "roommate") && (
           <div className="flex items-center gap-3 mb-3">
             {card.price && (
               <span className="text-white font-bold text-base">
                 ${card.price.toLocaleString()} COP/mes
               </span>
             )}
-            {card.bedrooms && (
+            {card.type === "room" && card.bedrooms && (
               <div className="flex items-center gap-1 text-white/70 text-sm">
                 <Bed className="w-3.5 h-3.5" />
                 <span>
@@ -443,7 +581,7 @@ function PropertyDetailSheet({ card, onClose }: { card: CardData; onClose: () =>
             /* ── Roommate: single column (same on all sizes) ── */
             <div className="flex flex-col flex-1 min-h-0">
               <div className="relative h-64 flex-shrink-0">
-                <img src={card.image} alt={card.title} className="w-full h-full object-cover" />
+                <img src={card.image || "/profile.jpg"} alt={card.title} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent" />
                 {card.matchScore && (
                   <div className="absolute top-3 left-3 rounded-full flex items-center gap-1 px-2.5 py-1 text-xs font-bold shadow"
@@ -453,7 +591,10 @@ function PropertyDetailSheet({ card, onClose }: { card: CardData; onClose: () =>
                 )}
                 <div className="absolute bottom-4 left-4">
                   <h2 className="text-white font-bold text-2xl drop-shadow">{card.title}</h2>
-                  {card.location && <p className="text-white/80 text-sm mt-0.5">{card.location}</p>}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
+                    {card.location && <p className="text-white/80 text-sm flex items-center gap-1"><MapPin className="w-3 h-3" /> {card.location}</p>}
+                    {card.price && <p className="text-white font-bold text-sm bg-black/20 px-2 py-0.5 rounded-lg backdrop-blur-sm">${card.price.toLocaleString()} COP</p>}
+                  </div>
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">

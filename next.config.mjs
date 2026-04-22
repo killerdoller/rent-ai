@@ -9,7 +9,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   experimental: {
-    turbo: {
+    turbopack: {
       root: __dirname,
     },
   },

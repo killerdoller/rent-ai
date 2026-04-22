@@ -63,12 +63,50 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
-    // Si ya existe el like, no es un error crítico
     if (error.code === "23505") {
       return NextResponse.json({ message: "Ya existe el like" }, { status: 200 });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data, { status: 201 });
+  // Verificar si se creó un match bilateral (el trigger de la DB lo crea automáticamente)
+  const { data: match } = await supabase
+    .from("property_matches")
+    .select(`
+      id,
+      match_score,
+      owners (name)
+    `)
+    .eq("user_id", user_id)
+    .eq("property_id", property_id)
+    .maybeSingle();
+
+  return NextResponse.json({
+    ...data,
+    isMatch: !!match,
+    match_id: match?.id,
+    match_score: match?.match_score,
+    owner_name: (match?.owners as any)?.name
+  }, { status: 201 });
+}
+
+// DELETE /api/likes?user_id=xxx — borrar historial (solo para demo)
+export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const userId = searchParams.get("user_id");
+
+  if (!userId) {
+    return NextResponse.json({ error: "user_id requerido" }, { status: 400 });
+  }
+
+  const { error } = await supabase
+    .from("property_likes")
+    .delete()
+    .eq("user_id", userId);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
 }

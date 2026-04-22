@@ -32,17 +32,33 @@ export function Root({ children }: { children: React.ReactNode }) {
   const navigate = useRouter();
   const { isSignedIn, isLoaded } = useUser();
   const [localLoggedIn, setLocalLoggedIn] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
+    setHasMounted(true);
     const userId = localStorage.getItem("rentai_user_id");
     const ownerId = localStorage.getItem("owner_id");
-    setLocalLoggedIn(!!userId || !!ownerId);
-  }, [pathname]);
+    const loggedIn = !!userId || !!ownerId;
+    setLocalLoggedIn(loggedIn);
+
+    // Global Sync Guard: Si está en Clerk pero no en local, forzar sync
+    if (isLoaded && isSignedIn && !loggedIn) {
+      const allowedPaths = ["/app/sync", "/sso-callback", "/app", "/app/role-selection"];
+      if (!allowedPaths.includes(pathname)) {
+        navigate.push("/app/sync");
+      }
+    }
+  }, [pathname, isLoaded, isSignedIn]);
 
   const isLoggedIn = isLoaded ? (isSignedIn || localLoggedIn) : localLoggedIn;
 
-  const isAuthPage = pathname === "/app";
-  const hideNav = isAuthPage || !isLoggedIn;
+  const authPaths = ["/app/sync", "/app/role-selection", "/app/complete-profile", "/owner/complete-profile", "/sso-callback"];
+  const isAuthPage = pathname === "/app" || authPaths.some(p => pathname === p || pathname?.startsWith(p + "/"));
+  
+  // Solo mostramos la navegación si el componente ya montó en cliente
+  // Y el usuario ya está sincronizado localmente
+  // Y NO estamos en una página de proceso de autenticación o perfil.
+  const hideNav = !hasMounted || isAuthPage || !localLoggedIn;
 
   const navItems = [
     { path: "/app/home",    icon: Flame,        label: "Descubrir" },

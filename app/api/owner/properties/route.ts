@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   const body = await request.json();
   const {
     owner_id, title, monthly_rent, city, neighborhood, bedrooms,
-    description, image_url, allows_students, requires_co_debtor,
+    description, image_url, images, allows_students, requires_co_debtor,
     tags, address, latitude, longitude,
   } = body;
 
@@ -29,7 +29,8 @@ export async function POST(request: Request) {
       neighborhood: neighborhood || null,
       bedrooms: bedrooms || 1,
       description: description || null,
-      image_url: image_url || null,
+      image_url: image_url || (images?.[0] ?? null),
+      images: images || [],
       allows_students: allows_students ?? true,
       requires_co_debtor: requires_co_debtor ?? false,
       tags: tags || [],

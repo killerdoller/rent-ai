@@ -1,7 +1,8 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { MessageCircle, Search, Building2, User } from "lucide-react";
+import { supabase } from "../../utils/supabaseClient";
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
 const BODY    = "var(--font-inter, 'system-ui', sans-serif)";
@@ -19,6 +20,7 @@ const C = {
 interface ConversationItem {
   conversation_id: string | null;
   match_id: string;
+  match_type?: string;
   other_party_name: string;
   other_party_avatar: string | null;
   property_title: string;
@@ -29,9 +31,18 @@ interface ConversationItem {
   match_created_at: string;
 }
 
+const READ_KEY = (matchId: string) => `chat_read_${matchId}`;
+
+function isUnread(conv: ConversationItem): boolean {
+  if (!conv.last_message || !conv.last_message_at) return false;
+  const readAt = localStorage.getItem(READ_KEY(conv.match_id));
+  if (!readAt) return true;
+  return new Date(conv.last_message_at) > new Date(readAt);
+}
+
 function formatTime(dateStr: string | null) {
   if (!dateStr) return "";
-  const diff = Date.now() - new Date(dateStr).getTime();
+  const diff  = Date.now() - new Date(dateStr).getTime();
   const mins  = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days  = Math.floor(diff / 86400000);
@@ -45,8 +56,11 @@ function formatTime(dateStr: string | null) {
 export function Chat({ mode = "user" }: { mode?: "user" | "owner" }) {
   const navigate = useRouter();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading]         = useState(true);
+  const [searchQuery, setSearchQuery]     = useState("");
+  // tick every second so formatTime stays fresh
+  const [, setTick] = useState(0);
+  const channelsRef = useRef<ReturnType<typeof supabase.channel>[]>([]);
 
   const accent   = mode === "owner" ? C.terra : C.green;
   const basePath = mode === "owner" ? "/owner/chat" : "/app/chat";
@@ -55,16 +69,64 @@ export function Chat({ mode = "user" }: { mode?: "user" | "owner" }) {
     const id = mode === "owner"
       ? localStorage.getItem("owner_id")
       : (localStorage.getItem("rentai_user_id") || localStorage.getItem("user_id"));
-
-    if (!id) { navigate.push("/app"); return; }
+    if (!id) { setIsLoading(false); return; }
 
     const param = mode === "owner" ? `owner_id=${id}` : `user_id=${id}`;
     fetch(`/api/chat/conversations?${param}`)
       .then(r => r.ok ? r.json() : [])
-      .then(setConversations)
+      .then((data: ConversationItem[]) => {
+        setConversations(data);
+        subscribeToConversations(data);
+      })
       .catch(() => {})
       .finally(() => setIsLoading(false));
+
+    // refresh relative times every 30s
+    const ticker = setInterval(() => setTick(t => t + 1), 30000);
+    return () => {
+      clearInterval(ticker);
+      channelsRef.current.forEach(ch => supabase.removeChannel(ch));
+      channelsRef.current = [];
+    };
   }, [mode]);
+
+  function subscribeToConversations(convs: ConversationItem[]) {
+    // Clean up previous channels
+    channelsRef.current.forEach(ch => supabase.removeChannel(ch));
+    channelsRef.current = [];
+
+    const withId = convs.filter(c => c.conversation_id);
+    if (!withId.length) return;
+
+    withId.forEach(conv => {
+      const ch = supabase
+        .channel(`conv-list-${conv.conversation_id}`)
+        .on("postgres_changes", {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${conv.conversation_id}`,
+        }, (payload) => {
+          const msg = payload.new as { content: string; created_at: string };
+          setConversations(prev => {
+            const updated = prev.map(c =>
+              c.conversation_id === conv.conversation_id
+                ? { ...c, last_message: msg.content, last_message_at: msg.created_at }
+                : c
+            );
+            // Bubble updated conversation to top
+            const idx = updated.findIndex(c => c.conversation_id === conv.conversation_id);
+            if (idx > 0) {
+              const [item] = updated.splice(idx, 1);
+              updated.unshift(item);
+            }
+            return [...updated];
+          });
+        })
+        .subscribe();
+      channelsRef.current.push(ch);
+    });
+  }
 
   const filtered = conversations.filter(c =>
     c.other_party_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -125,53 +187,76 @@ export function Chat({ mode = "user" }: { mode?: "user" | "owner" }) {
               </p>
             </div>
           ) : (
-            filtered.map(conv => (
-              <button
-                key={conv.match_id}
-                onClick={() => navigate.push(`${basePath}/${conv.match_id}`)}
-                style={{
-                  width: "100%", display: "flex", alignItems: "center", gap: 14,
-                  padding: "14px 20px", background: "none", border: "none",
-                  borderBottom: `1px solid ${C.border}`, cursor: "pointer", textAlign: "left",
-                }}
-              >
-                {/* Avatar */}
-                <div style={{ position: "relative", flexShrink: 0 }}>
-                  {conv.other_party_avatar || conv.property_image ? (
+            filtered.map(conv => {
+              const unread = isUnread(conv);
+              return (
+                <button
+                  key={conv.match_id}
+                  onClick={() => {
+                    localStorage.setItem(READ_KEY(conv.match_id), new Date().toISOString());
+                    setConversations(prev => [...prev]); // re-render to clear badge
+                    navigate.push(`${basePath}/${conv.match_id}`);
+                  }}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: 14,
+                    padding: "14px 20px",
+                    background: unread ? `${accent}08` : "none",
+                    border: "none", borderBottom: `1px solid ${C.border}`,
+                    cursor: "pointer", textAlign: "left",
+                  }}
+                >
+                  {/* Avatar with unread dot */}
+                  <div style={{ position: "relative", flexShrink: 0 }}>
                     <img
-                      src={(conv.other_party_avatar || conv.property_image)!}
+                      src={conv.other_party_avatar || conv.property_image || "/profile.jpg"}
                       alt={conv.other_party_name}
                       style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover" }}
                     />
-                  ) : (
-                    <div style={{ width: 52, height: 52, borderRadius: "50%", background: `${accent}20`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {mode === "owner"
-                        ? <User style={{ width: 24, height: 24, color: accent }} />
-                        : <Building2 style={{ width: 24, height: 24, color: accent }} />}
-                    </div>
-                  )}
-                </div>
+                    {unread && (
+                      <div style={{
+                        position: "absolute", bottom: 1, right: 1,
+                        width: 14, height: 14, borderRadius: "50%",
+                        background: accent, border: `2px solid ${C.cream}`,
+                      }} />
+                    )}
+                  </div>
 
-                {/* Info */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
-                    <span style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "65%" }}>
-                      {conv.other_party_name}
-                    </span>
-                    <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, opacity: 0.7, flexShrink: 0 }}>
-                      {formatTime(conv.last_message_at)}
-                    </span>
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
+                      <span style={{
+                        fontFamily: BODY, fontSize: 14,
+                        fontWeight: unread ? 800 : 700,
+                        color: C.ink,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "65%",
+                      }}>
+                        {conv.other_party_name}
+                      </span>
+                      <span style={{
+                        fontFamily: BODY, fontSize: 11,
+                        color: unread ? accent : C.coffee,
+                        fontWeight: unread ? 700 : 400,
+                        flexShrink: 0,
+                      }}>
+                        {formatTime(conv.last_message_at)}
+                      </span>
+                    </div>
+                    <div style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 2 }}>
+                      {conv.property_title}{conv.property_neighborhood ? ` · ${conv.property_neighborhood}` : ""}
+                    </div>
+                    <p style={{
+                      fontFamily: BODY, fontSize: 13,
+                      color: unread ? C.ink : C.coffee,
+                      fontWeight: unread ? 600 : 400,
+                      opacity: conv.last_message ? 1 : 0.5,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0,
+                    }}>
+                      {conv.last_message || "Empieza la conversación"}
+                    </p>
                   </div>
-                  <div style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 2 }}>
-                    {conv.property_title}
-                    {conv.property_neighborhood ? ` · ${conv.property_neighborhood}` : ""}
-                  </div>
-                  <p style={{ fontFamily: BODY, fontSize: 13, color: conv.last_message ? C.ink : C.coffee, opacity: conv.last_message ? 1 : 0.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0 }}>
-                    {conv.last_message || "Empieza la conversación"}
-                  </p>
-                </div>
-              </button>
-            ))
+                </button>
+              );
+            })
           )}
         </div>
       </div>

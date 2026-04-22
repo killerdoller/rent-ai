@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { useClerk } from "@clerk/nextjs";
 import {
   Camera, Edit2, MapPin, Briefcase, Save, X, LogOut,
   Moon, Sun, Zap, Home, Users, Heart, ChevronDown, ChevronUp,
@@ -37,6 +38,17 @@ const INTEREST_OPTIONS = [
   "Arte","Yoga","Gaming","Fotografía","Deporte",
 ];
 
+const formatCOP = (val: string | number) => {
+  if (val === null || val === undefined || val === "") return "";
+  const num = String(val).replace(/\D/g, "");
+  if (!num) return "";
+  return new Intl.NumberFormat("es-CO").format(Number(num));
+};
+
+const parseCOP = (val: string) => {
+  return val.replace(/\D/g, "");
+};
+
 interface UserProfile {
   id: string;
   first_name: string;
@@ -58,6 +70,7 @@ interface UserProfile {
 
 export function Profile() {
   const navigate = useRouter();
+  const { signOut } = useClerk();
   const fileRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -86,7 +99,7 @@ export function Profile() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut().catch(() => {});
+    await signOut();
     localStorage.removeItem("rentai_user_id");
     localStorage.removeItem("userMode");
     navigate.push("/app");
@@ -184,7 +197,7 @@ export function Profile() {
       {/* ── Hero ── */}
       <section style={{ position: "relative", height: 260, overflow: "hidden", flexShrink: 0 }}>
         <img
-          src={d?.avatar_url || d?.profile_images?.[0] || "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=1080"}
+          src={d?.avatar_url || d?.profile_images?.[0] || "/profile.jpg"}
           alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }}
         />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.1) 55%, transparent 100%)" }} />
@@ -379,7 +392,19 @@ export function Profile() {
                 return (
                   <div key={value}
                     onClick={isEditing ? () => set("user_mode", value) : undefined}
-                    style={{ padding: "14px 12px", borderRadius: 14, border: `1.5px solid ${selected ? C.green : C.border}`, background: selected ? `${C.green}10` : C.cream, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, cursor: isEditing ? "pointer" : "default", color: selected ? C.green : C.coffee }}>
+                    style={{
+                      position: "relative", padding: "14px 12px", borderRadius: 14,
+                      border: `2px solid ${selected ? C.green : C.border}`,
+                      background: selected ? `${C.green}08` : C.white,
+                      display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+                      cursor: isEditing ? "pointer" : "default", color: selected ? C.green : C.coffee,
+                      transition: "all 0.2s"
+                    }}>
+                    {selected && (
+                      <div style={{ position: "absolute", top: 6, right: 6, width: 14, height: 14, borderRadius: "50%", background: C.green, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{ width: 6, height: 3, borderLeft: "1.5px solid white", borderBottom: "1.5px solid white", transform: "rotate(-45deg) translateY(-1px)" }} />
+                      </div>
+                    )}
                     {icon}
                     <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, textAlign: "center", lineHeight: 1.3 }}>{label}</span>
                   </div>
@@ -390,13 +415,18 @@ export function Profile() {
             <Field label="Presupuesto mensual (COP)">
               {isEditing ? (
                 <div style={{ position: "relative" }}>
-                  <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.coffee, opacity: 0.5 }}>$</span>
-                  <input type="number" value={form.monthly_budget || ""} onChange={e => set("monthly_budget", Number(e.target.value))} placeholder="1.200.000"
-                    style={{ ...inputStyle, paddingLeft: 26 }} />
+                  <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.green, opacity: 0.8, zIndex: 1 }}>$</span>
+                  <input
+                    type="text"
+                    value={formatCOP(form.monthly_budget ?? "")}
+                    onChange={e => set("monthly_budget", Number(parseCOP(e.target.value)))}
+                    placeholder="1.200.000"
+                    style={{ ...inputStyle, paddingLeft: 26 }}
+                  />
                 </div>
               ) : (
                 <span style={valueStyle}>
-                  {d?.monthly_budget ? `$${Number(d.monthly_budget).toLocaleString("es-CO")} COP/mes` : <Placeholder>—</Placeholder>}
+                  {d?.monthly_budget ? `$${formatCOP(d.monthly_budget)} COP/mes` : <Placeholder>—</Placeholder>}
                 </span>
               )}
             </Field>

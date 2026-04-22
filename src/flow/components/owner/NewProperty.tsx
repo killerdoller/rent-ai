@@ -2,7 +2,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { ArrowLeft, MapPin, Bed, FileText, Image as ImageIcon, Loader2, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, MapPin, Bed, FileText, CheckCircle2 } from "lucide-react";
+import { ImageUploader } from "./ImageUploader";
 
 const MapPicker = dynamic(() => import("./MapPicker"), {
   ssr: false,
@@ -39,7 +40,7 @@ export function NewProperty() {
   const [error, setError] = useState("");
   const [form, setForm] = useState({
     title: "", monthly_rent: "", city: "Bogotá", neighborhood: "",
-    bedrooms: "1", description: "", image_url: "",
+    bedrooms: "1", description: "", images: [] as string[],
     allows_students: true, requires_co_debtor: false,
     address: "", latitude: null as number | null, longitude: null as number | null,
   });
@@ -64,7 +65,8 @@ export function NewProperty() {
           owner_id: ownerId, title: form.title,
           monthly_rent: Number(form.monthly_rent), city: form.city,
           neighborhood: form.neighborhood, bedrooms: Number(form.bedrooms),
-          description: form.description, image_url: form.image_url || null,
+          description: form.description,
+          images: form.images, image_url: form.images[0] || null,
           allows_students: form.allows_students, requires_co_debtor: form.requires_co_debtor,
           tags: selectedTags, address: form.address || null,
           latitude: form.latitude, longitude: form.longitude,
@@ -139,24 +141,21 @@ export function NewProperty() {
             </div>
           </Card>
 
-          {/* Imagen */}
-          <Card title="Imagen principal">
-            <Field label="URL de la imagen">
-              <div style={{ position: "relative" }}>
-                <ImageIcon style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: C.coffee, opacity: 0.5 }} />
-                <input name="image_url" type="url" value={form.image_url} onChange={handleChange}
-                  placeholder="https://..." style={{ ...inputStyle, paddingLeft: 30 }} />
-              </div>
-            </Field>
-            {form.image_url && (
-              <img src={form.image_url} alt="preview" style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 12, marginTop: 8 }} />
-            )}
+          {/* Fotos */}
+          <Card title="Fotos" subtitle="La primera foto será la portada del anuncio">
+            <ImageUploader
+              images={form.images}
+              onChange={urls => set("images", urls)}
+            />
           </Card>
 
           {/* Ubicación */}
-          <Card title="Ubicación" subtitle="Haz clic en el mapa para marcar la ubicación exacta">
-            <MapPicker initialLat={form.latitude ?? 4.711} initialLng={form.longitude ?? -74.0721}
-              onLocationPicked={(lat, lng, address) => setForm(f => ({ ...f, latitude: lat, longitude: lng, address }))} />
+          <Card title="Ubicación" subtitle="Busca la dirección o toca el mapa para ajustar el punto">
+            <MapPicker
+              initialLat={form.latitude ?? 4.711} initialLng={form.longitude ?? -74.0721}
+              city={form.city ? `${form.city}, Colombia` : "Bogotá, Colombia"}
+              onLocationPicked={(lat, lng, address) => setForm(f => ({ ...f, latitude: lat, longitude: lng, address }))}
+            />
             {form.address && (
               <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 8 }}>
                 <MapPin style={{ width: 13, height: 13, color: C.terra, flexShrink: 0, marginTop: 2 }} />

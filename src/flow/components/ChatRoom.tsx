@@ -1,7 +1,9 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Send, Building2, User } from "lucide-react";
+import { ArrowLeft, Send, Building2, User, RefreshCw } from "lucide-react";
+import { RoommateProfileSheet } from "./RoommateProfileSheet";
+import { supabase } from "../../utils/supabaseClient";
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
 const BODY = "var(--font-inter, 'system-ui', sans-serif)";
@@ -27,6 +29,7 @@ interface DBMessage {
 interface RoomData {
   conversation_id: string;
   other_party: { name: string; avatar: string | null };
+  other_user_id: string | null;
   property: { title: string; image_url: string | null; neighborhood: string; monthly_rent: number } | null;
 }
 
@@ -47,6 +50,7 @@ export function ChatRoom({
   const [input, setInput]       = useState("");
   const [sending, setSending]   = useState(false);
   const [loadError, setLoadError] = useState("");
+  const [showProfile, setShowProfile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollRef        = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -58,33 +62,54 @@ export function ChatRoom({
     return localStorage.getItem("rentai_user_id") || localStorage.getItem("user_id");
   }, [senderType]);
 
+  // Mark as read helper
+  const markRead = () => localStorage.setItem(`chat_read_${id}`, new Date().toISOString());
+
   // Load room
   useEffect(() => {
-    fetch(`/api/chat/room?match_id=${id}&caller_type=${senderType}`)
+    const sid = senderId();
+    const callerParam = sid ? `&caller_id=${sid}` : "";
+    fetch(`/api/chat/room?match_id=${id}&caller_type=${senderType}${callerParam}`)
       .then(r => r.ok ? r.json() : Promise.reject())
       .then((data: RoomData & { messages: DBMessage[] }) => {
-        setRoom({ conversation_id: data.conversation_id, other_party: data.other_party, property: data.property });
+        setRoom({ conversation_id: data.conversation_id, other_party: data.other_party, other_user_id: data.other_user_id ?? null, property: data.property });
         setMessages(data.messages);
+        markRead();
       })
       .catch(() => setLoadError("No se pudo cargar la conversación."));
   }, [id, senderType]);
 
-  // Poll for new messages every 3 s
+  // Subscripción en tiempo real con Supabase
   useEffect(() => {
     if (!room) return;
-    const poll = () => {
-      const last = messages[messages.length - 1];
-      const after = last ? `&after=${encodeURIComponent(last.created_at)}` : "";
-      fetch(`/api/chat/messages?conversation_id=${room.conversation_id}${after}`)
-        .then(r => r.ok ? r.json() : [])
-        .then((newMsgs: DBMessage[]) => {
-          if (newMsgs.length > 0) setMessages(prev => [...prev, ...newMsgs]);
-        })
-        .catch(() => {});
+
+    // Escuchar nuevos mensajes insertados en esta conversación
+    const channel = supabase
+      .channel(`room-${room.conversation_id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${room.conversation_id}`,
+        },
+        (payload) => {
+          const newMsg = payload.new as DBMessage;
+          // Evitar duplicados si el remitente ya añadió su propio mensaje localmente
+          setMessages(prev => {
+            if (prev.some(m => m.id === newMsg.id)) return prev;
+            return [...prev, newMsg];
+          });
+          markRead();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
-    pollRef.current = setInterval(poll, 3000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [room, messages]);
+  }, [room]);
 
   // Auto scroll
   useEffect(() => {
@@ -110,18 +135,12 @@ export function ChatRoom({
           content:         text,
         }),
       });
-      if (res.ok) {
-        const msg: DBMessage = await res.json();
-        setMessages(prev => [...prev, msg]);
-      }
+      // Realtime subscription handles adding the message — no manual setMessages here
     } catch { /* silent */ }
     finally { setSending(false); }
   };
 
-  const isOwn = (msg: DBMessage) => {
-    const sid = senderId();
-    return msg.sender_id === sid || msg.sender_type === senderType;
-  };
+  const isOwn = (msg: DBMessage) => msg.sender_id === senderId();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.cream, overflow: "hidden" }}>
@@ -138,17 +157,12 @@ export function ChatRoom({
           <ArrowLeft style={{ width: 18, height: 18, color: C.coffee }} />
         </button>
 
-        <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10 }}>
-          {room?.other_party.avatar ? (
-            <img src={room.other_party.avatar} alt={room.other_party.name}
-              style={{ width: 38, height: 38, borderRadius: 19, objectFit: "cover", flexShrink: 0 }} />
-          ) : (
-            <div style={{ width: 38, height: 38, borderRadius: 19, background: `${accent}22`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              {senderType === "owner"
-                ? <User style={{ width: 18, height: 18, color: accent }} />
-                : <Building2 style={{ width: 18, height: 18, color: accent }} />}
-            </div>
-          )}
+        <div
+          style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10, cursor: room?.other_user_id ? "pointer" : "default" }}
+          onClick={() => room?.other_user_id && setShowProfile(true)}
+        >
+          <img src={room?.other_party.avatar || "/profile.jpg"} alt={room?.other_party.name}
+            style={{ width: 38, height: 38, borderRadius: 19, objectFit: "cover", flexShrink: 0 }} />
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {room?.other_party.name || "…"}
@@ -249,6 +263,12 @@ export function ChatRoom({
           </button>
         </div>
       </div>
+      {showProfile && room?.other_user_id && (
+        <RoommateProfileSheet
+          userId={room.other_user_id}
+          onClose={() => setShowProfile(false)}
+        />
+      )}
     </div>
   );
 }

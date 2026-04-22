@@ -10,40 +10,36 @@ const supabase = createClient(
 // POST { clerk_id, email, first_name?, mode?, role? }
 // Returns { role, profile_id, email?, is_new }
 export async function POST(request: Request) {
-  const { clerk_id, email, first_name, mode, role } = await request.json();
+  const { clerk_id, email, first_name, last_name, avatar_url, mode, role } = await request.json();
 
   if (!clerk_id) {
     return NextResponse.json({ error: "clerk_id requerido" }, { status: 400 });
   }
 
-  // 1. Check owners table
-  const { data: owner } = await supabase
-    .from("owners")
-    .select("owner_id, email")
-    .eq("clerk_id", clerk_id)
-    .maybeSingle();
+  // 1 & 2. Check owners and profiles in parallel for speed
+  const [ownerRes, profileRes] = await Promise.all([
+    supabase.from("owners").select("owner_id, email").eq("clerk_id", clerk_id).maybeSingle(),
+    supabase.from("profiles").select("id, user_mode").eq("clerk_id", clerk_id).maybeSingle()
+  ]);
 
-  if (owner) {
-    return NextResponse.json({ role: "owner", profile_id: owner.owner_id, email: owner.email, is_new: false });
+  if (ownerRes.data) {
+    return NextResponse.json({ role: "owner", profile_id: ownerRes.data.owner_id, email: ownerRes.data.email, is_new: false });
   }
 
-  // 2. Check profiles table
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, user_mode")
-    .eq("clerk_id", clerk_id)
-    .maybeSingle();
-
-  if (profile) {
-    return NextResponse.json({ role: "student", profile_id: profile.id, is_new: false });
+  if (profileRes.data) {
+    return NextResponse.json({ role: "student", profile_id: profileRes.data.id, is_new: false });
   }
 
   // 3. New user — create based on role
+  if (!role) {
+    return NextResponse.json({ needs_role: true });
+  }
+
   if (role === "owner") {
     const { data: newOwner, error } = await supabase
       .from("owners")
       .insert({
-        name: first_name || email?.split("@")[0] || "Propietario",
+        name: `${first_name || ""} ${last_name || ""}`.trim() || email?.split("@")[0] || "Propietario",
         email: email || "",
         clerk_id,
       })
@@ -61,7 +57,10 @@ export async function POST(request: Request) {
   const { error } = await supabase.from("profiles").insert({
     id: newId,
     clerk_id,
+    email: email || "",
     first_name: first_name || "",
+    last_name: last_name || "",
+    avatar_url: avatar_url || "",
     user_mode: mode || "find-room",
   });
 

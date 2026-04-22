@@ -30,3 +30,24 @@ export async function POST(request: Request) {
 
   return NextResponse.json(data, { status: 201 });
 }
+
+// DELETE /api/rejections?user_id=xxx — borrar historial (solo para demo)
+export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const userId = searchParams.get("user_id");
+
+  if (!userId) {
+    return NextResponse.json({ error: "user_id requerido" }, { status: 400 });
+  }
+
+  const { error } = await supabase
+    .from("property_rejections")
+    .delete()
+    .eq("user_id", userId);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}

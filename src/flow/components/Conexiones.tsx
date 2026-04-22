@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
-import { MessageCircle, MapPin, Bed, Sparkles, Heart, X, Tag } from "lucide-react";
+import { MessageCircle, MapPin, Bed, Sparkles, Heart, X, Tag, Users } from "lucide-react";
 import { ImageCarousel } from "./ImageCarousel";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
+import { RoommateProfileSheet } from "./RoommateProfileSheet";
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
 const BODY    = "var(--font-inter, 'system-ui', sans-serif)";
@@ -27,7 +28,8 @@ interface Match {
   id: string;
   created_at: string;
   match_score: number | null;
-  properties: {
+  type?: "property" | "roommate";
+  properties?: {
     property_id: string;
     title: string;
     monthly_rent: number;
@@ -36,7 +38,8 @@ interface Match {
     image_url: string;
     description: string;
   };
-  owners: { owner_id: string; name: string; email: string };
+  owners?: { owner_id: string; name: string; email: string };
+  other?: { id: string; name: string; image: string; detail: string };
 }
 
 interface LikedProperty {
@@ -69,6 +72,7 @@ export function Conexiones({ defaultTab = "matches" }: { defaultTab?: Tab }) {
   const [likes, setLikes] = useState<LikedProperty[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedProperty, setExpandedProperty] = useState<LikedProperty | null>(null);
+  const [roommieSheet, setRoommieSheet] = useState<{ userId: string; matchId: string } | null>(null);
 
   useEffect(() => { fetchAll(); }, []);
 
@@ -84,7 +88,7 @@ export function Conexiones({ defaultTab = "matches" }: { defaultTab?: Tab }) {
       const matchesData: Match[] = matchesRes.ok ? await matchesRes.json() : [];
       const likesData: LikedProperty[] = likesRes.ok ? await likesRes.json() : [];
       setMatches(matchesData);
-      const matchedIds = new Set(matchesData.map((m) => m.properties?.property_id));
+      const matchedIds = new Set(matchesData.filter(m => m.type !== "roommate").map((m) => m.properties?.property_id));
       setLikes(likesData.filter((l) => !matchedIds.has(l.property_id)));
     } catch { /* silent */ }
     finally { setIsLoading(false); }
@@ -156,38 +160,58 @@ export function Conexiones({ defaultTab = "matches" }: { defaultTab?: Tab }) {
                       subtitle="Cuando un propietario acepte tu solicitud aparecerá aquí" />
                   ) : (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
-                      {matches.map((match) => (
-                        <button key={match.id} onClick={() => navigate.push(`/app/chat/${match.id}`)}
-                          style={{ background: C.white, borderRadius: 20, overflow: "hidden", border: `1.5px solid ${C.border}`, cursor: "pointer", textAlign: "left", boxShadow: "0 2px 8px rgba(130,85,77,0.06)", transition: "box-shadow 0.12s" }}
-                          onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 6px 20px rgba(130,85,77,0.12)")}
-                          onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 2px 8px rgba(130,85,77,0.06)")}>
-                          <div style={{ position: "relative", height: 160 }}>
-                            <img src={match.properties?.image_url || "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=400"}
-                              alt={match.properties?.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.55), transparent)" }} />
-                            {match.match_score && (
-                              <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(255,255,255,0.92)", borderRadius: 9999, padding: "3px 10px", display: "flex", alignItems: "center", gap: 4 }}>
-                                <Sparkles style={{ width: 11, height: 11, color: C.green }} />
-                                <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.green }}>{match.match_score}%</span>
+                      {matches.map((match) => {
+                        const isRoomie = match.type === "roommate";
+                        const img   = isRoomie ? match.other?.image : match.properties?.image_url;
+                        const title = isRoomie ? match.other?.name  : match.properties?.title;
+                        const sub   = isRoomie ? match.other?.detail : [match.properties?.neighborhood, match.properties?.city].filter(Boolean).join(", ");
+                        const foot  = isRoomie ? match.other?.name  : match.owners?.name;
+                        return (
+                          <button key={match.id}
+                            onClick={() => isRoomie && match.other?.id
+                              ? setRoommieSheet({ userId: match.other.id, matchId: match.id })
+                              : navigate.push(`/app/chat/${match.id}`)}
+                            style={{ background: C.white, borderRadius: 20, overflow: "hidden", border: `1.5px solid ${C.border}`, cursor: "pointer", textAlign: "left", boxShadow: "0 2px 8px rgba(130,85,77,0.06)", transition: "box-shadow 0.12s" }}
+                            onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 6px 20px rgba(130,85,77,0.12)")}
+                            onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 2px 8px rgba(130,85,77,0.06)")}>
+                            <div style={{ position: "relative", height: 160 }}>
+                              <img src={img || (isRoomie ? "/profile.jpg" : "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=400")}
+                                alt={title} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: isRoomie ? "center top" : "center" }} />
+                              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.55), transparent)" }} />
+                              {match.match_score && (
+                                <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(255,255,255,0.92)", borderRadius: 9999, padding: "3px 10px", display: "flex", alignItems: "center", gap: 4 }}>
+                                  <Sparkles style={{ width: 11, height: 11, color: C.green }} />
+                                  <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.green }}>{match.match_score}%</span>
+                                </div>
+                              )}
+                              {/* Type badge */}
+                              <div style={{ position: "absolute", top: 10, left: 10, background: isRoomie ? "rgba(216,125,111,0.92)" : "rgba(99,166,148,0.92)", borderRadius: 9999, padding: "2px 8px" }}>
+                                <span style={{ fontFamily: BODY, fontSize: 9, fontWeight: 700, color: C.white, textTransform: "uppercase", letterSpacing: 0.6 }}>
+                                  {isRoomie ? "Roomie" : "Apto"}
+                                </span>
                               </div>
-                            )}
-                            <div style={{ position: "absolute", bottom: 10, left: 12, right: 40 }}>
-                              <div style={{ fontFamily: BODY, fontSize: 13, fontWeight: 700, color: C.white }}>{match.properties?.title}</div>
-                              <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
-                                <MapPin style={{ width: 11, height: 11, color: "rgba(255,255,255,0.7)", flexShrink: 0 }} />
-                                <span style={{ fontFamily: BODY, fontSize: 11, color: "rgba(255,255,255,0.7)" }}>{match.properties?.neighborhood}, {match.properties?.city}</span>
+                              <div style={{ position: "absolute", bottom: 10, left: 12, right: 40 }}>
+                                <div style={{ fontFamily: BODY, fontSize: 13, fontWeight: 700, color: C.white }}>{title}</div>
+                                {sub && (
+                                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                                    {isRoomie
+                                      ? <Users style={{ width: 11, height: 11, color: "rgba(255,255,255,0.7)", flexShrink: 0 }} />
+                                      : <MapPin style={{ width: 11, height: 11, color: "rgba(255,255,255,0.7)", flexShrink: 0 }} />}
+                                    <span style={{ fontFamily: BODY, fontSize: 11, color: "rgba(255,255,255,0.7)" }}>{sub}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div style={{ position: "absolute", bottom: 10, right: 10, width: 30, height: 30, borderRadius: 15, background: C.green, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <MessageCircle style={{ width: 15, height: 15, color: C.white }} />
                               </div>
                             </div>
-                            <div style={{ position: "absolute", bottom: 10, right: 10, width: 30, height: 30, borderRadius: 15, background: C.green, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              <MessageCircle style={{ width: 15, height: 15, color: C.white }} />
+                            <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee }}>{foot} · {formatDate(match.created_at)}</span>
+                              <span style={{ fontFamily: BODY, fontSize: 10, fontWeight: 700, color: C.green, background: `${C.green}18`, padding: "3px 8px", borderRadius: 9999 }}>¡Match!</span>
                             </div>
-                          </div>
-                          <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee }}>{match.owners?.name} · {formatDate(match.created_at)}</span>
-                            <span style={{ fontFamily: BODY, fontSize: 10, fontWeight: 700, color: C.green, background: `${C.green}18`, padding: "3px 8px", borderRadius: 9999 }}>¡Match!</span>
-                          </div>
-                        </button>
-                      ))}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </motion.div>
@@ -246,6 +270,14 @@ export function Conexiones({ defaultTab = "matches" }: { defaultTab?: Tab }) {
           <PropertyDetailSheet property={expandedProperty} onClose={() => setExpandedProperty(null)} />
         )}
       </AnimatePresence>
+
+      {roommieSheet && (
+        <RoommateProfileSheet
+          userId={roommieSheet.userId}
+          onClose={() => setRoommieSheet(null)}
+          onChat={() => { setRoommieSheet(null); navigate.push(`/app/chat/${roommieSheet.matchId}`); }}
+        />
+      )}
     </div>
   );
 }

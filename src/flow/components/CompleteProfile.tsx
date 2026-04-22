@@ -32,6 +32,17 @@ const INTEREST_OPTIONS = [
   "Arte", "Yoga", "Gaming", "Fotografía", "Deporte",
 ];
 
+const formatCOP = (val: string | number) => {
+  if (val === null || val === undefined || val === "") return "";
+  const num = String(val).replace(/\D/g, "");
+  if (!num) return "";
+  return new Intl.NumberFormat("es-CO").format(Number(num));
+};
+
+const parseCOP = (val: string) => {
+  return val.replace(/\D/g, "");
+};
+
 interface StepProps { form: any; setForm: (f: any) => void; }
 
 export function CompleteProfile() {
@@ -272,7 +283,19 @@ function Step3({ form, setForm }: StepProps) {
           const selected = form.user_mode === value;
           return (
             <button key={value} type="button" onClick={() => setForm({ ...form, user_mode: value })}
-              style={{ padding: "16px 12px", borderRadius: 16, border: `1.5px solid ${selected ? C.green : C.border}`, background: selected ? `${C.green}10` : C.cream, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, cursor: "pointer", color: selected ? C.green : C.coffee }}>
+              style={{
+                position: "relative", padding: "16px 12px", borderRadius: 16,
+                border: `2px solid ${selected ? C.green : C.border}`,
+                background: selected ? `${C.green}08` : C.white,
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+                cursor: "pointer", color: selected ? C.green : C.coffee,
+                transition: "all 0.2s",
+              }}>
+              {selected && (
+                <div style={{ position: "absolute", top: 8, right: 8, width: 16, height: 16, borderRadius: "50%", background: C.green, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 8, height: 4, borderLeft: "2px solid white", borderBottom: "2px solid white", transform: "rotate(-45deg) translateY(-1px)" }} />
+                </div>
+              )}
               {icon}
               <span style={{ fontFamily: BODY, fontSize: 12, fontWeight: 700, textAlign: "center", lineHeight: 1.3, color: selected ? C.green : C.coffee }}>{label}</span>
             </button>
@@ -283,9 +306,21 @@ function Step3({ form, setForm }: StepProps) {
       <div>
         <Label>Presupuesto mensual (COP)</Label>
         <div style={{ position: "relative" }}>
-          <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.coffee, opacity: 0.5 }}>$</span>
-          <input type="number" value={form.monthly_budget} onChange={e => setForm({ ...form, monthly_budget: e.target.value })} placeholder="1.200.000"
-            style={{ width: "100%", boxSizing: "border-box", paddingLeft: 28, paddingRight: 14, paddingTop: 11, paddingBottom: 11, background: C.muted, border: "none", borderRadius: 12, fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink, outline: "none" }} />
+          <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.green, zIndex: 1 }}>$</span>
+          <input
+            type="text"
+            value={formatCOP(form.monthly_budget)}
+            onChange={e => setForm({ ...form, monthly_budget: parseCOP(e.target.value) })}
+            placeholder="1.200.000"
+            style={{
+              width: "100%", boxSizing: "border-box", paddingLeft: 28, paddingRight: 14,
+              paddingTop: 11, paddingBottom: 11, background: C.muted, border: `1.5px solid ${C.border}`,
+              borderRadius: 12, fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink, outline: "none",
+              transition: "all 0.2s",
+            }}
+            onFocus={(e) => (e.target.parentElement!.style.borderColor = C.green)}
+            onBlur={(e) => (e.target.parentElement!.style.borderColor = C.border)}
+          />
         </div>
       </div>
 
