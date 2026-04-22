@@ -335,8 +335,9 @@ export function OwnerInterested() {
                     key={tenant.like_id}
                     onClick={() => setSelectedTenant(tenant)}
                     style={{
-                      background: C.white, borderRadius: 20, padding: "16px",
-                      border: `1.5px solid ${C.border}`, display: "flex", alignItems: "center", gap: 14,
+                      background: C.white, borderRadius: 20, padding: "12px 16px",
+                      border: `1.5px solid ${C.border}`, display: "flex", alignItems: "center", gap: "10px 14px",
+                      flexWrap: "wrap", // Permite que el botón baje si no hay espacio
                       opacity: isAccepted ? 0.65 : 1, transition: "opacity 0.2s",
                       boxShadow: "0 2px 8px rgba(130,85,77,0.06)", cursor: "pointer",
                     }}
@@ -365,13 +366,13 @@ export function OwnerInterested() {
                       }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
                           <Building2 style={{ width: 11, height: 11, color: C.coffee, flexShrink: 0 }} />
-                          <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 600, color: C.coffee, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 600, color: C.coffee }}>
                             {tenant.property?.title}
                           </span>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
                           <MapPin style={{ width: 11, height: 11, color: C.coffee, flexShrink: 0 }} />
-                          <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee }}>
                             {tenant.property?.neighborhood}
                           </span>
                         </div>
