@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { MessageCircle, Search, Building2, User } from "lucide-react";
+import { MessageCircle, Search } from "lucide-react";
 import { supabase } from "../../utils/supabaseClient";
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
