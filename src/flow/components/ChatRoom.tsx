@@ -143,7 +143,7 @@ export function ChatRoom({
   const isOwn = (msg: DBMessage) => msg.sender_id === senderId();
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.cream, overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, background: C.cream, overflow: "hidden" }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
       {/* Header */}

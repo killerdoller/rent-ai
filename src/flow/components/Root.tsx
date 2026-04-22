@@ -71,9 +71,7 @@ export function Root({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col md:flex-row w-full overflow-x-hidden" style={{ background: C.cream, minHeight: "100dvh", position: "relative" }}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        /* Hide scrollbar for Chrome, Safari and Opera */
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        /* Hide scrollbar for IE, Edge and Firefox */
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
@@ -113,19 +111,10 @@ export function Root({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <div className={`flex flex-col flex-1 min-h-0 ${!hideNav ? "md:ml-60" : ""}`}>
-        <main style={{ 
-          flex: 1, 
-          display: "flex", 
-          flexDirection: "column",
-          // Padding inferior para que el contenido no quede debajo de la nav móvil
-          paddingBottom: hideNav ? 0 : "var(--nav-height, 0px)"
-        }}>
-          <style>{`
-          @media (max-width: 767px) {
-            :root { --chat-bottom-offset: 0px; }
-          }
-        `}</style>
+        <main style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
           {children}
+          {/* Espaciador para la nav móvil fija */}
+          {!hideNav && <div className="md:hidden" style={{ height: 80, flexShrink: 0 }} />}
         </main>
 
         {/* Mobile Bottom Nav — Tailwind controls visibility */}
