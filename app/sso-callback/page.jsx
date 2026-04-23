@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 
 const BODY = "var(--font-inter, 'system-ui', sans-serif)";
-const C = { cream: "#F7F2EC", coffee: "#82554D", ink: "#0D0D0D", white: "#FFFFFF" };
+const C = { cream: "#FFFFFF", coffee: "#82554D", ink: "#0D0D0D", white: "#FFFFFF" };
 
 import { AuthenticateWithRedirectCallback } from "@clerk/nextjs";
 

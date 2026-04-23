@@ -4,7 +4,7 @@ import { Upload, X, Loader2, ImagePlus } from "lucide-react";
 
 const BODY = "var(--font-inter, 'system-ui', sans-serif)";
 const C = {
-  cream: "#F7F2EC", muted: "#EFE7DE", white: "#FFFFFF",
+  cream: "#FFFFFF", muted: "#EFE7DE", white: "#FFFFFF",
   terra: "#D87D6F", coffee: "#82554D", border: "rgba(130,85,77,0.14)",
 };
 

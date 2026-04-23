@@ -4,22 +4,22 @@
 @import "../src/flow/styles/theme.css";
 
 :root {
-  --primary: #A65D8C;
-  --accent: #BF7E7E;
-  --bg-light: #FDFDFD;
-  --text-main: #1A1C1E;
-  --text-muted: #79858C;
+  --primary: #D87D6F;
+  --accent: #C7D9BF;
+  --bg-light: #FFFFFF;
+  --text-main: #0F172A;
+  --text-muted: #475569;
 }
 
 @theme {
-  --color-primary: #A65D8C;
-  --color-accent: #BF7E7E;
-  --color-bg-light: #FDFDFD;
-  --color-text-main: #1A1C1E;
-  --color-text-muted: #79858C;
-  --color-mint-soft: #C7D9BF;
-  --color-olive-match: #688C4F;
-  --color-terracotta-warm: #BF7E7E;
+  --color-primary: #D87D6F;
+  --color-accent: #C7D9BF;
+  --color-bg-light: #FFFFFF;
+  --color-text-main: #0F172A;
+  --color-text-muted: #475569;
+  --color-mint-soft: #F2F7F4;
+  --color-olive-match: #8CA693;
+  --color-terracotta-warm: #C7D9BF;
 
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Manrope', 'Inter', sans-serif;

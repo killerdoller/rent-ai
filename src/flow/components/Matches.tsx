@@ -71,7 +71,7 @@ export function Matches() {
 
   const C = {
     ink:    "#0D0D0D",
-    cream:  "#F7F2EC",
+    cream: "#FFFFFF",
     white:  "#FFFFFF",
     green:  "#63A694",
     coffee: "#82554D",

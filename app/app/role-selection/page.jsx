@@ -9,7 +9,7 @@ const C = {
   greenDeep: "#3D7360",
   terra:     "#D87D6F",
   ink:       "#0D0D0D",
-  cream:     "#F2ECDF",
+  cream: "#FFFFFF",
   white:     "#FFFFFF",
   coffee:    "#82554D"
 };

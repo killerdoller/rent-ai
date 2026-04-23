@@ -63,7 +63,7 @@ const Hero = () => {
                 {/* Scroll Animation Background */}
                 <div className="absolute inset-0 z-[1] overflow-hidden bg-bg-light">
                     <ScrollAnimation frames={frames} className="w-full h-full block" />
-                    <div className="absolute inset-0 bg-gradient-to-b from-[#C7D9BF]/60 to-[#2A333A]/40 z-[2]" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-[#F2F7F4]/60 to-[#2A333A]/40 z-[2]" />
                 </div>
 
                 <div className="relative z-10 text-center max-w-3xl mx-auto px-6 w-full">
@@ -92,7 +92,7 @@ const Hero = () => {
                         </div>
                         <Link
                             href="/app"
-                            className="bg-gradient-to-br from-[#A65D8C] to-[#BF7E7E] text-white px-8 py-3 rounded-full font-black text-sm transition-all hover:-translate-y-0.5 shadow-lg flex items-center gap-2"
+                            className="bg-gradient-to-br from-[#D87D6F] to-[#C76D5F] text-white px-8 py-3 rounded-full font-black text-sm transition-all hover:-translate-y-0.5 shadow-lg flex items-center gap-2"
                         >
                             <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
                             Buscar

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 
 const BODY = "var(--font-inter, 'system-ui', sans-serif)";
-const C = { cream: "#F7F2EC", coffee: "#82554D", ink: "#0D0D0D", white: "#FFFFFF" };
+const C = { cream: "#FFFFFF", coffee: "#82554D", ink: "#0D0D0D", white: "#FFFFFF" };
 
 function SyncPage() {
   const { user, isLoaded } = useUser();

@@ -8,11 +8,11 @@ const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
 const BODY    = "var(--font-inter, 'system-ui', sans-serif)";
 const C = {
   ink:    "#0D0D0D",
-  cream:  "#F7F2EC",
+  cream: "#FFFFFF",
   white:  "#FFFFFF",
-  green:  "#63A694",
-  coffee: "#82554D",
-  border: "rgba(130,85,77,0.14)",
+  green:  "#D87D6F",
+  coffee: "#4B5563",
+  border: "rgba(0,0,0,0.08)",
 };
 
 const sidebarStyle: React.CSSProperties = {

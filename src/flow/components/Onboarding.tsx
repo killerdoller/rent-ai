@@ -52,14 +52,14 @@ async function googleAuth(
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
-  green:     "#63A694",
-  greenL:    "#A8D1B1",
-  greenDeep: "#3D7360",
+  green:     "#D87D6F",
+  greenL:    "#A78BFA",
+  greenDeep: "#5B21B6",
   terra:     "#D87D6F",
   terraDeep: "#A85548",
-  coffee:    "#82554D",
+  coffee:    "#4B5563",
   ink:       "#0D0D0D",
-  cream:     "#F2ECDF",
+  cream: "#FFFFFF",
   white:     "#FFFFFF",
 };
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
@@ -75,12 +75,12 @@ function iso(gx: number, gy: number, z = 0) {
 }
 
 const CITY = {
-  ink: "#1A1814", paper: "#EEE6D2", grass: "#A9C49A", grassDk: "#7FA174",
-  grassDeep: "#5F8765", road: "#C9BEA8",
-  magenta: "#A55B88", magentaDk: "#7D4468", purple: "#7B5C94",
+  ink: "#1A1814", paper: "#FFFFFF", grass: "#A9C49A", grassDk: "#7FA174",
+  grassDeep: "#5F8765", road: "#D4D4D8",
+  magenta: "#A55B88", magentaDk: "#7D4468", purple: "#D87D6F",
   teal: "#5E9C95", tealDk: "#3F7063", terra: "#C76D5F", terraDk: "#9A4F44",
-  peach: "#E6B48E", cream: "#E8D9B4", yellow: "#E2BE66", beige: "#C9B998",
-  brown: "#82554D", water: "#8FAEB6",
+  peach: "#E6B48E", cream: "#FFFFFF", yellow: "#E2BE66", beige: "#D4D4D8",
+  brown: "#4B5563", water: "#8FAEB6",
 };
 
 const towerPalettes = [
@@ -253,11 +253,11 @@ function InteractiveCity({ height = 220 }: { height?: number }) {
     <div onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
       onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp} onWheel={onWheel}
       style={{ position:"relative", width:"100%", height, borderRadius:20, overflow:"hidden",
-        background:"linear-gradient(180deg,#EFE5D0 0%,#E8DCC0 60%,#DED0AF 100%)",
+        background:"linear-gradient(180deg,#F4F4F5 0%,#E4E4E7 60%,#D4D4D8 100%)",
         border:`2.5px solid ${C.ink}`, boxShadow:`4px 4px 0 ${C.ink}`,
         cursor: dragging?"grabbing":"grab", userSelect:"none", touchAction:"none" }}>
       <div style={{ position:"absolute", inset:0,
-        backgroundImage:"radial-gradient(rgba(130,85,77,0.09) 1px, transparent 1px)",
+        backgroundImage:"radial-gradient(rgba(216, 125, 111,0.1) 1px, transparent 1px)",
         backgroundSize:"14px 14px", pointerEvents:"none" }}/>
       <svg viewBox="-500 -360 1000 720" preserveAspectRatio="xMidYMid meet"
         style={{ position:"absolute", inset:0, width:"100%", height:"100%",
@@ -268,7 +268,7 @@ function InteractiveCity({ height = 220 }: { height?: number }) {
         <CityScene/>
       </svg>
       <div style={{ position:"absolute", inset:0, pointerEvents:"none",
-        background:"radial-gradient(circle at center,transparent 50%,rgba(237,229,213,0.7) 100%)" }}/>
+        background:"radial-gradient(circle at center,transparent 50%,rgba(244,244,245,0.7) 100%)" }}/>
       <div style={{ position:"absolute", bottom:10, left:12, padding:"4px 10px", borderRadius:9999,
         background:C.ink, color:C.cream, fontFamily:BODY, fontSize:9, fontWeight:700,
         letterSpacing:1.3, textTransform:"uppercase" }}>
@@ -295,7 +295,7 @@ function InteractiveCity({ height = 220 }: { height?: number }) {
 function DotBg() {
   return (
     <div style={{ position:"fixed", inset:0, pointerEvents:"none", zIndex:0,
-      backgroundImage:"radial-gradient(rgba(130,85,77,0.09) 1px, transparent 1px)",
+      backgroundImage:"radial-gradient(rgba(216, 125, 111,0.1) 1px, transparent 1px)",
       backgroundSize:"18px 18px" }}/>
   );
 }

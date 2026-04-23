@@ -14,7 +14,7 @@ const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
 const BODY    = "var(--font-inter, 'system-ui', sans-serif)";
 const C = {
   ink:    "#0D0D0D",
-  cream:  "#F7F2EC",
+  cream: "#FFFFFF",
   muted:  "#EFE7DE",
   white:  "#FFFFFF",
   green:  "#63A694",

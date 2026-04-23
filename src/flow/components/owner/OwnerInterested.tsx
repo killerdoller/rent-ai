@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
 const BODY    = "var(--font-inter, 'system-ui', sans-serif)";
 const C = {
-  ink: "#0D0D0D", cream: "#F7F2EC", muted: "#EFE7DE",
+  ink: "#0D0D0D", cream: "#FFFFFF", muted: "#EFE7DE",
   white: "#FFFFFF", terra: "#D87D6F", green: "#63A694",
   coffee: "#82554D", border: "rgba(130,85,77,0.14)",
 };
