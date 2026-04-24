@@ -54,13 +54,16 @@ export async function GET(request: Request) {
     (existingMatches || []).map((m: any) => `${m.user_id}_${m.property_id}`)
   );
 
-  // 4. Obtener info de los arrendatarios (guest_users)
+  // 4. Obtener info de los arrendatarios desde profiles (Supabase Auth)
   const userIds = [...new Set((likes || []).map((l: any) => l.user_id))];
-  const { data: guestUsers } = userIds.length > 0
-    ? await supabase.from("guest_users").select("id, name, email, phone, user_mode").in("id", userIds)
+  const { data: profileRows } = userIds.length > 0
+    ? await supabase
+        .from("profiles")
+        .select("id, first_name, last_name, avatar_url, profile_images")
+        .in("id", userIds)
     : { data: [] };
 
-  const usersMap = Object.fromEntries((guestUsers || []).map((u: any) => [u.id, u]));
+  const usersMap = Object.fromEntries((profileRows || []).map((u: any) => [u.id, u]));
   const propertiesMap = Object.fromEntries(properties.map((p: any) => [p.property_id, p]));
 
   const interested = (likes || [])

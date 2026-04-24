@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Users, MapPin, Check, Building2, Mail, X, Briefcase, Heart, Star } from "lucide-react";
+import { Users, MapPin, Check, Building2, X, Briefcase, Heart, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -30,7 +30,7 @@ const INTEREST_LABELS: Record<string, string> = {
 
 interface InterestedTenant {
   like_id: string; user_id: string; liked_at: string;
-  tenant: { id: string; name: string; email: string | null; phone: string | null; user_mode: string } | null;
+  tenant: { id: string; first_name: string | null; last_name: string | null; avatar_url: string | null; profile_images: string[] | null } | null;
   property: { property_id: string; title: string; image_url: string; neighborhood: string; city: string };
 }
 
@@ -214,16 +214,6 @@ function TenantProfileSheet({
                 </div>
               )}
 
-              {/* Email */}
-              {tenant.tenant?.email && (
-                <div style={{ background: C.white, borderRadius: 16, padding: "12px 14px", border: `1.5px solid ${C.border}`, marginBottom: 14 }}>
-                  <div style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>Contacto</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <Mail style={{ width: 13, height: 13, color: C.coffee }} />
-                    <span style={{ fontFamily: BODY, fontSize: 13, color: C.ink }}>{tenant.tenant.email}</span>
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>
@@ -343,23 +333,23 @@ export function OwnerInterested() {
                     }}
                   >
                     {/* Avatar */}
-                    <div style={{ width: 48, height: 48, borderRadius: 24, background: `${C.terra}22`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <span style={{ fontFamily: DISPLAY, fontSize: 20, fontWeight: 500, color: C.terra }}>
-                        {tenant.tenant?.name ? tenant.tenant.name.charAt(0).toUpperCase() : "?"}
-                      </span>
-                    </div>
+                    {(() => {
+                      const photo = tenant.tenant?.profile_images?.[0] || tenant.tenant?.avatar_url;
+                      const fullName = [tenant.tenant?.first_name, tenant.tenant?.last_name].filter(Boolean).join(" ") || "?";
+                      return photo ? (
+                        <img src={photo} alt={fullName} style={{ width: 48, height: 48, borderRadius: 24, objectFit: "cover", border: `2px solid ${C.terra}22`, flexShrink: 0 }} />
+                      ) : (
+                        <div style={{ width: 48, height: 48, borderRadius: 24, background: `${C.terra}22`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <span style={{ fontFamily: DISPLAY, fontSize: 20, fontWeight: 500, color: C.terra }}>{fullName.charAt(0).toUpperCase()}</span>
+                        </div>
+                      );
+                    })()}
 
                     {/* Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {tenant.tenant?.name || "Arrendatario anónimo"}
+                        {[tenant.tenant?.first_name, tenant.tenant?.last_name].filter(Boolean).join(" ") || "Arrendatario"}
                       </div>
-                      {tenant.tenant?.email && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
-                          <Mail style={{ width: 11, height: 11, color: C.coffee, flexShrink: 0 }} />
-                          <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenant.tenant.email}</span>
-                        </div>
-                      )}
                       <div style={{ 
                         display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 8px", 
                         marginTop: 6, background: C.muted, borderRadius: 8, padding: "6px 10px" 
