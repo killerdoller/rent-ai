@@ -115,31 +115,31 @@ export function Root({ children }: { children: React.ReactNode }) {
         <main style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
           {children}
           {/* Espaciador para la nav móvil fija */}
-          {!hideNav && <div className="md:hidden" style={{ height: 80, flexShrink: 0 }} />}
+          {!hideNav && <div className="md:hidden" style={{ height: "calc(64px + env(safe-area-inset-bottom))", flexShrink: 0 }} />}
         </main>
 
         {/* Mobile Bottom Nav — Tailwind controls visibility */}
         {!hideNav && (
-          <nav className="flex md:hidden" style={{
+          <nav className="md:hidden" style={{
             position: "fixed", bottom: 0, left: 0, right: 0,
-            justifyContent: "space-around", alignItems: "center",
-            height: 64, zIndex: 50,
-            paddingBottom: "max(12px, env(safe-area-inset-bottom))",
+            zIndex: 50, paddingBottom: "env(safe-area-inset-bottom)",
             background: C.white, borderTop: `1.5px solid ${C.border}`,
           }}>
-            {navItems.map(({ path, icon: Icon, label }) => {
-              const isActive = pathname?.startsWith(path);
-              return (
-                <button key={path} onClick={() => navigate.push(path)} style={{
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                  padding: "6px 12px", background: "none", border: "none", cursor: "pointer",
-                  color: isActive ? C.green : C.coffee,
-                }}>
-                  <Icon style={{ width: 22, height: 22 }} strokeWidth={isActive ? 2.2 : 1.8}/>
-                  <span style={{ fontFamily: BODY, fontSize: 10, fontWeight: 600 }}>{label}</span>
-                </button>
-              );
-            })}
+            <div style={{ height: 64, display: "flex", justifyContent: "space-around", alignItems: "center" }}>
+              {navItems.map(({ path, icon: Icon, label }) => {
+                const isActive = pathname?.startsWith(path);
+                return (
+                  <button key={path} onClick={() => navigate.push(path)} style={{
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+                    padding: "6px 16px", background: "none", border: "none", cursor: "pointer",
+                    color: isActive ? C.green : C.coffee,
+                  }}>
+                    <Icon style={{ width: 22, height: 22 }} strokeWidth={isActive ? 2.2 : 1.8}/>
+                    <span style={{ fontFamily: BODY, fontSize: 10, fontWeight: 600 }}>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </nav>
         )}
       </div>
