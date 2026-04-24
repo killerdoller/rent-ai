@@ -31,12 +31,15 @@ export async function POST(request: Request) {
       throw error;
     }
 
-    // Check if it created a match (via trigger)
+    // Check if it created a match (via trigger) — only count matches from the last 5s to avoid
+    // returning pre-existing rows when swipe history is cleared and user re-swipes
+    const recentCutoff = new Date(Date.now() - 5000).toISOString();
     let { data: match } = await supabase
       .from("roommate_matches")
       .select("*")
       .or(`and(student_1_id.eq.${user_id},student_2_id.eq.${liked_user_id}),and(student_1_id.eq.${liked_user_id},student_2_id.eq.${user_id})`)
       .eq("status", "matched")
+      .gt("created_at", recentCutoff)
       .maybeSingle();
 
     // --- HACK PARA LOCAL DEV: Forzamos el match de roomies ---

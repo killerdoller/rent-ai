@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git log *)"
+      "Bash(git log *)",
+      "Bash(grep -rn \"CLERK\\\\|clerk\" .env.local)",
+      "Bash(ls app/api/clerk/)",
+      "Bash(git fetch *)",
+      "Bash(git cherry-pick *)",
+      "Bash(git stash *)",
+      "Bash(xargs grep *)"
     ]
   }
 }

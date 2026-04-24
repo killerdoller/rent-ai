@@ -79,9 +79,11 @@ export function CompleteProfile() {
           cleanliness_level: form.cleanliness_level, social_level: form.social_level,
           interests: form.interests, user_mode: form.user_mode,
           monthly_budget: form.monthly_budget ? Number(form.monthly_budget) : null,
+          profile_completed: true,
         }),
       });
       if (!res.ok) throw new Error("Error al guardar");
+      localStorage.setItem("profile_completed", "true");
       navigate.push("/app/home");
     } catch {
       navigate.push("/app/home");

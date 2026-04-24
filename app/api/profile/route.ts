@@ -17,7 +17,7 @@ const PATCH_ALLOWED = [
   "first_name", "last_name", "age", "university_name", "city",
   "monthly_budget", "user_mode", "bio", "job_title",
   "interests", "lifestyle_tags", "cleanliness_level",
-  "social_level", "avatar_url", "profile_images",
+  "social_level", "avatar_url", "profile_images", "profile_completed",
 ];
 
 // GET /api/profile?user_id=xxx

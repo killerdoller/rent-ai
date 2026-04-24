@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { Building2, Users, Heart, Plus, ArrowRight, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useClerk } from "@clerk/nextjs";
 import { supabase } from "../../../utils/supabaseClient";
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
@@ -24,14 +23,13 @@ const C = {
 
 export function OwnerDashboard() {
   const navigate = useRouter();
-  const { signOut } = useClerk();
   const [stats, setStats] = useState({ properties: 0, interested: 0, matches: 0 });
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   const handleLogout = async () => {
-    await signOut();
+    await supabase.auth.signOut();
     localStorage.removeItem("owner_id");
     localStorage.removeItem("owner_email");
     navigate.push("/app");

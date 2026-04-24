@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, PanInfo, useMotionValue, useTransform } from "motion/react";
 import { X, Heart, MapPin, Bed, Sparkles, Tag, Building2, Users, MessageSquare } from "lucide-react";
@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
 import { ImageCarousel } from "./ImageCarousel";
+import { supabase } from "../../utils/supabaseClient";
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
 const BODY = "var(--font-inter, 'system-ui', sans-serif)";
@@ -65,9 +66,85 @@ export function Home() {
 
   const [detailCard, setDetailCard] = useState<CardData | null>(null);
   const [matchData, setMatchData] = useState<{ id: string; propertyTitle: string; ownerName: string; img: string } | null>(null);
+  const [likeNotif, setLikeNotif] = useState<{ name: string; avatar: string } | null>(null);
+  const likeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const shownMatchIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     fetchProperties();
+  }, []);
+
+  // Real-time: notify when someone likes the current user
+  useEffect(() => {
+    const userId = typeof window !== "undefined" ? localStorage.getItem("rentai_user_id") : null;
+    if (!userId) return;
+
+    const ch = supabase
+      .channel(`likes-for-${userId}`)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "roommate_likes",
+        filter: `liked_user_id=eq.${userId}`,
+      }, async (payload) => {
+        const likerId = (payload.new as any).user_id;
+        try {
+          const res = await fetch(`/api/profile?user_id=${likerId}`);
+          const profile = res.ok ? await res.json() : null;
+          const name = profile?.first_name || "Alguien";
+          const avatar = profile?.avatar_url || profile?.profile_images?.[0] || "";
+          setLikeNotif({ name, avatar });
+          setTimeout(() => setLikeNotif(null), 4000);
+        } catch {
+          setLikeNotif({ name: "Alguien", avatar: "" });
+          setTimeout(() => setLikeNotif(null), 4000);
+        }
+      })
+      .subscribe();
+
+    likeChannelRef.current = ch;
+    return () => { supabase.removeChannel(ch); };
+  }, []);
+
+  // Poll for new matches every 7s so Person A sees the popup when the other side accepts
+  const knownMatchIdsRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const userId = typeof window !== "undefined" ? localStorage.getItem("rentai_user_id") : null;
+    if (!userId) return;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/matches?user_id=${userId}`);
+        if (!res.ok) return;
+        const matches: any[] = await res.json();
+
+        if (knownMatchIdsRef.current === null) {
+          // First load: record existing matches without showing popups
+          knownMatchIdsRef.current = new Set(matches.map((m) => String(m.id)));
+          return;
+        }
+
+        for (const m of matches) {
+          const mid = String(m.id);
+          if (!knownMatchIdsRef.current.has(mid) && !shownMatchIdsRef.current.has(mid)) {
+            knownMatchIdsRef.current.add(mid);
+            shownMatchIdsRef.current.add(mid);
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ["#D87D6F", "#4B5563", "#FDBB2D"] });
+            setMatchData({
+              id: mid,
+              propertyTitle: m.type === "roommate" ? "Match de Roomies" : (m.properties?.title || "Tu apartamento"),
+              ownerName: m.type === "roommate" ? (m.other?.name || "Tu nuevo roomie") : (m.owners?.name || "El propietario"),
+              img: m.type === "roommate" ? (m.other?.image || "") : (m.properties?.image_url || ""),
+            });
+            break; // show one at a time; next poll will catch the rest
+          }
+        }
+      } catch { /* silent */ }
+    };
+
+    poll();
+    const interval = setInterval(poll, 7000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -152,19 +229,13 @@ export function Home() {
       })
         .then(r => r.ok ? r.json() : null)
         .then(res => {
-          if (res?.isMatch) {
-            confetti({
-              particleCount: 150,
-              spread: 70,
-              origin: { y: 0.6 },
-              colors: [C.green, C.coffee, "#FDBB2D"]
-            });
-            setMatchData({
-              id: res.match_id,
-              propertyTitle: card.title,
-              ownerName: res.owner_name || "El propietario",
-              img: card.image
-            });
+          if (res?.isMatch && res.match_id) {
+            const mid = String(res.match_id);
+            if (!shownMatchIdsRef.current.has(mid)) {
+              shownMatchIdsRef.current.add(mid);
+              confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: [C.green, C.coffee, "#FDBB2D"] });
+              setMatchData({ id: mid, propertyTitle: card.title, ownerName: res.owner_name || "El propietario", img: card.image });
+            }
           }
         })
         .catch(() => { });
@@ -191,19 +262,13 @@ export function Home() {
       })
       .then(r => r.ok ? r.json() : null)
       .then(res => {
-        if (res?.isMatch) {
-          confetti({
-            particleCount: 150,
-            spread: 70,
-            origin: { y: 0.6 },
-            colors: [C.green, C.coffee, "#FDBB2D"]
-          });
-          setMatchData({
-            id: res.match_id,
-            propertyTitle: "Match de Roomies",
-            ownerName: card.name || "Tu nuevo roomie",
-            img: card.image
-          });
+        if (res?.isMatch && res.match_id) {
+          const mid = String(res.match_id);
+          if (!shownMatchIdsRef.current.has(mid)) {
+            shownMatchIdsRef.current.add(mid);
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: [C.green, C.coffee, "#FDBB2D"] });
+            setMatchData({ id: mid, propertyTitle: "Match de Roomies", ownerName: card.name || "Tu nuevo roomie", img: card.image });
+          }
         }
       })
       .catch(() => {});
@@ -402,7 +467,52 @@ export function Home() {
           />
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {likeNotif && (
+          <LikeToast notif={likeNotif} onClose={() => setLikeNotif(null)} />
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+function LikeToast({ notif, onClose }: { notif: { name: string; avatar: string }; onClose: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -80 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -80 }}
+      transition={{ type: "spring", damping: 20, stiffness: 200 }}
+      onClick={onClose}
+      style={{
+        position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)",
+        zIndex: 200, cursor: "pointer",
+        display: "inline-flex", alignItems: "center", gap: 10,
+        padding: "10px 18px 10px 10px", borderRadius: 9999,
+        background: "#0D0D0D", boxShadow: "0 8px 32px rgba(0,0,0,0.28)",
+        maxWidth: "calc(100vw - 32px)",
+      }}
+    >
+      {notif.avatar ? (
+        <img src={notif.avatar} alt={notif.name}
+          style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+      ) : (
+        <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#D87D6F", flexShrink: 0,
+          display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Heart style={{ width: 18, height: 18, color: "#fff" }} />
+        </div>
+      )}
+      <div>
+        <p style={{ fontFamily: BODY, fontSize: 13, fontWeight: 700, color: "#fff", margin: 0 }}>
+          ¡{notif.name} te dio like!
+        </p>
+        <p style={{ fontFamily: BODY, fontSize: 11, color: "rgba(255,255,255,0.6)", margin: 0 }}>
+          Desliza a la derecha para conectar
+        </p>
+      </div>
+      <Heart style={{ width: 16, height: 16, color: "#D87D6F", flexShrink: 0, marginLeft: 4 }} />
+    </motion.div>
   );
 }
 

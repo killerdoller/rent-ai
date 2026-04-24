@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       (rejected || []).forEach((r: any) => seenIds.add(r.rejected_user_id));
     }
 
-    // 2. Fetch perfiles en modo find-roommate
+    // 2. Fetch todos los perfiles de tenants (excluye propietarios)
     let query = supabase
       .from("profiles")
       .select(`
@@ -40,11 +40,12 @@ export async function GET(request: Request) {
         lifestyle_tags,
         cleanliness_level,
         social_level,
+        avatar_url,
         profile_images,
         user_mode,
         monthly_budget
       `)
-      .eq("user_mode", "find-roommate")
+      .neq("user_mode", "landlord")
       .limit(100);
 
     if (userId) query = query.neq("id", userId);
@@ -76,6 +77,7 @@ export async function GET(request: Request) {
           type: "roommate" as const,
           image:
             p.profile_images?.[0] ||
+            p.avatar_url ||
             "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=640",
           title: fullName,
           name: fullName,

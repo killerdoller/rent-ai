@@ -1,6 +1,5 @@
 import './globals.css';
 import { Fraunces, Inter } from 'next/font/google';
-import { ClerkProvider } from '@clerk/nextjs';
 
 const fraunces = Fraunces({ subsets: ['latin'], variable: '--font-fraunces', display: 'swap', axes: ['SOFT','WONK','opsz'], weight: 'variable' });
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
@@ -38,14 +37,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="es" className={`${fraunces.variable} ${inter.variable}`}>
       <body>
-        <ClerkProvider dynamic>
-          <div id="root">
-            {children}
-          </div>
-          {/* Requerido para la protección contra bots en flujos personalizados de Clerk.
-              Ubicado en el layout raíz para asegurar disponibilidad global. */}
-          <div id="clerk-captcha" style={{ display: "flex", justifyContent: "center", marginTop: 10 }} />
-        </ClerkProvider>
+        <div id="root">
+          {children}
+        </div>
       </body>
     </html>
   );

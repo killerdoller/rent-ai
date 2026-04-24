@@ -1,50 +1,27 @@
 "use client";
 import { useState, useEffect, useRef, memo } from "react";
 import { useRouter } from "next/navigation";
-import { useSignIn, useSignUp, useAuth, useClerk } from "@clerk/nextjs";
+import { supabase } from "../../utils/supabaseClient";
 
 async function googleAuth(
-  clerk: any,
-  resource: any,
   onError: (msg: string) => void,
   onLoading: (v: boolean) => void,
   role?: string,
   mode?: string
 ) {
-  if (!clerk || !resource) return;
   onLoading(true);
   try {
-    const params = new URLSearchParams();
-    if (role) params.set("role", role);
-    if (mode) params.set("mode", mode);
-    
-    const syncUrl = `/app/sync${params.toString() ? `?${params.toString()}` : ""}`;
+    if (role) localStorage.setItem("pending_role", role);
+    if (mode) localStorage.setItem("pending_mode", mode);
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const callbackUrl = `${origin}/sso-callback`;
-    const finalUrl = `${origin}${syncUrl}`;
-
-    const common = {
-      strategy: "oauth_google" as any,
-      redirectUrl: callbackUrl,
-      redirectUrlComplete: finalUrl,
-    };
-
-    if (typeof resource.authenticateWithRedirect === "function") {
-      await resource.authenticateWithRedirect(common);
-    } else if (typeof resource.sso === "function") {
-      await resource.sso(common);
-    } else {
-      throw new Error("No compatible authentication method found");
-    }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${origin}/auth/callback` },
+    });
+    if (error) throw error;
+    // Browser redirects — no code runs after this
   } catch (e: any) {
-    if (e.message?.includes("already signed in")) {
-       const params = new URLSearchParams();
-       if (role) params.set("role", role);
-       if (mode) params.set("mode", mode);
-       window.location.href = `/app/sync${params.toString() ? `?${params.toString()}` : ""}`;
-       return;
-    }
-    const msg = e.errors?.[0]?.longMessage || e.message || "Error con Google";
+    const msg = e.message || "Error con Google";
     onError(msg);
     onLoading(false);
   }
@@ -532,8 +509,6 @@ function SplashScreen({ onStart, onGoogle, isMobile }: { onStart:(t:"login"|"reg
 function LoginScreen({ onBack, onSuccess, onGoRegister, onGoForgotPassword, onLoading, onGoogle, isMobile }: {
   onBack:()=>void; onSuccess:(role:Role)=>void; onGoRegister:()=>void; onGoForgotPassword:(email?:string)=>void; onLoading:(v:boolean)=>void; onGoogle:()=>void; isMobile?:boolean;
 }) {
-  const { signIn } = useSignIn();
-  const { setActive } = useClerk();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
@@ -544,19 +519,17 @@ function LoginScreen({ onBack, onSuccess, onGoRegister, onGoForgotPassword, onLo
     if (password.length < 4) { setErr("Contraseña muy corta"); return; }
     setErr(""); setLoading(true); onLoading(true);
     try {
-      const res = await signIn!.create({ identifier: email, password });
-      if (res.status === "complete") {
-        await setActive!({ session: res.createdSessionId });
-        onSuccess("student");
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        let msg = error.message || "Credenciales incorrectas";
+        if (msg.includes("Invalid login")) msg = "Email o contraseña incorrectos.";
+        else if (msg.includes("Email not confirmed")) msg = "Confirma tu email antes de iniciar sesión.";
+        setErr(msg);
       } else {
-        setErr("Se requiere verificación adicional para esta cuenta.");
+        onSuccess("student");
       }
     } catch (e: any) {
-      console.error("Error en login:", e);
-      let msg = e.errors?.[0]?.longMessage || e.errors?.[0]?.message || e.message || "Credenciales incorrectas";
-      if (msg.includes("identifier") || msg.includes("email")) msg = "El correo ingresado no es correcto.";
-      else if (msg.includes("password")) msg = "La contraseña es incorrecta.";
-      setErr(msg);
+      setErr(e.message || "Error inesperado. Intenta de nuevo.");
     } finally { setLoading(false); onLoading(false); }
   };
 
@@ -607,9 +580,8 @@ function LoginScreen({ onBack, onSuccess, onGoRegister, onGoForgotPassword, onLo
 // ─── Register ─────────────────────────────────────────────────────────────────
 function RegisterScreen({ onBack, onSuccess, onGoLogin, onLoading, onGoogle, isMobile }: {
   onBack:()=>void; onSuccess:(email:string, role:Role)=>void;
-  onGoLogin:()=>void; onLoading:(v:boolean)=>void; onGoogle:()=>void; isMobile?:boolean;
+  onGoLogin:()=>void; onLoading:(v:boolean)=>void; onGoogle:(role:Role, mode:string)=>void; isMobile?:boolean;
 }) {
-  const { signUp } = useSignUp();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -633,49 +605,47 @@ function RegisterScreen({ onBack, onSuccess, onGoLogin, onLoading, onGoogle, isM
     if (!agreed) e.agreed = "Acepta los términos";
     setErrors(e);
     if (Object.keys(e).length > 0) return;
-    if (!signUp) {
-      setGlobalErr("El sistema de registro aún está cargando. Espera un momento.");
-      return;
-    }
 
-    setLoading(true); 
-    onLoading(true); 
+    setLoading(true);
+    onLoading(true);
     setGlobalErr("");
-    console.log("Iniciando creación de cuenta para:", email);
 
     try {
-      // 1. Crear el usuario en Clerk
-      const res = await signUp.create({ emailAddress: email, password, firstName, lastName });
-      
-      if (res.error) {
-        let msg = res.error.longMessage || res.error.message || "Error al crear la cuenta";
-        if (msg.includes("data breach")) msg = "Esta contraseña es poco segura (aparece en filtraciones). Por favor usa una diferente.";
-        else if (msg.includes("already exists") || msg.includes("in use")) msg = "Este correo ya está registrado. Intenta iniciar sesión.";
-        else if (msg.includes("short")) msg = "La contraseña es demasiado corta.";
-        
+      const modeMap: Record<Role, string> = { student: "find-room", roomie: "find-roommate", owner: "landlord" };
+      localStorage.setItem("pending_role", role);
+      localStorage.setItem("pending_mode", modeMap[role]);
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { first_name: firstName, last_name: lastName, role },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        localStorage.removeItem("pending_role");
+        localStorage.removeItem("pending_mode");
+        let msg = error.message || "Error al crear la cuenta";
+        if (msg.includes("already registered") || msg.includes("already exists")) msg = "Este correo ya está registrado. Intenta iniciar sesión.";
+        else if (msg.includes("weak") || msg.includes("short")) msg = "La contraseña es demasiado débil.";
         setGlobalErr(msg);
-        setLoading(false); onLoading(false);
         return;
       }
 
-      console.log("Usuario creado en Clerk:", signUp.status);
-      
-      // 2. Preparar verificación por email
-      const verifyRes = await signUp.verifications.sendEmailCode();
-      if (verifyRes.error) {
-        setGlobalErr(verifyRes.error.longMessage || "Error al enviar el código de verificación.");
-        setLoading(false); onLoading(false);
-        return;
+      if (data.session) {
+        // Email confirmations disabled — session created immediately
+        onSuccess(email, role);
+      } else {
+        // Email confirmations enabled — user must click the confirmation link
+        setGlobalErr("Te enviamos un correo de confirmación. Haz clic en el enlace para activar tu cuenta y luego inicia sesión.");
       }
-
-      console.log("Código de verificación enviado.");
-      onSuccess(email, role);
     } catch (err: any) {
-      console.error("Error inesperado:", err);
       setGlobalErr("Ocurrió un error inesperado. Por favor intenta de nuevo.");
-    } finally { 
-      setLoading(false); 
-      onLoading(false); 
+    } finally {
+      setLoading(false);
+      onLoading(false);
     }
   };
 
@@ -711,7 +681,10 @@ function RegisterScreen({ onBack, onSuccess, onGoLogin, onLoading, onGoogle, isM
             </button>
           ))}
         </div>
-        <SketchSocial provider="google" onClick={onGoogle}/>
+        <SketchSocial provider="google" onClick={() => {
+          const modeMap: Record<Role, string> = { student: "find-room", roomie: "find-roommate", owner: "landlord" };
+          onGoogle(role, modeMap[role]);
+        }}/>
         <Divider/>
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
           <SketchInput label="Nombre" value={firstName}
@@ -780,8 +753,6 @@ function RegisterScreen({ onBack, onSuccess, onGoLogin, onLoading, onGoogle, isM
 
 // ─── OTP ──────────────────────────────────────────────────────────────────────
 function OTPScreen({ email, onBack, onSuccess, isMobile }: { email:string; onBack:()=>void; onSuccess:()=>void; isMobile?:boolean }) {
-  const { signUp } = useSignUp();
-  const { setActive } = useClerk();
   const [code, setCode] = useState(["","","","","",""]);
   const [timer, setTimer] = useState(42);
   const [err, setErr] = useState("");
@@ -805,28 +776,22 @@ function OTPScreen({ email, onBack, onSuccess, isMobile }: { email:string; onBac
   const verifyCode = async (fullCode: string) => {
     setLoading(true); setErr("");
     try {
-      console.log("Verificando código:", fullCode);
-      const { error } = await signUp!.verifications.verifyEmailCode({ code: fullCode });
-      
+      const { error } = await supabase.auth.verifyOtp({ email, token: fullCode, type: "email" });
       if (error) {
-        console.error("Error verificando código:", error);
-        setErr(error.longMessage || "Código inválido o expirado. Intenta de nuevo.");
+        setErr(error.message || "Código inválido o expirado. Intenta de nuevo.");
         setCode(["","","","","",""]);
         refs[0].current?.focus();
         return;
       }
-
-      if (signUp!.status === "complete") {
-        await setActive!({ session: signUp!.createdSessionId });
-        onSuccess();
-      } else {
-        console.log("Status incompleto:", signUp!.status);
-        setErr("El registro aún no está completo. Revisa los datos.");
-      }
+      onSuccess();
     } catch (e: any) {
-      console.error("Error inesperado en OTP:", e);
       setErr("Ocurrió un error. Intenta reenviar el código.");
     } finally { setLoading(false); }
+  };
+
+  const resend = async () => {
+    setTimer(60);
+    await supabase.auth.resend({ type: "signup", email });
   };
 
   return (
@@ -857,8 +822,7 @@ function OTPScreen({ email, onBack, onSuccess, isMobile }: { email:string; onBac
               Reenviar en <span style={{ color:C.ink, fontWeight:600 }}>0:{String(timer).padStart(2,"0")}</span>
             </div>
           ) : (
-            <button type="button"
-              onClick={() => { setTimer(60); signUp?.verifications.sendEmailCode(); }}
+            <button type="button" onClick={resend}
               style={{ background:"none", border:"none", cursor:"pointer",
                 fontFamily:BODY, fontSize:14, fontWeight:700, color:C.green,
                 textDecoration:"underline", textUnderlineOffset:3 }}>
@@ -934,91 +898,48 @@ function ModeScreen({ onSelect }: { onSelect:(mode:string)=>void }) {
 
 // ─── Forgot Password ──────────────────────────────────────────────────────────
 function ForgotPasswordScreen({ initialEmail, onBack, onSuccess }: { initialEmail: string; onBack: () => void; onSuccess: () => void }) {
-  const { signIn } = useSignIn();
   const [email, setEmail] = useState(initialEmail);
-  const [code, setCode] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [step, setStep] = useState<"email" | "verify">("email");
+  const [sent, setSent]   = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const sendCode = async () => {
+  const sendLink = async () => {
     if (!email.includes("@")) { setError("Email inválido"); return; }
     setLoading(true); setError("");
-    try {
-      await signIn!.create({ identifier: email });
-      await signIn!.resetPasswordEmailCode.sendCode();
-      setStep("verify");
-    } catch (e: any) {
-      setError(e.errors?.[0]?.longMessage || "Error al enviar el código");
-    } finally { setLoading(true); setLoading(false); }
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${origin}/auth/callback?type=recovery`,
+    });
+    setLoading(false);
+    if (err) { setError(err.message || "Error al enviar el enlace"); return; }
+    setSent(true);
   };
-
-  const submitReset = async () => {
-    if (code.length < 6) { setError("Código incompleto"); return; }
-    if (newPassword.length < 8) { setError("Contraseña muy corta"); return; }
-    setLoading(true); setError("");
-    try {
-      await signIn!.resetPasswordEmailCode.verifyCode({ code });
-      const res = await signIn!.resetPasswordEmailCode.submitPassword({ password: newPassword });
-      if (res.status === "complete") {
-        onSuccess();
-      } else {
-        setError("Error al finalizar el restablecimiento.");
-      }
-    } catch (e: any) {
-      setError(e.errors?.[0]?.longMessage || "Código o contraseña inválida");
-    } finally { setLoading(false); }
-  };
-
-  const pwStrength = newPassword.length===0 ? 0 : newPassword.length<6 ? 1 : newPassword.length<10 ? 2 : 3;
-  const pwColors = ["transparent", C.terra, C.coffee, C.green];
-  const pwLabels = ["","Débil","Media","Fuerte"];
 
   return (
     <AuthLayout
       headline={<>Recuperar<br/><span style={{ fontStyle:"italic", color:C.terraDeep }}>acceso.</span></>}
-      sub={step === "email" ? "Te enviaremos un código de seguridad." : `Código enviado a ${email}`}
+      sub={sent ? `Enlace enviado a ${email}` : "Te enviaremos un enlace de recuperación."}
       backBtn={onBack}
     >
       <FormPanel>
-        {step === "email" ? (
-          <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-            <SketchInput label="Tu Email" value={email} onChange={setEmail} placeholder="tu@uni.edu.co" error={error}/>
-            <div style={{ marginTop:24 }}>
-              <SketchBtn onClick={sendCode} bg={C.green} disabled={loading}>
-                {loading ? "Enviando…" : "Enviar código de seguridad →"}
-              </SketchBtn>
+        {sent ? (
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:12, paddingTop:24 }}>
+            <div style={{ fontSize:40 }}>📬</div>
+            <div style={{ fontFamily:BODY, fontSize:14, color:C.coffee, textAlign:"center", lineHeight:1.5 }}>
+              Revisa tu bandeja de entrada y haz clic en el enlace para restablecer tu contraseña.
+            </div>
+            <div style={{ marginTop:24, width:"100%" }}>
+              <SketchBtn onClick={onSuccess} bg={C.cream}>Volver al inicio →</SketchBtn>
             </div>
           </div>
         ) : (
           <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-            <SketchInput label="Código" value={code} onChange={setCode} placeholder="123456" error={error}/>
-            <div>
-              <SketchInput label="Nueva Contraseña" value={newPassword} onChange={setNewPassword} placeholder="Mínimo 8 caracteres" type="password"/>
-              {newPassword.length > 0 && (
-                <div style={{ marginTop:8, display:"flex", alignItems:"center", gap:8 }}>
-                  <div style={{ flex:1, display:"flex", gap:3 }}>
-                    {[1,2,3].map(i => (
-                      <div key={i} style={{ flex:1, height:4, borderRadius:2, transition:"background 0.2s",
-                        background: i<=pwStrength ? pwColors[pwStrength] : "rgba(0,0,0,0.1)" }}/>
-                    ))}
-                  </div>
-                  <span style={{ fontFamily:BODY, fontSize:11, fontWeight:700,
-                    color:pwColors[pwStrength], textTransform:"uppercase", letterSpacing:1 }}>
-                    {pwLabels[pwStrength]}
-                  </span>
-                </div>
-              )}
-            </div>
+            <SketchInput label="Tu Email" value={email} onChange={setEmail} placeholder="tu@uni.edu.co" error={error}/>
             <div style={{ marginTop:24 }}>
-              <SketchBtn onClick={submitReset} bg={C.green} disabled={loading}>
-                {loading ? "Cambiando…" : "Restablecer contraseña →"}
+              <SketchBtn onClick={sendLink} bg={C.green} disabled={loading}>
+                {loading ? "Enviando…" : "Enviar enlace de recuperación →"}
               </SketchBtn>
             </div>
-            <button onClick={() => setStep("email")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:BODY, fontSize:13, color:C.coffee, textAlign:"center", marginTop:10 }}>
-              Reenviar código
-            </button>
           </div>
         )}
       </FormPanel>
@@ -1029,13 +950,8 @@ function ForgotPasswordScreen({ initialEmail, onBack, onSuccess }: { initialEmai
 // ─── Root orchestrator ────────────────────────────────────────────────────────
 export function Onboarding() {
   const navigate = useRouter();
-  const clerk = useClerk();
-  const { signIn } = useSignIn();
-  const { signUp } = useSignUp();
-  const { isSignedIn, isLoaded: isAuthLoaded } = useAuth();
   const [screen, setScreen] = useState<Screen>("splash");
   const [regEmail, setRegEmail] = useState("");
-  const [regRole, setRegRole] = useState<Role>("student");
   const [globalLoading, setGlobalLoading] = useState(false);
   const [globalError, setGlobalError] = useState("");
   const [isMobile, setIsMobile] = useState(false);
@@ -1047,92 +963,64 @@ export function Onboarding() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  // Redirigir automáticamente si ya hay una sesión activa a la sincronización
+  // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthLoaded && isSignedIn) {
-      navigate.push("/app/sync");
-    }
-  }, [isAuthLoaded, isSignedIn, navigate]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) navigate.push("/app/sync");
+    });
+  }, []);
 
-  const handleLoginSuccess = (role: Role) => {
-    navigate.push("/app/sync");
+  const handleLoginSuccess = (_role: Role) => navigate.push("/app/sync");
+
+  const handleRegisterSuccess = (_email: string, role: Role) => {
+    const modeMap: Record<Role, string> = { student: "find-room", roomie: "find-roommate", owner: "landlord" };
+    navigate.push(`/app/sync?role=${role}&mode=${modeMap[role]}`);
   };
 
-  const handleRegisterSuccess = (email: string, role: Role) => {
-    setRegEmail(email); setRegRole(role); setScreen("otp");
-  };
-
-  const handleOTPSuccess = () => {
-    if (regRole === "owner") {
-      navigate.push("/app/sync?mode=landlord&role=owner");
-    } else if (regRole === "roomie") {
-      navigate.push("/app/sync?mode=find-roommate&role=student");
-    } else {
-      setScreen("mode");
-    }
-  };
-
-  const handleModeSelect = async (mode: string) => {
+  const handleModeSelect = (mode: string) => {
     localStorage.setItem("userMode", mode);
     navigate.push(`/app/sync?mode=${encodeURIComponent(mode)}`);
   };
 
   const go = async (s: Screen, reset = false) => {
     if (reset) {
-      console.log("[Onboarding] Ejecutando reset de sesión...");
-      try {
-        await clerk.signOut();
-        localStorage.clear();
-        setGlobalError("");
-      } catch (e) {
-        console.error("Error en reset:", e);
-      }
+      await supabase.auth.signOut();
+      localStorage.clear();
+      setGlobalError("");
     }
     setScreen(s);
   };
 
-  // Evitar parpadeo si ya está autenticado
-  if (isAuthLoaded && isSignedIn) {
-    return (
-      <div style={{ width:"100%", height:"100vh", background:C.cream, display:"flex",
-        alignItems:"center", justifyContent:"center" }}>
-        <img src="/Logo_finalfinal.png" alt="RentAI" style={{ width:40, height:40, objectFit:"contain", animation:"spin 2s linear infinite" }}/>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      </div>
-    );
-  }
-
-
   const screenMap: Record<Screen, React.ReactNode> = {
     splash: (
-      <SplashScreen 
+      <SplashScreen
         isMobile={isMobile}
         onStart={type => go(type === "login" ? "login" : "register")}
-        onGoogle={() => googleAuth(clerk, signIn, setGlobalError, setGlobalLoading)}
+        onGoogle={() => googleAuth(setGlobalError, setGlobalLoading)}
       />
     ),
-    login:  (
-      <LoginScreen 
+    login: (
+      <LoginScreen
         isMobile={isMobile}
-        onBack={() => go("splash", true)} 
+        onBack={() => go("splash", true)}
         onSuccess={handleLoginSuccess}
-        onGoRegister={() => go("register")} 
-        onGoForgotPassword={(e) => { if(e) setRegEmail(e); go("forgot-password"); }}
+        onGoRegister={() => go("register")}
+        onGoForgotPassword={(e) => { if (e) setRegEmail(e); go("forgot-password"); }}
         onLoading={setGlobalLoading}
-        onGoogle={() => googleAuth(clerk, signIn, setGlobalError, setGlobalLoading)}
+        onGoogle={() => googleAuth(setGlobalError, setGlobalLoading)}
       />
     ),
     register: (
-      <RegisterScreen 
+      <RegisterScreen
         isMobile={isMobile}
-        onBack={() => go("splash", true)} 
+        onBack={() => go("splash", true)}
         onSuccess={handleRegisterSuccess}
-        onGoLogin={() => go("login")} 
+        onGoLogin={() => go("login")}
         onLoading={setGlobalLoading}
-        onGoogle={() => googleAuth(clerk, signUp, setGlobalError, setGlobalLoading, "student", "find-room")}
+        onGoogle={(r, m) => googleAuth(setGlobalError, setGlobalLoading, r, m)}
       />
     ),
-    otp:  <OTPScreen isMobile={isMobile} email={regEmail} onBack={() => go("register")} onSuccess={handleOTPSuccess}/>,
+    otp:  null,
     mode: <ModeScreen onSelect={handleModeSelect}/>,
     "forgot-password": <ForgotPasswordScreen initialEmail={regEmail} onBack={() => go("login")} onSuccess={() => go("login")}/>,
   };
@@ -1150,15 +1038,15 @@ export function Onboarding() {
       </div>
 
       {globalLoading && (
-        <div style={{ 
-          position: "fixed", inset: 0, zIndex: 999, 
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 999,
           background: "rgba(242, 236, 223, 0.7)", backdropFilter: "blur(4px)",
-          display: "flex", alignItems: "center", justifyContent: "center" 
+          display: "flex", alignItems: "center", justifyContent: "center",
         }}>
-          <div style={{ 
+          <div style={{
             display: "inline-flex", alignItems: "center", gap: 8,
             padding: "10px 20px", borderRadius: 9999,
-            background: C.white, border: `2px solid ${C.ink}`, boxShadow: `4px 4px 0 ${C.ink}` 
+            background: C.white, border: `2px solid ${C.ink}`, boxShadow: `4px 4px 0 ${C.ink}`,
           }}>
             <img src="/Logo_finalfinal.png" alt="RentAI" style={{ width: 24, height: 24, objectFit: "contain", animation: "spin 2s linear infinite" }} />
             <span style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink }}>Procesando…</span>

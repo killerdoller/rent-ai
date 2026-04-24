@@ -68,7 +68,7 @@ export async function GET(request: Request) {
 
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, first_name, last_name, profile_images, job_title, university_name")
+      .select("id, first_name, last_name, avatar_url, profile_images, job_title, university_name")
       .in("id", otherIds);
 
     const profileById: Record<string, any> = {};
@@ -91,7 +91,7 @@ export async function GET(request: Request) {
         other: {
           id:     other.id,
           name:   `${other.first_name || ""} ${other.last_name || ""}`.trim() || "Roomie",
-          image:  other.profile_images?.[0] || "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=640",
+          image:  other.profile_images?.[0] || other.avatar_url || "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=640",
           detail: other.university_name || other.job_title || "Bogotá",
         },
       });

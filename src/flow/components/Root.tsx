@@ -2,7 +2,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Heart, MessageCircle, User, Flame } from "lucide-react";
-import { useUser } from "@clerk/nextjs";
+import { supabase } from "../../utils/supabaseClient";
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
 const BODY    = "var(--font-inter, 'system-ui', sans-serif)";
@@ -30,7 +30,6 @@ const logoPillStyle: React.CSSProperties = {
 export function Root({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const navigate = useRouter();
-  const { isSignedIn, isLoaded } = useUser();
   const [localLoggedIn, setLocalLoggedIn] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
 
@@ -38,19 +37,21 @@ export function Root({ children }: { children: React.ReactNode }) {
     setHasMounted(true);
     const userId = localStorage.getItem("rentai_user_id");
     const ownerId = localStorage.getItem("owner_id");
-    const loggedIn = !!userId || !!ownerId;
-    setLocalLoggedIn(loggedIn);
+    setLocalLoggedIn(!!userId || !!ownerId);
 
-    // Global Sync Guard: Si está en Clerk pero no en local, forzar sync
-    if (isLoaded && isSignedIn && !loggedIn) {
-      const allowedPaths = ["/app/sync", "/sso-callback", "/app", "/app/role-selection"];
-      if (!allowedPaths.includes(pathname)) {
-        navigate.push("/app/sync");
-      }
+    // Block access to tenant app routes until profile is complete
+    const profileCompleted = localStorage.getItem("profile_completed");
+    const isProtectedTenantRoute = pathname?.startsWith("/app/") &&
+      pathname !== "/app" &&
+      !pathname.startsWith("/app/sync") &&
+      !pathname.startsWith("/app/complete-profile");
+
+    if (isProtectedTenantRoute && userId && profileCompleted === "false") {
+      navigate.replace("/app/complete-profile");
     }
-  }, [pathname, isLoaded, isSignedIn]);
+  }, [pathname]);
 
-  const isLoggedIn = isLoaded ? (isSignedIn || localLoggedIn) : localLoggedIn;
+  const isLoggedIn = localLoggedIn;
 
   const authPaths = ["/app/sync", "/app/role-selection", "/app/complete-profile", "/owner/complete-profile", "/sso-callback"];
   const isAuthPage = pathname === "/app" || authPaths.some(p => pathname === p || pathname?.startsWith(p + "/"));

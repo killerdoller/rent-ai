@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useClerk } from "@clerk/nextjs";
 import {
   Camera, Edit2, MapPin, Briefcase, Save, X, LogOut,
   Moon, Sun, Zap, Home, Users, Heart, ChevronDown, ChevronUp,
@@ -70,7 +69,6 @@ interface UserProfile {
 
 export function Profile() {
   const navigate = useRouter();
-  const { signOut } = useClerk();
   const fileRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,9 +97,10 @@ export function Profile() {
   };
 
   const handleLogout = async () => {
-    await signOut();
+    await supabase.auth.signOut();
     localStorage.removeItem("rentai_user_id");
     localStorage.removeItem("userMode");
+    localStorage.removeItem("profile_completed");
     navigate.push("/app");
   };
 

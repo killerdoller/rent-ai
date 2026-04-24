@@ -69,7 +69,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Verificar si se creó un match bilateral (el trigger de la DB lo crea automáticamente)
+  // Verificar si el trigger creó un match AHORA (solo contar matches recientes para evitar falsos positivos)
+  const recentCutoff = new Date(Date.now() - 5000).toISOString();
   let { data: match } = await supabase
     .from("property_matches")
     .select(`
@@ -79,6 +80,7 @@ export async function POST(request: Request) {
     `)
     .eq("user_id", user_id)
     .eq("property_id", property_id)
+    .gt("created_at", recentCutoff)
     .maybeSingle();
 
   // --- HACK PARA LOCAL DEV: Si no hay match (porque nadie te ha dado like), lo creamos a la fuerza ---

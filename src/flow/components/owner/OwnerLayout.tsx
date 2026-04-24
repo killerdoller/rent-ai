@@ -1,6 +1,6 @@
 "use client";
 import { usePathname, useRouter } from "next/navigation";
-import { useClerk } from "@clerk/nextjs";
+import { supabase } from "../../../utils/supabaseClient";
 import { LayoutDashboard, Building2, Users, Heart, MessageCircle, LogOut } from "lucide-react";
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
@@ -18,8 +18,6 @@ const C = {
 export function OwnerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const navigate = useRouter();
-  const { signOut } = useClerk();
-
   const navItems = [
     { path: "/owner/dashboard",  icon: LayoutDashboard,  label: "Dashboard" },
     { path: "/owner/properties", icon: Building2,        label: "Propiedades" },
@@ -29,7 +27,7 @@ export function OwnerLayout({ children }: { children: React.ReactNode }) {
   ];
 
   const handleLogout = async () => {
-    await signOut();
+    await supabase.auth.signOut();
     localStorage.removeItem("owner_id");
     localStorage.removeItem("owner_email");
     localStorage.removeItem("userMode");
