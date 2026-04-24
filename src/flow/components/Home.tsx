@@ -745,14 +745,14 @@ function PropertyDetailSheet({ card, onClose }: { card: CardData; onClose: () =>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         onClick={onClose}
-        className="fixed inset-0 bg-black/60 z-40"
+        className="fixed inset-0 bg-black/60 z-[55]"
       />
 
       {/* Bottom sheet on mobile, centered modal on desktop */}
       <motion.div
         initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 32, stiffness: 300 }}
-        className="fixed z-50 bottom-0 left-0 right-0 md:inset-0 md:flex md:items-center md:justify-center md:p-6 pointer-events-none"
+        className="fixed z-[60] bottom-0 left-0 right-0 md:inset-0 md:flex md:items-center md:justify-center md:p-6 pointer-events-none"
       >
         <div
           className="bg-white rounded-t-3xl md:rounded-3xl shadow-2xl w-full md:max-w-3xl pointer-events-auto overflow-hidden relative flex flex-col"
@@ -855,7 +855,7 @@ function PropertyDetailSheet({ card, onClose }: { card: CardData; onClose: () =>
                 </div>
 
                 {/* Scrollable: map + info */}
-                <div className="flex-1 overflow-y-auto" style={{ overscrollBehaviorY: "contain" }}>
+                <div className="flex-1 overflow-y-auto min-h-0" style={{ overscrollBehaviorY: "contain", paddingBottom: 24 }}>
                   {hasMap && (
                     <div className="relative flex-shrink-0" style={{ height: 180 }}>
                       <PropertyMap lat={card.latitude!} lng={card.longitude!} title={card.title} />
