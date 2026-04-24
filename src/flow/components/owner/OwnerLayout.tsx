@@ -96,40 +96,33 @@ export function OwnerLayout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 min-h-0 flex flex-col">
           {children}
           {/* Espaciador para la nav móvil fija */}
-          <div className="md:hidden" style={{ height: 80, flexShrink: 0 }} />
+          <div className="md:hidden" style={{ height: "calc(64px + env(safe-area-inset-bottom))", flexShrink: 0 }} />
         </main>
 
         {/* Mobile Bottom Nav */}
-        <nav style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          display: "flex",
-          justifyContent:"space-around", 
-          alignItems:"center",
-          height: 72, 
-          paddingBottom:"env(safe-area-inset-bottom)",
-          background:C.white, 
-          borderTop:`1.5px solid ${C.border}`,
-          boxShadow: "0 -4px 12px rgba(0,0,0,0.03)",
-          zIndex: 100,
-        }} className="flex md:hidden">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname?.startsWith(item.path);
-            return (
-              <button key={item.path} onClick={() => navigate.push(item.path)}
-                style={{
-                  display:"flex", flexDirection:"column", alignItems:"center", gap:3,
-                  padding:"6px 8px", background:"none", border:"none", cursor:"pointer",
-                  color: isActive ? C.terra : C.coffee,
-                }}>
-                <Icon style={{ width:22, height:22 }} strokeWidth={isActive ? 2.2 : 1.8}/>
-                <span style={{ fontFamily:BODY, fontSize:10, fontWeight:600 }}>{item.label}</span>
-              </button>
-            );
-          })}
+        <nav className="md:hidden" style={{
+          position: "fixed", bottom: 0, left: 0, right: 0,
+          paddingBottom: "env(safe-area-inset-bottom)",
+          background: C.white, borderTop: `1.5px solid ${C.border}`,
+          boxShadow: "0 -4px 12px rgba(0,0,0,0.03)", zIndex: 100,
+        }}>
+          <div style={{ height: 64, display: "flex", justifyContent: "space-around", alignItems: "center" }}>
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname?.startsWith(item.path);
+              return (
+                <button key={item.path} onClick={() => navigate.push(item.path)}
+                  style={{
+                    display:"flex", flexDirection:"column", alignItems:"center", gap:3,
+                    padding:"6px 8px", background:"none", border:"none", cursor:"pointer",
+                    color: isActive ? C.terra : C.coffee,
+                  }}>
+                  <Icon style={{ width:22, height:22 }} strokeWidth={isActive ? 2.2 : 1.8}/>
+                  <span style={{ fontFamily:BODY, fontSize:10, fontWeight:600 }}>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </nav>
       </div>
     </div>
