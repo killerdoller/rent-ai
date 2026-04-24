@@ -34,17 +34,33 @@ const COMMON_TAGS = [
   "Mascotas permitidas","Cocina integral","WiFi incluido",
 ];
 
-export function NewProperty() {
+interface InitialProperty {
+  property_id: string; title: string; monthly_rent: number;
+  city: string; neighborhood: string; bedrooms: number; description: string;
+  images: string[]; image_url: string; allows_students: boolean; requires_co_debtor: boolean;
+  tags: string[]; address: string | null; latitude: number | null; longitude: number | null;
+}
+
+export function NewProperty({ initialProperty }: { initialProperty?: InitialProperty }) {
   const navigate = useRouter();
+  const isEdit = !!initialProperty;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
-    title: "", monthly_rent: "", city: "Bogotá", neighborhood: "",
-    bedrooms: "1", description: "", images: [] as string[],
-    allows_students: true, requires_co_debtor: false,
-    address: "", latitude: null as number | null, longitude: null as number | null,
+    title: initialProperty?.title ?? "",
+    monthly_rent: initialProperty?.monthly_rent ? String(initialProperty.monthly_rent) : "",
+    city: initialProperty?.city ?? "Bogotá",
+    neighborhood: initialProperty?.neighborhood ?? "",
+    bedrooms: initialProperty?.bedrooms ? String(initialProperty.bedrooms) : "1",
+    description: initialProperty?.description ?? "",
+    images: initialProperty?.images?.length ? initialProperty.images : (initialProperty?.image_url ? [initialProperty.image_url] : []) as string[],
+    allows_students: initialProperty?.allows_students ?? true,
+    requires_co_debtor: initialProperty?.requires_co_debtor ?? false,
+    address: initialProperty?.address ?? "",
+    latitude: initialProperty?.latitude ?? null as number | null,
+    longitude: initialProperty?.longitude ?? null as number | null,
   });
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>(initialProperty?.tags ?? []);
 
   const set = (name: string, value: any) => setForm(f => ({ ...f, [name]: value }));
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -58,21 +74,22 @@ export function NewProperty() {
     const ownerId = localStorage.getItem("owner_id");
     if (!ownerId) { navigate.push("/app"); return; }
     try {
+      const payload = {
+        owner_id: ownerId, title: form.title,
+        monthly_rent: Number(form.monthly_rent), city: form.city,
+        neighborhood: form.neighborhood, bedrooms: Number(form.bedrooms),
+        description: form.description,
+        images: form.images, image_url: form.images[0] || null,
+        allows_students: form.allows_students, requires_co_debtor: form.requires_co_debtor,
+        tags: selectedTags, address: form.address || null,
+        latitude: form.latitude, longitude: form.longitude,
+      };
       const res = await fetch("/api/owner/properties", {
-        method: "POST",
+        method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          owner_id: ownerId, title: form.title,
-          monthly_rent: Number(form.monthly_rent), city: form.city,
-          neighborhood: form.neighborhood, bedrooms: Number(form.bedrooms),
-          description: form.description,
-          images: form.images, image_url: form.images[0] || null,
-          allows_students: form.allows_students, requires_co_debtor: form.requires_co_debtor,
-          tags: selectedTags, address: form.address || null,
-          latitude: form.latitude, longitude: form.longitude,
-        }),
+        body: JSON.stringify(isEdit ? { ...payload, property_id: initialProperty!.property_id } : payload),
       });
-      if (!res.ok) throw new Error((await res.json()).error || "Error al crear");
+      if (!res.ok) throw new Error((await res.json()).error || "Error al guardar");
       navigate.push("/owner/properties");
     } catch (err: any) {
       setError(err.message);
@@ -89,7 +106,7 @@ export function NewProperty() {
         <button onClick={() => navigate.back()} style={{ width: 36, height: 36, borderRadius: 18, background: C.muted, border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
           <ArrowLeft style={{ width: 17, height: 17, color: C.coffee }} />
         </button>
-        <div style={{ fontFamily: DISPLAY, fontSize: 22, fontWeight: 500, color: C.ink, letterSpacing: -0.6 }}>Nueva propiedad</div>
+        <div style={{ fontFamily: DISPLAY, fontSize: 22, fontWeight: 500, color: C.ink, letterSpacing: -0.6 }}>{isEdit ? "Editar propiedad" : "Nueva propiedad"}</div>
       </header>
 
       {/* Form */}
@@ -212,8 +229,8 @@ export function NewProperty() {
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           }}>
             {isLoading
-              ? <><div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${C.white}`, borderTopColor: "transparent", animation: "spin 0.7s linear infinite" }} />Publicando…</>
-              : "Publicar propiedad"}
+              ? <><div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${C.white}`, borderTopColor: "transparent", animation: "spin 0.7s linear infinite" }} />{isEdit ? "Guardando…" : "Publicando…"}</>
+              : isEdit ? "Guardar cambios" : "Publicar propiedad"}
           </button>
         </form>
       </div>

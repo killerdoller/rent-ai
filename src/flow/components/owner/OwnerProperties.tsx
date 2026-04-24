@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Building2, MapPin, Bed, Plus } from "lucide-react";
+import { Building2, MapPin, Bed, Plus, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
@@ -14,8 +14,10 @@ const C = {
 interface Property {
   property_id: string; title: string; monthly_rent: number;
   neighborhood: string; city: string; bedrooms: number;
-  image_url: string; description: string; tags: string[];
-  allows_students: boolean; created_at: string;
+  image_url: string; images: string[]; description: string; tags: string[];
+  allows_students: boolean; requires_co_debtor: boolean;
+  address: string | null; latitude: number | null; longitude: number | null;
+  created_at: string;
 }
 
 export function OwnerProperties() {
@@ -85,10 +87,16 @@ export function OwnerProperties() {
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
               {properties.map((prop) => (
-                <div key={prop.property_id} style={{
-                  background: C.white, borderRadius: 20, overflow: "hidden",
-                  border: `1.5px solid ${C.border}`, boxShadow: "0 2px 8px rgba(130,85,77,0.06)",
-                }}>
+                <div key={prop.property_id}
+                  onClick={() => navigate.push(`/owner/properties/${prop.property_id}`)}
+                  style={{
+                    background: C.white, borderRadius: 20, overflow: "hidden",
+                    border: `1.5px solid ${C.border}`, boxShadow: "0 2px 8px rgba(130,85,77,0.06)",
+                    cursor: "pointer", transition: "box-shadow 0.15s",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 6px 20px rgba(130,85,77,0.14)")}
+                  onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 2px 8px rgba(130,85,77,0.06)")}
+                >
                   <div style={{ position: "relative", height: 160 }}>
                     <img src={prop.image_url || "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=400"}
                       alt={prop.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -98,6 +106,9 @@ export function OwnerProperties() {
                         <span style={{ fontFamily: BODY, fontSize: 10, fontWeight: 700, color: C.coffee }}>Acepta estudiantes</span>
                       </div>
                     )}
+                    <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(255,255,255,0.92)", width: 30, height: 30, borderRadius: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Pencil style={{ width: 13, height: 13, color: C.terra }} />
+                    </div>
                   </div>
                   <div style={{ padding: "14px 16px" }}>
                     <div style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink, marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{prop.title}</div>

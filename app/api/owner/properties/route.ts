@@ -48,6 +48,34 @@ export async function POST(request: Request) {
   return NextResponse.json(data, { status: 201 });
 }
 
+// PATCH /api/owner/properties — actualizar propiedad existente
+export async function PATCH(request: Request) {
+  const body = await request.json();
+  const { property_id, owner_id, ...fields } = body;
+
+  if (!property_id || !owner_id) {
+    return NextResponse.json({ error: "property_id y owner_id requeridos" }, { status: 400 });
+  }
+
+  const { data: existing } = await supabase
+    .from("properties").select("owner_id").eq("property_id", property_id).single();
+
+  if (existing?.owner_id !== owner_id) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
+  const ALLOWED = ["title","monthly_rent","city","neighborhood","bedrooms","description",
+    "image_url","images","allows_students","requires_co_debtor","tags","address","latitude","longitude"];
+  const update = Object.fromEntries(Object.entries(fields).filter(([k]) => ALLOWED.includes(k)));
+
+  const { data, error } = await supabase
+    .from("properties").update(update).eq("property_id", property_id)
+    .select("property_id, title").single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
+}
+
 // GET /api/owner/properties?owner_id=xxx
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -72,6 +100,9 @@ export async function GET(request: Request) {
       tags,
       allows_students,
       requires_co_debtor,
+      address,
+      latitude,
+      longitude,
       created_at
     `)
     .eq("owner_id", ownerId)
