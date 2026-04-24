@@ -1,5 +1,6 @@
 import { EditProperty } from '../../../../src/flow/components/owner/EditProperty';
 
-export default function Page({ params }) {
-  return <EditProperty propertyId={params.id} />;
+export default async function Page({ params }) {
+  const { id } = await params;
+  return <EditProperty propertyId={id} />;
 }

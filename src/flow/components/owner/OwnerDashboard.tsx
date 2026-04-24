@@ -77,7 +77,7 @@ export function OwnerDashboard() {
   ];
 
   return (
-    <div style={{ minHeight: "100dvh", background: C.cream, fontFamily: BODY }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: C.cream, fontFamily: BODY, overflow: "hidden" }}>
       {/* Header */}
       <header style={{
         background: C.white, borderBottom: `1.5px solid ${C.border}`,
@@ -106,6 +106,7 @@ export function OwnerDashboard() {
         </div>
       </header>
 
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
       <div style={{ maxWidth: 800, margin: "0 auto", padding: "28px 24px 80px" }}>
         {isLoading ? (
           <div style={{ display: "flex", justifyContent: "center", paddingTop: 80 }}>
@@ -213,6 +214,7 @@ export function OwnerDashboard() {
             </button>
           </>
         )}
+      </div>
       </div>
     </div>
   );
