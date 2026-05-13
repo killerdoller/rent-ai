@@ -57,6 +57,8 @@ interface UserProfile {
   university_name: string;
   city: string;
   monthly_budget: number;
+  min_budget: number;
+  max_budget: number;
   user_mode: string;
   avatar_url: string;
   bio: string;
@@ -65,6 +67,17 @@ interface UserProfile {
   cleanliness_level: number;
   social_level: number;
   profile_images: string[];
+  exclusion_rules: {
+    no_smokers: boolean;
+    pets_accepted: boolean;
+    same_gender: boolean;
+  };
+  importance_weights: {
+    budget: number;
+    lifestyle: number;
+    interests: number;
+    personality: number;
+  };
 }
 
 export function Profile() {
@@ -411,24 +424,112 @@ export function Profile() {
               })}
             </div>
 
-            <Field label="Presupuesto mensual (COP)">
+            <Field label="Rango de presupuesto (COP)">
               {isEditing ? (
-                <div style={{ position: "relative" }}>
-                  <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.green, opacity: 0.8, zIndex: 1 }}>$</span>
-                  <input
-                    type="text"
-                    value={formatCOP(form.monthly_budget ?? "")}
-                    onChange={e => set("monthly_budget", Number(parseCOP(e.target.value)))}
-                    placeholder="1.200.000"
-                    style={{ ...inputStyle, paddingLeft: 26 }}
-                  />
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <div style={{ position: "relative", flex: 1 }}>
+                    <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 12, fontWeight: 700, color: C.green }}>$</span>
+                    <input
+                      type="text"
+                      value={formatCOP(form.min_budget ?? 0)}
+                      onChange={e => set("min_budget", Number(parseCOP(e.target.value)))}
+                      placeholder="Min"
+                      style={{ ...inputStyle, paddingLeft: 22, fontSize: 12 }}
+                    />
+                  </div>
+                  <span style={{ color: C.coffee, fontWeight: 700 }}>-</span>
+                  <div style={{ position: "relative", flex: 1 }}>
+                    <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 12, fontWeight: 700, color: C.green }}>$</span>
+                    <input
+                      type="text"
+                      value={formatCOP(form.max_budget ?? 3000000)}
+                      onChange={e => set("max_budget", Number(parseCOP(e.target.value)))}
+                      placeholder="Max"
+                      style={{ ...inputStyle, paddingLeft: 22, fontSize: 12 }}
+                    />
+                  </div>
                 </div>
               ) : (
                 <span style={valueStyle}>
-                  {d?.monthly_budget ? `$${formatCOP(d.monthly_budget)} COP/mes` : <Placeholder>—</Placeholder>}
+                  {d?.min_budget || d?.max_budget 
+                    ? `$${formatCOP(d.min_budget || 0)} - $${formatCOP(d.max_budget || 3000000)} COP` 
+                    : <Placeholder>—</Placeholder>}
                 </span>
               )}
             </Field>
+          </div>
+        </Card>
+
+        {/* Prioridades del Match */}
+        <Card title="Prioridades de Match">
+          <p style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, opacity: 0.7, marginBottom: 16 }}>
+            Define qué es más importante para ti al encontrar un roommate.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {[
+              { label: "Presupuesto", key: "budget" },
+              { label: "Estilo de vida", key: "lifestyle" },
+              { label: "Intereses", key: "interests" },
+              { label: "Personalidad", key: "personality" },
+            ].map(({ label, key }) => {
+              const weight = (d?.importance_weights as any)?.[key] ?? 1.0;
+              return (
+                <div key={key}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase" }}>{label}</span>
+                    <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.green }}>{Math.round(weight * 100)}%</span>
+                  </div>
+                  <div style={{ height: 6, background: C.muted, borderRadius: 999, position: "relative" }}>
+                    <motion.div animate={{ width: `${weight * 100}%` }}
+                      style={{ position: "absolute", inset: "0 auto 0 0", background: C.green, borderRadius: 999 }} />
+                    {isEditing && (
+                      <input type="range" min={0} max={1} step={0.1} value={weight}
+                        onChange={e => {
+                          const newWeights = { ...(form.importance_weights || { budget: 1, lifestyle: 1, interests: 1, personality: 1 }) };
+                          (newWeights as any)[key] = parseFloat(e.target.value);
+                          set("importance_weights", newWeights);
+                        }}
+                        style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        {/* Mis Innegociables */}
+        <Card title="Mis Innegociables">
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {[
+              { label: "Solo no fumadores", key: "no_smokers" },
+              { label: "Obligatorio que acepte mascotas", key: "pets_accepted" },
+              { label: "Solo mismo género", key: "same_gender" },
+            ].map(({ label, key }) => {
+              const active = (d?.exclusion_rules as any)?.[key] ?? false;
+              return (
+                <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontFamily: BODY, fontSize: 13, color: C.coffee }}>{label}</span>
+                  <div 
+                    onClick={isEditing ? () => {
+                      const newExclusions = { ...(form.exclusion_rules || { no_smokers: false, pets_accepted: false, same_gender: false }) };
+                      (newExclusions as any)[key] = !active;
+                      set("exclusion_rules", newExclusions);
+                    } : undefined}
+                    style={{ 
+                      width: 44, height: 24, borderRadius: 12, 
+                      background: active ? C.green : C.muted, 
+                      position: "relative", cursor: isEditing ? "pointer" : "default",
+                      transition: "background 0.2s"
+                    }}>
+                    <motion.div 
+                      animate={{ x: active ? 22 : 2 }}
+                      style={{ position: "absolute", top: 2, width: 20, height: 20, borderRadius: 10, background: C.white, boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }} 
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
 
