@@ -78,7 +78,9 @@ function TenantProfileSheet({
 
   const name = profile?.first_name
     ? `${profile.first_name}${profile.last_name ? " " + profile.last_name : ""}`
-    : tenant.tenant?.name || "Arrendatario";
+    : tenant.tenant?.first_name
+      ? `${tenant.tenant.first_name}${tenant.tenant.last_name ? " " + tenant.tenant.last_name : ""}`
+      : "Arrendatario";
 
   const initial = name.charAt(0).toUpperCase();
 

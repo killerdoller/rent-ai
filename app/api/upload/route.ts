@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -11,7 +11,7 @@ function getSupabase() {
 const BUCKET = "property-images";
 
 // Ensure bucket exists (idempotent)
-async function ensureBucket(supabase: ReturnType<typeof createClient>) {
+async function ensureBucket(supabase: any) {
   const { data: buckets } = await supabase.storage.listBuckets();
   if (!buckets?.find(b => b.id === BUCKET)) {
     await supabase.storage.createBucket(BUCKET, { public: true, fileSizeLimit: 10485760 });
