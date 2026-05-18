@@ -201,7 +201,8 @@ export function OwnerDashboard() {
                     <div style={{ 
                       background: C.white, borderRadius: 24, padding: "28px", 
                       border: `1.5px solid ${C.border}`,
-                      boxShadow: "0 2px 8px rgba(130,85,77,0.04)"
+                      boxShadow: "0 2px 8px rgba(130,85,77,0.04)",
+                      minHeight: "350px"
                     }}>
                       <div style={{ marginBottom: 24 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink }}>
@@ -213,8 +214,8 @@ export function OwnerDashboard() {
                         </div>
                       </div>
                       
-                      <div style={{ width: '100%', height: 260 }}>
-                        <ResponsiveContainer>
+                      <div style={{ width: '100%', height: 250 }}>
+                        <ResponsiveContainer width="100%" height="100%">
                           <RadarChart cx="50%" cy="50%" outerRadius="80%" data={analytics.radar}>
                             <PolarGrid stroke={C.border} />
                             <PolarAngleAxis dataKey="subject" tick={{ fill: C.coffee, fontSize: 11, fontWeight: 600 }} />
@@ -234,7 +235,8 @@ export function OwnerDashboard() {
                     <div style={{ 
                       background: C.white, borderRadius: 24, padding: "28px", 
                       border: `1.5px solid ${C.border}`,
-                      boxShadow: "0 2px 8px rgba(130,85,77,0.04)"
+                      boxShadow: "0 2px 8px rgba(130,85,77,0.04)",
+                      minHeight: "350px"
                     }}>
                       <div style={{ marginBottom: 24 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink }}>
@@ -246,9 +248,9 @@ export function OwnerDashboard() {
                         </div>
                       </div>
 
-                      <div style={{ width: '100%', height: 260 }}>
-                        <ResponsiveContainer>
-                          <BarChart layout="vertical" data={analytics.funnel} margin={{ left: 10, right: 40 }}>
+                      <div style={{ width: '100%', height: 250 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart layout="vertical" data={analytics.funnel} margin={{ left: 10, right: 40, top: 10, bottom: 10 }}>
                             <XAxis type="number" hide />
                             <YAxis 
                               dataKey="name" 

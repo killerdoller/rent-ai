@@ -20,29 +20,24 @@ export async function GET(request: Request) {
     // 1. Obtener IDs de las propiedades del dueño (o una específica)
     let propertiesQuery = supabaseAdmin
       .from("properties")
-      .select("id, price, location")
+      .select("property_id, monthly_rent")
       .eq("owner_id", ownerId);
     
     if (propertyId) {
-      propertiesQuery = propertiesQuery.eq("id", propertyId);
+      propertiesQuery = propertiesQuery.eq("property_id", propertyId);
     }
     
     const { data: ownerProps } = await propertiesQuery;
     if (!ownerProps || ownerProps.length === 0) {
-      return NextResponse.json({ 
-        funnel: [], 
-        radar: [], 
-        market: { yourPrice: 0, avgPrice: 0 },
-        message: "No se encontraron propiedades activas" 
-      });
+      return NextResponse.json({ funnel: [], radar: [], market: { yourPrice: 0, avgPrice: 0 } });
     }
 
-    const propIds = ownerProps.map(p => p.id);
+    const propIds = ownerProps.map(p => p.property_id);
 
-    // 2. Cálculo del Funnel (Simulando Vistas, Likes y Matches reales)
-    const { count: totalLikes } = await supabaseAdmin
+    // 2. Cálculo del Funnel (Likes y Matches)
+    const { data: likesData } = await supabaseAdmin
       .from("property_likes")
-      .select("*", { count: 'exact', head: true })
+      .select("user_id")
       .in("property_id", propIds);
 
     const { count: totalMatches } = await supabaseAdmin
@@ -50,43 +45,44 @@ export async function GET(request: Request) {
       .select("*", { count: 'exact', head: true })
       .in("property_id", propIds);
 
-    // 3. Análisis Psicográfico (Radar Chart)
-    const { data: likers } = await supabaseAdmin
-      .from("property_likes")
-      .select(`
-        profiles (
-          cleanliness_level,
-          social_level,
-          monthly_budget
-        )
-      `)
-      .in("property_id", propIds);
+    const totalLikes = likesData?.length || 0;
 
-    const profiles = likers?.map((l: any) => l.profiles).filter(Boolean) || [];
+    // 3. Análisis Psicográfico (Radar Chart)
+    // Debido a que falta la FK en property_likes, obtenemos los perfiles en un segundo paso
+    const userIds = [...new Set((likesData || []).map(l => l.user_id))];
+    
+    let profiles: any[] = [];
+    if (userIds.length > 0) {
+      const { data: profilesData } = await supabaseAdmin
+        .from("profiles")
+        .select("cleanliness_level, social_level, monthly_budget")
+        .in("id", userIds);
+      profiles = profilesData || [];
+    }
     
     const calculateAvg = (arr: any[], key: string) => 
-      arr.length > 0 ? arr.reduce((acc, p) => acc + (p[key] || 0), 0) / arr.length : 0;
+      arr.length > 0 ? arr.reduce((acc, p) => acc + (Number(p[key]) || 0), 0) / arr.length : 0;
 
     const avgStats = {
       limpieza: calculateAvg(profiles, 'cleanliness_level'),
       social: calculateAvg(profiles, 'social_level'),
-      // Normalizamos el presupuesto a una escala de 10 para el radar (asumiendo max 3M)
       presupuesto: (calculateAvg(profiles, 'monthly_budget') / 3000000) * 10,
     };
 
-    // 4. Análisis de Mercado (Precio Promedio global para contexto)
+    // 4. Análisis de Mercado
     const { data: marketData } = await supabaseAdmin
       .from("properties")
-      .select("price");
+      .select("monthly_rent");
     
-    const avgMarketPrice = marketData && marketData.length > 0
-      ? marketData.reduce((acc, p) => acc + p.price, 0) / marketData.length
+    const allPrices = (marketData || []).map(p => Number(p.monthly_rent)).filter(p => p > 0);
+    const avgMarketPrice = allPrices.length > 0 
+      ? allPrices.reduce((acc, p) => acc + p, 0) / allPrices.length 
       : 0;
 
     return NextResponse.json({
       funnel: [
-        { name: 'Vistas', value: (totalLikes || 0) * 4, fill: '#8884d8' },
-        { name: 'Likes', value: totalLikes || 0, fill: '#83a6ed' },
+        { name: 'Vistas', value: totalLikes * 4, fill: '#8884d8' },
+        { name: 'Likes', value: totalLikes, fill: '#83a6ed' },
         { name: 'Matches', value: totalMatches || 0, fill: '#8dd1e1' }
       ],
       radar: [
@@ -95,12 +91,8 @@ export async function GET(request: Request) {
         { subject: 'Presupuesto', A: avgStats.presupuesto, fullMark: 10 },
       ],
       market: {
-        yourPrice: ownerProps[0]?.price || 0,
+        yourPrice: Number(ownerProps[0]?.monthly_rent) || 0,
         avgPrice: Math.round(avgMarketPrice)
-      },
-      stats: {
-        totalInterested: profiles.length,
-        conversionRate: totalLikes ? Math.round((totalMatches || 0) / totalLikes * 100) : 0
       }
     });
 
