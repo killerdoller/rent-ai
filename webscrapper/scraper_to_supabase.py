@@ -45,11 +45,12 @@ def resolve_owner_id(supabase: Client, owner_id_or_email: str) -> str:
 
     if is_email:
         email = owner_id_or_email
-        result = supabase.table("owners").select("owner_id").eq("email", email).maybe_single().execute()
-        if result.data:
-            oid = result.data["owner_id"]
+        result = supabase.table("owners").select("owner_id").eq("email", email).limit(1).execute()
+        if result and hasattr(result, "data") and len(result.data) > 0:
+            oid = result.data[0]["owner_id"]
             print(f"[owner] Owner existente encontrado: {oid}")
             return oid
+            
         created = supabase.table("owners").insert({
             "name": "Demo Owner (Scraper)",
             "email": email,
@@ -58,8 +59,8 @@ def resolve_owner_id(supabase: Client, owner_id_or_email: str) -> str:
         print(f"[owner] Owner creado: {oid}")
         return oid
     else:
-        result = supabase.table("owners").select("owner_id").eq("owner_id", owner_id_or_email).maybe_single().execute()
-        if not result.data:
+        result = supabase.table("owners").select("owner_id").eq("owner_id", owner_id_or_email).limit(1).execute()
+        if not result or not hasattr(result, "data") or len(result.data) == 0:
             raise ValueError(
                 f"No existe ningún owner con id '{owner_id_or_email}'. "
                 "Pasa un email para crear uno automáticamente, ej: --owner_id tu@email.com"
@@ -225,6 +226,17 @@ async def scrape_and_upload(url: str, owner_id: str, limit: int = 100, dry_run: 
             for item in listings:
                 fincaraiz_id = str(item.get("id", uuid.uuid4()))
                 title = item.get("title") or "Apartamento en arriendo"
+                
+                type_id = item.get("property_type_id")
+                if type_id == 2:
+                    property_type = "Apartamento"
+                elif type_id == 1:
+                    property_type = "Casa"
+                elif type_id == 4:
+                    property_type = "Habitación"
+                else:
+                    property_type = "Otro"
+                    
                 price = extract_price(item.get("price"))
                 locations = item.get("locations") or {}
                 location_main = locations.get("location_main") or {}
@@ -233,9 +245,43 @@ async def scrape_and_upload(url: str, owner_id: str, limit: int = 100, dry_run: 
                 )
                 city_list = locations.get("city") or []
                 city = city_list[0].get("name") if city_list else "Bogotá"
+                
                 rooms = item.get("bedrooms") or 1
+                bathrooms = int(item.get("bathrooms") or 0)
+                area_sqm = float(item.get("m2Built") or item.get("m2") or 0.0)
+                stratum = int(item.get("stratum") or 0)
+                floor_number = int(item.get("floor") or 0)
+                building_floors = int(item.get("floorsCount") or 0)
+                
                 description = item.get("description") or ""
-                tags = [f["name"] for f in (item.get("facilities") or []) if f.get("name")]
+                
+                facilities = item.get("facilities") or []
+                tags = [f["name"] for f in facilities if f.get("name")]
+                
+                amenities_interior = []
+                amenities_exterior = []
+                amenities_sector = []
+                utilities_included = []
+                
+                utility_keywords = ["agua", "luz", "energía", "energia", "gas", "internet", "wifi"]
+                for f in facilities:
+                    name = f.get("name", "")
+                    group = f.get("group", "")
+                    if not name:
+                        continue
+                    
+                    name_lower = name.lower()
+                    is_utility = any(kw in name_lower for kw in utility_keywords)
+                    
+                    if is_utility:
+                        utilities_included.append(name)
+                    elif group == "Interior":
+                        amenities_interior.append(name)
+                    elif group == "Exterior":
+                        amenities_exterior.append(name)
+                    elif group == "Sector":
+                        amenities_sector.append(name)
+                        
                 address = item.get("address") or None
                 latitude = item.get("latitude") or None
                 longitude = item.get("longitude") or None
@@ -248,12 +294,22 @@ async def scrape_and_upload(url: str, owner_id: str, limit: int = 100, dry_run: 
                 prop = {
                     "owner_id": owner_id,
                     "title": title,
+                    "property_type": property_type,
                     "monthly_rent": price,
                     "neighborhood": neighborhood,
                     "city": city,
                     "bedrooms": int(rooms),
+                    "bathrooms": bathrooms,
+                    "area_sqm": area_sqm,
+                    "stratum": stratum,
+                    "floor_number": floor_number,
+                    "building_floors": building_floors,
                     "description": description,
                     "tags": tags,
+                    "amenities_interior": amenities_interior,
+                    "amenities_exterior": amenities_exterior,
+                    "amenities_sector": amenities_sector,
+                    "utilities_included": utilities_included,
                     "image_url": cover_url,
                     "images": all_urls,
                     "address": address,

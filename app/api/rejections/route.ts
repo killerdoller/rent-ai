@@ -6,6 +6,27 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+// GET /api/rejections?user_id=xxx — propiedades que rechazó el arrendatario
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const userId = searchParams.get("user_id");
+
+  if (!userId) {
+    return NextResponse.json({ error: "user_id requerido" }, { status: 400 });
+  }
+
+  const { data, error } = await supabase
+    .from("property_rejections")
+    .select("property_id")
+    .eq("user_id", userId);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json(data);
+}
+
 // POST /api/rejections — arrendatario pasa (swipe left) en una propiedad
 export async function POST(request: Request) {
   const body = await request.json();
