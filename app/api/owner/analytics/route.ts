@@ -17,10 +17,10 @@ export async function GET(request: Request) {
   }
 
   try {
-    // 1. Obtener IDs de las propiedades del dueño (o una específica)
+    // 1. Obtener IDs y ubicación de las propiedades del dueño (o una específica)
     let propertiesQuery = supabaseAdmin
       .from("properties")
-      .select("property_id, monthly_rent")
+      .select("property_id, monthly_rent, neighborhood, city")
       .eq("owner_id", ownerId);
     
     if (propertyId) {
@@ -29,12 +29,23 @@ export async function GET(request: Request) {
     
     const { data: ownerProps } = await propertiesQuery;
     if (!ownerProps || ownerProps.length === 0) {
-      return NextResponse.json({ funnel: [], radar: [], market: { yourPrice: 0, avgPrice: 0 } });
+      return NextResponse.json({ 
+        funnel: [], 
+        radar: [], 
+        market: { 
+          neighborhood: { avg: 0, label: "N/A", count: 0 },
+          city: { avg: 0, label: "N/A", count: 0 },
+          yourPrice: 0
+        } 
+      });
     }
 
     const propIds = ownerProps.map(p => p.property_id);
+    const mainProp = ownerProps[0];
+    const neighborhoodName = mainProp.neighborhood;
+    const cityName = mainProp.city;
 
-    // 2. Cálculo del Funnel (Likes y Matches)
+    // 2. Cálculo del Funnel (Likes y Matches) - RESTAURADO
     const { data: likesData } = await supabaseAdmin
       .from("property_likes")
       .select("user_id")
@@ -47,8 +58,7 @@ export async function GET(request: Request) {
 
     const totalLikes = likesData?.length || 0;
 
-    // 3. Análisis Psicográfico (Radar Chart)
-    // Debido a que falta la FK en property_likes, obtenemos los perfiles en un segundo paso
+    // 3. Análisis Psicográfico (Radar Chart) - RESTAURADO
     const userIds = [...new Set((likesData || []).map(l => l.user_id))];
     
     let profiles: any[] = [];
@@ -69,15 +79,21 @@ export async function GET(request: Request) {
       presupuesto: (calculateAvg(profiles, 'monthly_budget') / 3000000) * 10,
     };
 
-    // 4. Análisis de Mercado
-    const { data: marketData } = await supabaseAdmin
-      .from("properties")
-      .select("monthly_rent");
-    
-    const allPrices = (marketData || []).map(p => Number(p.monthly_rent)).filter(p => p > 0);
-    const avgMarketPrice = allPrices.length > 0 
-      ? allPrices.reduce((acc, p) => acc + p, 0) / allPrices.length 
-      : 0;
+    // 4. Análisis de Mercado Localizado (Refinado: Barrio y Ciudad)
+    const [neighborhoodRes, cityRes] = await Promise.all([
+      neighborhoodName 
+        ? supabaseAdmin.from("properties").select("monthly_rent").eq("neighborhood", neighborhoodName)
+        : Promise.resolve({ data: [] }),
+      cityName
+        ? supabaseAdmin.from("properties").select("monthly_rent").eq("city", cityName)
+        : Promise.resolve({ data: [] })
+    ]);
+
+    const calculateStats = (data: any[], label: string) => {
+      const prices = (data || []).map(p => Number(p.monthly_rent)).filter(p => p > 0);
+      const avg = prices.length > 0 ? prices.reduce((acc, p) => acc + p, 0) / prices.length : 0;
+      return { avg: Math.round(avg), count: prices.length, label };
+    };
 
     return NextResponse.json({
       funnel: [
@@ -91,8 +107,9 @@ export async function GET(request: Request) {
         { subject: 'Presupuesto', A: avgStats.presupuesto, fullMark: 10 },
       ],
       market: {
-        yourPrice: Number(ownerProps[0]?.monthly_rent) || 0,
-        avgPrice: Math.round(avgMarketPrice)
+        neighborhood: calculateStats(neighborhoodRes.data || [], neighborhoodName || "Sin barrio"),
+        city: calculateStats(cityRes.data || [], cityName || "Sin ciudad"),
+        yourPrice: Number(mainProp.monthly_rent) || 0
       }
     });
 

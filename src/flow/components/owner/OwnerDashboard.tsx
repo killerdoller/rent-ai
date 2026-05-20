@@ -29,9 +29,13 @@ export function OwnerDashboard() {
   const navigate = useRouter();
   const [stats, setStats] = useState({ properties: 0, interested: 0, matches: 0 });
   const [analytics, setAnalytics] = useState<any>(null);
+  const [marketLevel, setMarketLevel] = useState<"neighborhood" | "city">("neighborhood");
+  const [properties, setProperties] = useState<any[]>([]);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -49,24 +53,35 @@ export function OwnerDashboard() {
     fetchData(ownerId);
   }, []);
 
-  const fetchData = async (ownerId: string) => {
+  const fetchData = async (ownerId: string, propertyId?: string) => {
+    if (!propertyId) setIsLoading(true);
+    else setIsSyncing(true);
+
     try {
+      const queryParams = `?owner_id=${ownerId}${propertyId ? `&property_id=${propertyId}` : ""}`;
+      const analyticsParams = `?ownerId=${ownerId}${propertyId ? `&propertyId=${propertyId}` : ""}`;
+
       const [propertiesRes, interestedRes, matchesRes, analyticsRes] = await Promise.all([
         fetch(`/api/owner/properties?owner_id=${ownerId}`),
-        fetch(`/api/owner/interested?owner_id=${ownerId}`),
-        fetch(`/api/owner/matches?owner_id=${ownerId}`),
-        fetch(`/api/owner/analytics?ownerId=${ownerId}`),
+        fetch(`/api/owner/interested${queryParams}`),
+        fetch(`/api/owner/matches${queryParams}`),
+        fetch(`/api/owner/analytics${analyticsParams}`),
       ]);
       
-      const [properties, interested, matches, analyticsData] = await Promise.all([
+      const [propsData, interested, matches, analyticsData] = await Promise.all([
         propertiesRes.ok ? propertiesRes.json() : [],
         interestedRes.ok ? interestedRes.json() : [],
         matchesRes.ok ? matchesRes.json() : [],
         analyticsRes.ok ? analyticsRes.json() : null,
       ]);
       
+      setProperties(propsData);
+      if (!selectedPropertyId && propsData.length > 0 && !propertyId) {
+        setSelectedPropertyId(propsData[0].property_id);
+      }
+
       setStats({ 
-        properties: properties.length, 
+        properties: propsData.length, 
         interested: interested.length, 
         matches: matches.length 
       });
@@ -75,8 +90,16 @@ export function OwnerDashboard() {
       console.error("Error fetching dashboard data:", err);
     } finally {
       setIsLoading(false);
+      setIsSyncing(false);
     }
   };
+
+  useEffect(() => {
+    const ownerId = localStorage.getItem("owner_id");
+    if (ownerId && selectedPropertyId) {
+      fetchData(ownerId, selectedPropertyId);
+    }
+  }, [selectedPropertyId]);
 
   const statCards = [
     {
@@ -100,25 +123,56 @@ export function OwnerDashboard() {
         background: C.white, borderBottom: `1.5px solid ${C.border}`,
         padding: "20px 24px",
       }}>
-        <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-          <div>
-            <div style={{
-              fontFamily: DISPLAY, fontSize: 34, fontWeight: 500, color: C.ink,
-              letterSpacing: -1.2, lineHeight: 1, marginTop: 4
-            }}>
-              Panel de Control
+        <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div>
+              <div style={{
+                fontFamily: DISPLAY, fontSize: 34, fontWeight: 500, color: C.ink,
+                letterSpacing: -1.2, lineHeight: 1, marginTop: 4
+              }}>
+                Panel de Control
+              </div>
+              <div style={{ fontFamily: BODY, fontSize: 13, color: C.coffee, marginTop: 6, opacity: 0.7 }}>
+                Bienvenido de nuevo, {ownerName}
+              </div>
             </div>
-            <div style={{ fontFamily: BODY, fontSize: 13, color: C.coffee, marginTop: 6, opacity: 0.7 }}>
-              Bienvenido de nuevo, {ownerName}
-            </div>
+
+            {/* Property Selector */}
+            {properties.length > 1 && (
+              <div style={{ marginLeft: 20, display: "flex", alignItems: "center", gap: 8 }}>
+                <select 
+                  value={selectedPropertyId}
+                  onChange={(e) => setSelectedPropertyId(e.target.value)}
+                  style={{
+                    padding: "8px 12px", borderRadius: 12, border: `1.5px solid ${C.border}`,
+                    background: C.creAlt, color: C.ink, fontFamily: BODY, fontSize: 13, fontWeight: 600,
+                    cursor: "pointer", outline: "none"
+                  }}
+                >
+                  {properties.map(p => (
+                    <option key={p.property_id} value={p.property_id}>
+                      {p.title}
+                    </option>
+                  ))}
+                </select>
+                {isSyncing && (
+                   <div style={{
+                    width: 14, height: 14, borderRadius: "50%",
+                    border: `2px solid ${C.terra}`, borderTopColor: "transparent",
+                    animation: "spin 0.7s linear infinite"
+                  }} />
+                )}
+              </div>
+            )}
           </div>
+          
           <button onClick={handleLogout}
             style={{
               display: "flex", alignItems: "center", gap: 6, padding: "8px 14px",
               borderRadius: 9999, background: "transparent",
               border: `1.5px solid ${C.border}`, cursor: "pointer",
               fontFamily: BODY, fontSize: 13, fontWeight: 600, color: C.coffee,
-              transition: "all 0.12s", flexShrink: 0, marginTop: 4,
+              transition: "all 0.12s", flexShrink: 0,
             }}>
             <LogOut style={{ width: 14, height: 14 }} />
             Salir
@@ -202,7 +256,8 @@ export function OwnerDashboard() {
                       background: C.white, borderRadius: 24, padding: "28px", 
                       border: `1.5px solid ${C.border}`,
                       boxShadow: "0 2px 8px rgba(130,85,77,0.04)",
-                      minHeight: "350px"
+                      minHeight: "350px",
+                      minWidth: 0, // Fix for recharts container
                     }}>
                       <div style={{ marginBottom: 24 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink }}>
@@ -214,7 +269,7 @@ export function OwnerDashboard() {
                         </div>
                       </div>
                       
-                      <div style={{ width: '100%', height: 250 }}>
+                      <div style={{ width: '100%', height: 250, minWidth: 0 }}>
                         <ResponsiveContainer width="100%" height="100%">
                           <RadarChart cx="50%" cy="50%" outerRadius="80%" data={analytics.radar}>
                             <PolarGrid stroke={C.border} />
@@ -236,7 +291,8 @@ export function OwnerDashboard() {
                       background: C.white, borderRadius: 24, padding: "28px", 
                       border: `1.5px solid ${C.border}`,
                       boxShadow: "0 2px 8px rgba(130,85,77,0.04)",
-                      minHeight: "350px"
+                      minHeight: "350px",
+                      minWidth: 0, // Fix for recharts container
                     }}>
                       <div style={{ marginBottom: 24 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink }}>
@@ -248,7 +304,7 @@ export function OwnerDashboard() {
                         </div>
                       </div>
 
-                      <div style={{ width: '100%', height: 250 }}>
+                      <div style={{ width: '100%', height: 250, minWidth: 0 }}>
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart layout="vertical" data={analytics.funnel} margin={{ left: 10, right: 40, top: 10, bottom: 10 }}>
                             <XAxis type="number" hide />
@@ -277,24 +333,62 @@ export function OwnerDashboard() {
                     {/* Market Price Indicator */}
                     <div className="lg:col-span-2" style={{ 
                       background: `linear-gradient(135deg, ${C.white} 0%, ${C.creAlt} 100%)`, 
-                      borderRadius: 24, padding: "24px 28px", 
+                      borderRadius: 24, padding: "28px", 
                       border: `1.5px solid ${C.border}`,
-                      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20
                     }}>
-                      <div>
-                        <div style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink }}>
-                          Análisis de Mercado
+                      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 20, marginBottom: 24 }}>
+                        <div>
+                          <div style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink }}>
+                            Análisis de Mercado
+                          </div>
+                          <div style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, marginTop: 4, maxWidth: 400 }}>
+                            Comparativa de precios basada en {analytics.market[marketLevel].count} inmuebles similares.
+                          </div>
                         </div>
-                        <div style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, marginTop: 4, maxWidth: 400 }}>
-                          Tu precio promedio está {analytics.market.yourPrice > analytics.market.avgPrice ? "por encima" : "por debajo"} de la media global de RentAI.
+
+                        {/* Level Selector (Pills) */}
+                        <div style={{ 
+                          display: "flex", background: C.creAlt, padding: 4, borderRadius: 12,
+                          border: `1px solid ${C.border}`
+                        }}>
+                          {(["neighborhood", "city"] as const).map((level) => (
+                            <button
+                              key={level}
+                              onClick={() => setMarketLevel(level)}
+                              style={{
+                                padding: "6px 14px", borderRadius: 10, fontSize: 12, fontWeight: 700,
+                                border: "none", cursor: "pointer", transition: "all 0.2s",
+                                background: marketLevel === level ? C.white : "transparent",
+                                color: marketLevel === level ? C.ink : C.coffee,
+                                boxShadow: marketLevel === level ? "0 2px 6px rgba(0,0,0,0.08)" : "none",
+                              }}
+                            >
+                              {level === "neighborhood" ? "Mi Barrio" : "Mi Ciudad"}
+                            </button>
+                          ))}
                         </div>
                       </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                          Precio Mercado (Promedio)
+
+                      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 20 }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ 
+                            fontFamily: BODY, fontSize: 13, color: C.ink, lineHeight: 1.5,
+                            background: C.white, padding: "12px 16px", borderRadius: 16,
+                            border: `1px solid ${C.border}`
+                          }}>
+                            Tu precio está <strong>
+                              {analytics.market.yourPrice > analytics.market[marketLevel].avg ? "por encima" : "por debajo"}
+                            </strong> de la media en <strong>{analytics.market[marketLevel].label}</strong>.
+                          </div>
                         </div>
-                        <div style={{ fontFamily: DISPLAY, fontSize: 28, fontWeight: 500, color: C.ink, marginTop: 4 }}>
-                          ${analytics.market.avgPrice.toLocaleString()}
+                        
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                            Promedio ({analytics.market[marketLevel].label})
+                          </div>
+                          <div style={{ fontFamily: DISPLAY, fontSize: 32, fontWeight: 500, color: C.ink, marginTop: 4 }}>
+                            ${analytics.market[marketLevel].avg.toLocaleString()}
+                          </div>
                         </div>
                       </div>
                     </div>
