@@ -18,6 +18,7 @@ Environment variables required (.env file in this folder):
 import asyncio
 import json
 import os
+import re
 import uuid
 import argparse
 import httpx

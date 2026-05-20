@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 const FALLBACK = "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=800";
@@ -129,8 +130,8 @@ export function ImageCarousel({
         )}
       </div>
 
-      {/* Fullscreen Lightbox Modal */}
-      {isFullscreen && (
+      {/* Fullscreen Lightbox — rendered via portal to bypass overflow:hidden */}
+      {isFullscreen && typeof window !== "undefined" && createPortal(
         <div
           style={{
             position: "fixed", inset: 0, zIndex: 9999,
@@ -200,11 +201,12 @@ export function ImageCarousel({
             position: "absolute", bottom: 40, left: 0, right: 0,
             display: "flex", justifyContent: "center", gap: 5, zIndex: 2,
           }}>
-             <span style={{ fontSize: 14, color: "white", fontWeight: 500, letterSpacing: 1 }}>
+            <span style={{ fontSize: 14, color: "white", fontWeight: 500, letterSpacing: 1 }}>
               {idx + 1} / {total}
             </span>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

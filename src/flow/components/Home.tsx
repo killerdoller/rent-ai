@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, PanInfo, useMotionValue, useTransform } from "motion/react";
-import { X, Heart, MapPin, Bed, Sparkles, Tag, Building2, Users, MessageSquare } from "lucide-react";
+import { X, Heart, MapPin, Bed, Bath, Maximize2, Layers, Sparkles, Tag, Building2, Users, MessageSquare } from "lucide-react";
 import dynamic from "next/dynamic";
 import { AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
@@ -886,12 +886,26 @@ function PropertyDetailSheet({ card, onClose }: { card: CardData; onClose: () =>
                   )}
                   {card.area_sqm && (
                     <div className="flex items-center gap-1" style={{ color: C.coffee }}>
+                      <Maximize2 className="w-3.5 h-3.5" />
                       <span style={{ fontFamily: BODY, fontSize: 12 }}>{card.area_sqm} m²</span>
                     </div>
                   )}
-                  {card.stratum && (
+                  {card.bathrooms && (
                     <div className="flex items-center gap-1" style={{ color: C.coffee }}>
-                      <span style={{ fontFamily: BODY, fontSize: 12 }}>Estrato {card.stratum}</span>
+                      <Bath className="w-3.5 h-3.5" />
+                      <span style={{ fontFamily: BODY, fontSize: 12 }}>{card.bathrooms} {card.bathrooms === 1 ? "baño" : "baños"}</span>
+                    </div>
+                  )}
+                  {card.building_floors && card.building_floors > 1 && (
+                    <div className="flex items-center gap-1" style={{ color: C.coffee }}>
+                      <Layers className="w-3.5 h-3.5" />
+                      <span style={{ fontFamily: BODY, fontSize: 12 }}>{card.building_floors} niveles</span>
+                    </div>
+                  )}
+                  {card.floor_number && card.floor_number > 0 && !card.building_floors && (
+                    <div className="flex items-center gap-1" style={{ color: C.coffee }}>
+                      <Layers className="w-3.5 h-3.5" />
+                      <span style={{ fontFamily: BODY, fontSize: 12 }}>Piso {card.floor_number}</span>
                     </div>
                   )}
                 </div>
@@ -914,10 +928,15 @@ function PropertyDetailSheet({ card, onClose }: { card: CardData; onClose: () =>
                     </div>
                   )}
                   <div className="px-4 py-4 space-y-4">
-                    {card.description && (
+                    {(card.description || card.stratum) && (
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-sm">
                         <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Descripción</p>
-                        <p style={{ fontFamily: BODY, fontSize: 14, lineHeight: 1.65, color: C.ink, whiteSpace: "pre-line" }}>{card.description}</p>
+                        {card.stratum && (
+                          <p style={{ fontFamily: BODY, fontSize: 13, color: C.coffee, marginBottom: card.description ? 8 : 0, fontWeight: 600 }}>Estrato {card.stratum}</p>
+                        )}
+                        {card.description && (
+                          <p style={{ fontFamily: BODY, fontSize: 14, lineHeight: 1.65, color: C.ink, whiteSpace: "pre-line" }}>{card.description}</p>
+                        )}
                       </div>
                     )}
                     {card.amenities_interior && card.amenities_interior.length > 0 && (
@@ -1050,20 +1069,39 @@ function PropertyDetailSheet({ card, onClose }: { card: CardData; onClose: () =>
                     )}
                     {card.area_sqm && (
                       <div className="flex items-center gap-1" style={{ color: C.coffee }}>
+                        <Maximize2 className="w-3.5 h-3.5" />
                         <span style={{ fontFamily: BODY, fontSize: 12 }}>{card.area_sqm} m²</span>
                       </div>
                     )}
-                    {card.stratum && (
+                    {card.bathrooms && (
                       <div className="flex items-center gap-1" style={{ color: C.coffee }}>
-                        <span style={{ fontFamily: BODY, fontSize: 12 }}>Estrato {card.stratum}</span>
+                        <Bath className="w-3.5 h-3.5" />
+                        <span style={{ fontFamily: BODY, fontSize: 12 }}>{card.bathrooms} {card.bathrooms === 1 ? "baño" : "baños"}</span>
+                      </div>
+                    )}
+                    {card.building_floors && card.building_floors > 1 && (
+                      <div className="flex items-center gap-1" style={{ color: C.coffee }}>
+                        <Layers className="w-3.5 h-3.5" />
+                        <span style={{ fontFamily: BODY, fontSize: 12 }}>{card.building_floors} niveles</span>
+                      </div>
+                    )}
+                    {card.floor_number && card.floor_number > 0 && !card.building_floors && (
+                      <div className="flex items-center gap-1" style={{ color: C.coffee }}>
+                        <Layers className="w-3.5 h-3.5" />
+                        <span style={{ fontFamily: BODY, fontSize: 12 }}>Piso {card.floor_number}</span>
                       </div>
                     )}
                   </div>
                   <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
-                    {card.description && (
+                    {(card.description || card.stratum) && (
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-sm">
                         <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Descripción</p>
-                        <p style={{ fontFamily: BODY, fontSize: 13, lineHeight: 1.65, color: C.ink, whiteSpace: "pre-line" }}>{card.description}</p>
+                        {card.stratum && (
+                          <p style={{ fontFamily: BODY, fontSize: 13, color: C.coffee, marginBottom: card.description ? 8 : 0, fontWeight: 600 }}>Estrato {card.stratum}</p>
+                        )}
+                        {card.description && (
+                          <p style={{ fontFamily: BODY, fontSize: 13, lineHeight: 1.65, color: C.ink, whiteSpace: "pre-line" }}>{card.description}</p>
+                        )}
                       </div>
                     )}
                     {card.amenities_interior && card.amenities_interior.length > 0 && (
