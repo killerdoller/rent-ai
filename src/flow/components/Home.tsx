@@ -42,6 +42,16 @@ interface CardData {
   address?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  property_type?: string;
+  bathrooms?: number;
+  area_sqm?: number;
+  stratum?: number;
+  floor_number?: number;
+  building_floors?: number;
+  amenities_interior?: string[];
+  amenities_exterior?: string[];
+  amenities_sector?: string[];
+  utilities_included?: string[];
 }
 
 type TabId = "apartments" | "roommates";
@@ -579,10 +589,15 @@ function SwipeCard({
         )}
 
         {(card.type === "room" || card.type === "roommate") && (
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex flex-wrap items-center gap-3 mb-3">
             {card.price && (
               <span className="text-white font-bold text-base">
                 ${card.price.toLocaleString()} COP/mes
+              </span>
+            )}
+            {card.type === "room" && card.property_type && (
+              <span className="px-2 py-0.5 bg-black/40 text-white rounded text-xs">
+                {card.property_type}
               </span>
             )}
             {card.type === "room" && card.bedrooms && (
@@ -593,10 +608,27 @@ function SwipeCard({
                 </span>
               </div>
             )}
+            {card.type === "room" && card.area_sqm && (
+              <div className="flex items-center gap-1 text-white/70 text-sm">
+                <span>{card.area_sqm} m²</span>
+              </div>
+            )}
           </div>
         )}
 
-        {card.tags?.length > 0 && (
+        {/* SwipeCard amenities summary */}
+        {card.amenities_interior && card.amenities_interior.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {card.amenities_interior.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="px-2.5 py-1 bg-white/20 backdrop-blur-sm text-white rounded-full text-xs font-medium"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        ) : card.tags?.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {card.tags.slice(0, 3).map((tag) => (
               <span
@@ -716,7 +748,7 @@ function PropertyDetailSheet({ card, onClose }: { card: CardData; onClose: () =>
                 </div>
 
                 {/* Price bar */}
-                <div className="flex-shrink-0 flex items-center gap-4 px-4 py-3 border-b"
+                <div className="flex-shrink-0 flex flex-wrap items-center gap-4 px-4 py-3 border-b"
                   style={{ borderColor: C.border, background: C.cream }}>
                   {card.price && (
                     <span style={{ fontFamily: BODY, fontSize: 15, fontWeight: 700, color: C.green }}>
@@ -727,6 +759,16 @@ function PropertyDetailSheet({ card, onClose }: { card: CardData; onClose: () =>
                     <div className="flex items-center gap-1" style={{ color: C.coffee }}>
                       <Bed className="w-3.5 h-3.5" />
                       <span style={{ fontFamily: BODY, fontSize: 12 }}>{card.bedrooms} {card.bedrooms === 1 ? "hab." : "habs."}</span>
+                    </div>
+                  )}
+                  {card.area_sqm && (
+                    <div className="flex items-center gap-1" style={{ color: C.coffee }}>
+                      <span style={{ fontFamily: BODY, fontSize: 12 }}>{card.area_sqm} m²</span>
+                    </div>
+                  )}
+                  {card.stratum && (
+                    <div className="flex items-center gap-1" style={{ color: C.coffee }}>
+                      <span style={{ fontFamily: BODY, fontSize: 12 }}>Estrato {card.stratum}</span>
                     </div>
                   )}
                 </div>
@@ -750,12 +792,65 @@ function PropertyDetailSheet({ card, onClose }: { card: CardData; onClose: () =>
                   )}
                   <div className="px-4 py-4 space-y-4">
                     {card.description && (
-                      <div>
-                        <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Descripción</p>
-                        <p style={{ fontFamily: BODY, fontSize: 14, lineHeight: 1.65, color: C.ink }}>{card.description}</p>
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-sm">
+                        <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Descripción</p>
+                        <p style={{ fontFamily: BODY, fontSize: 14, lineHeight: 1.65, color: C.ink, whiteSpace: "pre-line" }}>{card.description}</p>
                       </div>
                     )}
-                    {card.tags?.length > 0 && (
+                    {card.amenities_interior && card.amenities_interior.length > 0 && (
+                      <div>
+                        <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
+                          <Tag className="w-3 h-3" /> Comodidades
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {card.amenities_interior.map((tag) => (
+                            <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium"
+                              style={{ background: C.cream, color: C.coffee }}>{tag}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {card.amenities_exterior && card.amenities_exterior.length > 0 && (
+                      <div>
+                        <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
+                          <Building2 className="w-3 h-3" /> Edificio / Conjunto
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {card.amenities_exterior.map((tag) => (
+                            <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium"
+                              style={{ background: C.cream, color: C.coffee }}>{tag}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {card.amenities_sector && card.amenities_sector.length > 0 && (
+                      <div>
+                        <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
+                          <MapPin className="w-3 h-3" /> Zona
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {card.amenities_sector.map((tag) => (
+                            <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium"
+                              style={{ background: C.cream, color: C.coffee }}>{tag}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {card.utilities_included && card.utilities_included.length > 0 && (
+                      <div>
+                        <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
+                          <Sparkles className="w-3 h-3" /> Servicios Incluidos
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {card.utilities_included.map((tag) => (
+                            <span key={tag} className="px-3 py-1 rounded-full text-xs font-bold"
+                              style={{ background: "#E8F5E9", color: "#2E7D32" }}>{tag}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Fallback to original tags if amenities fields are empty */}
+                    {!(card.amenities_interior?.length || card.amenities_exterior?.length || card.amenities_sector?.length) && card.tags?.length > 0 && (
                       <div>
                         <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
                           <Tag className="w-3 h-3" /> Características
@@ -817,7 +912,7 @@ function PropertyDetailSheet({ card, onClose }: { card: CardData; onClose: () =>
                       </div>
                     </div>
                   </div>
-                  <div className="flex-shrink-0 flex items-center gap-4 px-4 py-2.5 border-b"
+                  <div className="flex-shrink-0 flex flex-wrap items-center gap-4 px-4 py-2.5 border-b"
                     style={{ borderColor: C.border, background: C.cream }}>
                     {card.price && (
                       <span style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.green }}>
@@ -830,15 +925,78 @@ function PropertyDetailSheet({ card, onClose }: { card: CardData; onClose: () =>
                         <span style={{ fontFamily: BODY, fontSize: 12 }}>{card.bedrooms} {card.bedrooms === 1 ? "hab." : "habs."}</span>
                       </div>
                     )}
-                  </div>
-                  <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
-                    {card.description && (
-                      <div>
-                        <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Descripción</p>
-                        <p style={{ fontFamily: BODY, fontSize: 13, lineHeight: 1.65, color: C.ink }}>{card.description}</p>
+                    {card.area_sqm && (
+                      <div className="flex items-center gap-1" style={{ color: C.coffee }}>
+                        <span style={{ fontFamily: BODY, fontSize: 12 }}>{card.area_sqm} m²</span>
                       </div>
                     )}
-                    {card.tags?.length > 0 && (
+                    {card.stratum && (
+                      <div className="flex items-center gap-1" style={{ color: C.coffee }}>
+                        <span style={{ fontFamily: BODY, fontSize: 12 }}>Estrato {card.stratum}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
+                    {card.description && (
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-sm">
+                        <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Descripción</p>
+                        <p style={{ fontFamily: BODY, fontSize: 13, lineHeight: 1.65, color: C.ink, whiteSpace: "pre-line" }}>{card.description}</p>
+                      </div>
+                    )}
+                    {card.amenities_interior && card.amenities_interior.length > 0 && (
+                      <div>
+                        <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
+                          <Tag className="w-3 h-3" /> Comodidades
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {card.amenities_interior.map((tag) => (
+                            <span key={tag} className="px-2.5 py-1 rounded-full text-xs font-medium"
+                              style={{ background: C.cream, color: C.coffee }}>{tag}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {card.amenities_exterior && card.amenities_exterior.length > 0 && (
+                      <div>
+                        <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
+                          <Building2 className="w-3 h-3" /> Edificio / Conjunto
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {card.amenities_exterior.map((tag) => (
+                            <span key={tag} className="px-2.5 py-1 rounded-full text-xs font-medium"
+                              style={{ background: C.cream, color: C.coffee }}>{tag}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {card.amenities_sector && card.amenities_sector.length > 0 && (
+                      <div>
+                        <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
+                          <MapPin className="w-3 h-3" /> Zona
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {card.amenities_sector.map((tag) => (
+                            <span key={tag} className="px-2.5 py-1 rounded-full text-xs font-medium"
+                              style={{ background: C.cream, color: C.coffee }}>{tag}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {card.utilities_included && card.utilities_included.length > 0 && (
+                      <div>
+                        <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
+                          <Sparkles className="w-3 h-3" /> Servicios Incluidos
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {card.utilities_included.map((tag) => (
+                            <span key={tag} className="px-2.5 py-1 rounded-full text-xs font-bold"
+                              style={{ background: "#E8F5E9", color: "#2E7D32" }}>{tag}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Fallback to original tags if amenities fields are empty */}
+                    {!(card.amenities_interior?.length || card.amenities_exterior?.length || card.amenities_sector?.length) && card.tags?.length > 0 && (
                       <div>
                         <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
                           <Tag className="w-3 h-3" /> Características
