@@ -1,8 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Building2, Users, Heart, Plus, ArrowRight, LogOut } from "lucide-react";
+import { Building2, Users, Heart, Plus, ArrowRight, LogOut, TrendingUp, BarChart3, Target } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../utils/supabaseClient";
+import { 
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, Tooltip, Cell,
+} from 'recharts';
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
 const BODY = "var(--font-inter, 'system-ui', sans-serif)";
@@ -24,6 +28,7 @@ const C = {
 export function OwnerDashboard() {
   const navigate = useRouter();
   const [stats, setStats] = useState({ properties: 0, interested: 0, matches: 0 });
+  const [analytics, setAnalytics] = useState<any>(null);
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -41,24 +46,36 @@ export function OwnerDashboard() {
     setOwnerEmail(email);
     setOwnerName(email.split("@")[0]);
     if (!ownerId) { navigate.push("/app"); return; }
-    fetchStats(ownerId);
+    fetchData(ownerId);
   }, []);
 
-  const fetchStats = async (ownerId: string) => {
+  const fetchData = async (ownerId: string) => {
     try {
-      const [propertiesRes, interestedRes, matchesRes] = await Promise.all([
+      const [propertiesRes, interestedRes, matchesRes, analyticsRes] = await Promise.all([
         fetch(`/api/owner/properties?owner_id=${ownerId}`),
         fetch(`/api/owner/interested?owner_id=${ownerId}`),
         fetch(`/api/owner/matches?owner_id=${ownerId}`),
+        fetch(`/api/owner/analytics?ownerId=${ownerId}`),
       ]);
-      const [properties, interested, matches] = await Promise.all([
+      
+      const [properties, interested, matches, analyticsData] = await Promise.all([
         propertiesRes.ok ? propertiesRes.json() : [],
         interestedRes.ok ? interestedRes.json() : [],
         matchesRes.ok ? matchesRes.json() : [],
+        analyticsRes.ok ? analyticsRes.json() : null,
       ]);
-      setStats({ properties: properties.length, interested: interested.length, matches: matches.length });
-    } catch { /* silent */ }
-    finally { setIsLoading(false); }
+      
+      setStats({ 
+        properties: properties.length, 
+        interested: interested.length, 
+        matches: matches.length 
+      });
+      setAnalytics(analyticsData);
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const statCards = [
@@ -83,13 +100,16 @@ export function OwnerDashboard() {
         background: C.white, borderBottom: `1.5px solid ${C.border}`,
         padding: "20px 24px",
       }}>
-        <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
           <div>
             <div style={{
               fontFamily: DISPLAY, fontSize: 34, fontWeight: 500, color: C.ink,
               letterSpacing: -1.2, lineHeight: 1, marginTop: 4
             }}>
-              Dashboard
+              Panel de Control
+            </div>
+            <div style={{ fontFamily: BODY, fontSize: 13, color: C.coffee, marginTop: 6, opacity: 0.7 }}>
+              Bienvenido de nuevo, {ownerName}
             </div>
           </div>
           <button onClick={handleLogout}
@@ -107,114 +127,237 @@ export function OwnerDashboard() {
       </header>
 
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-      <div style={{ maxWidth: 800, margin: "0 auto", padding: "28px 24px 80px" }}>
-        {isLoading ? (
-          <div style={{ display: "flex", justifyContent: "center", paddingTop: 80 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: "50%",
-              border: `3px solid ${C.terra}`, borderTopColor: "transparent",
-              animation: "spin 0.7s linear infinite"
-            }} />
-            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-          </div>
-        ) : (
-          <>
-            {/* Stat cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-7">
-              {statCards.map((card) => {
-                const Icon = card.icon;
-                return (
-                  <button key={card.path} onClick={() => navigate.push(card.path)}
-                    style={{
-                      background: C.white, borderRadius: 20, padding: "22px 18px",
-                      border: `1.5px solid ${C.border}`,
-                      display: "flex", flexDirection: "column", gap: 0,
-                      cursor: "pointer", textAlign: "left", transition: "all 0.12s",
-                      boxShadow: "0 2px 8px rgba(130,85,77,0.06)",
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 6px 20px rgba(130,85,77,0.12)")}
-                    onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 2px 8px rgba(130,85,77,0.06)")}
-                  >
-                    <div style={{
-                      width: 44, height: 44, borderRadius: 12,
-                      background: card.bg, display: "flex",
-                      alignItems: "center", justifyContent: "center", marginBottom: 16,
-                    }}>
-                      <Icon style={{ width: 22, height: 22, color: card.fg }} />
-                    </div>
-                    <div style={{
-                      fontFamily: DISPLAY, fontSize: 38, fontWeight: 500,
-                      color: C.ink, letterSpacing: -1.5, lineHeight: 1
-                    }}>
-                      {card.value}
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
-                      <span style={{ fontFamily: BODY, fontSize: 13, fontWeight: 600, color: C.coffee }}>
-                        {card.label}
-                      </span>
-                      <ArrowRight style={{ width: 14, height: 14, color: C.coffee, opacity: 0.5 }} />
-                    </div>
-                  </button>
-                );
-              })}
+        <div style={{ maxWidth: 900, margin: "0 auto", padding: "28px 24px 80px" }}>
+          {isLoading ? (
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: 80 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: "50%",
+                border: `3px solid ${C.terra}`, borderTopColor: "transparent",
+                animation: "spin 0.7s linear infinite"
+              }} />
+              <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
             </div>
+          ) : (
+            <>
+              {/* Stat cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                {statCards.map((card) => {
+                  const Icon = card.icon;
+                  return (
+                    <button key={card.path} onClick={() => navigate.push(card.path)}
+                      style={{
+                        background: C.white, borderRadius: 24, padding: "24px 20px",
+                        border: `1.5px solid ${C.border}`,
+                        display: "flex", flexDirection: "column", gap: 0,
+                        cursor: "pointer", textAlign: "left", transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                        boxShadow: "0 2px 8px rgba(130,85,77,0.06)",
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.boxShadow = "0 8px 24px rgba(130,85,77,0.12)";
+                        e.currentTarget.style.transform = "translateY(-2px)";
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.boxShadow = "0 2px 8px rgba(130,85,77,0.06)";
+                        e.currentTarget.style.transform = "translateY(0)";
+                      }}
+                    >
+                      <div style={{
+                        width: 48, height: 48, borderRadius: 14,
+                        background: card.bg, display: "flex",
+                        alignItems: "center", justifyContent: "center", marginBottom: 18,
+                      }}>
+                        <Icon style={{ width: 24, height: 24, color: card.fg }} />
+                      </div>
+                      <div style={{
+                        fontFamily: DISPLAY, fontSize: 42, fontWeight: 500,
+                        color: C.ink, letterSpacing: -1.5, lineHeight: 1
+                      }}>
+                        {card.value}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+                        <span style={{ fontFamily: BODY, fontSize: 13, fontWeight: 600, color: C.coffee }}>
+                          {card.label}
+                        </span>
+                        <ArrowRight style={{ width: 14, height: 14, color: C.coffee, opacity: 0.5 }} />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
 
-            {/* Alert — pending interested */}
-            {stats.interested > 0 && (
-              <div style={{
-                background: C.greenSoft, borderRadius: 18, padding: "18px 20px",
-                border: `1.5px solid ${C.greenL}`, marginBottom: 22,
-                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-              }}>
-                <div>
-                  <div style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink }}>
-                    {stats.interested} arrendatario{stats.interested !== 1 ? "s" : ""} interesado{stats.interested !== 1 ? "s" : ""}
-                  </div>
-                  <div style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, marginTop: 3 }}>
-                    Revisa sus perfiles y acepta los que más te convenzan
-                  </div>
-                </div>
-                <button onClick={() => navigate.push("/owner/interested")}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 5, padding: "9px 16px",
-                    borderRadius: 9999, background: C.green, color: C.white,
-                    border: "none", cursor: "pointer", fontFamily: BODY, fontSize: 13, fontWeight: 700,
-                    whiteSpace: "nowrap", flexShrink: 0,
+              {/* Analytics Section */}
+              {analytics && (
+                <div style={{ marginBottom: 32 }}>
+                  <div style={{ 
+                    display: "flex", alignItems: "center", gap: 8, marginBottom: 20,
+                    fontFamily: DISPLAY, fontSize: 20, color: C.ink, fontWeight: 500 
                   }}>
-                  Ver <ArrowRight style={{ width: 13, height: 13 }} />
-                </button>
-              </div>
-            )}
+                    <TrendingUp style={{ width: 20, height: 20, color: C.terra }} />
+                    Estadísticas de Rendimiento
+                  </div>
 
-            {/* Add property CTA */}
-            <button onClick={() => navigate.push("/owner/properties/new")}
-              style={{
-                width: "100%", padding: "18px 22px", borderRadius: 20,
-                background: C.white, border: `1.5px dashed ${C.borderS}`,
-                display: "flex", alignItems: "center", gap: 12,
-                cursor: "pointer", transition: "all 0.12s",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = C.creAlt; }}
-              onMouseLeave={e => { e.currentTarget.style.background = C.white; }}
-            >
-              <div style={{
-                width: 40, height: 40, borderRadius: 10,
-                background: C.terra, display: "flex", alignItems: "center", justifyContent: "center"
-              }}>
-                <Plus style={{ width: 20, height: 20, color: C.white }} />
-              </div>
-              <div style={{ textAlign: "left" }}>
-                <div style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink }}>
-                  Publicar propiedad
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Radar Chart: Psicográfico */}
+                    <div style={{ 
+                      background: C.white, borderRadius: 24, padding: "28px", 
+                      border: `1.5px solid ${C.border}`,
+                      boxShadow: "0 2px 8px rgba(130,85,77,0.04)",
+                      minHeight: "350px"
+                    }}>
+                      <div style={{ marginBottom: 24 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink }}>
+                          <Target style={{ width: 16, height: 16, color: C.green }} />
+                          Perfil del Interesado
+                        </div>
+                        <div style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, marginTop: 4 }}>
+                          Promedio conductal de quienes buscan tu inmueble
+                        </div>
+                      </div>
+                      
+                      <div style={{ width: '100%', height: 250 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RadarChart cx="50%" cy="50%" outerRadius="80%" data={analytics.radar}>
+                            <PolarGrid stroke={C.border} />
+                            <PolarAngleAxis dataKey="subject" tick={{ fill: C.coffee, fontSize: 11, fontWeight: 600 }} />
+                            <Radar
+                              name="Promedio"
+                              dataKey="A"
+                              stroke={C.green}
+                              fill={C.green}
+                              fillOpacity={0.5}
+                            />
+                          </RadarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Funnel: Conversión */}
+                    <div style={{ 
+                      background: C.white, borderRadius: 24, padding: "28px", 
+                      border: `1.5px solid ${C.border}`,
+                      boxShadow: "0 2px 8px rgba(130,85,77,0.04)",
+                      minHeight: "350px"
+                    }}>
+                      <div style={{ marginBottom: 24 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink }}>
+                          <BarChart3 style={{ width: 16, height: 16, color: C.terra }} />
+                          Embudo de Conversión
+                        </div>
+                        <div style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, marginTop: 4 }}>
+                          Flujo de usuarios desde la vista hasta el match
+                        </div>
+                      </div>
+
+                      <div style={{ width: '100%', height: 250 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart layout="vertical" data={analytics.funnel} margin={{ left: 10, right: 40, top: 10, bottom: 10 }}>
+                            <XAxis type="number" hide />
+                            <YAxis 
+                              dataKey="name" 
+                              type="category" 
+                              axisLine={false} 
+                              tickLine={false}
+                              tick={{ fill: C.coffee, fontSize: 12, fontWeight: 600 }}
+                              width={80}
+                            />
+                            <Tooltip 
+                              cursor={{ fill: 'transparent' }}
+                              contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                            />
+                            <Bar dataKey="value" radius={[0, 10, 10, 0]} barSize={32}>
+                              {analytics.funnel.map((entry: any, index: number) => (
+                                <Cell key={`cell-${index}`} fill={index === 0 ? C.greenL : index === 1 ? C.green : C.terra} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Market Price Indicator */}
+                    <div className="lg:col-span-2" style={{ 
+                      background: `linear-gradient(135deg, ${C.white} 0%, ${C.creAlt} 100%)`, 
+                      borderRadius: 24, padding: "24px 28px", 
+                      border: `1.5px solid ${C.border}`,
+                      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20
+                    }}>
+                      <div>
+                        <div style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink }}>
+                          Análisis de Mercado
+                        </div>
+                        <div style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, marginTop: 4, maxWidth: 400 }}>
+                          Tu precio promedio está {analytics.market.yourPrice > analytics.market.avgPrice ? "por encima" : "por debajo"} de la media global de RentAI.
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                          Precio Mercado (Promedio)
+                        </div>
+                        <div style={{ fontFamily: DISPLAY, fontSize: 28, fontWeight: 500, color: C.ink, marginTop: 4 }}>
+                          ${analytics.market.avgPrice.toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, marginTop: 2 }}>
-                  Agrega un nuevo inmueble para que los arrendatarios lo encuentren
+              )}
+
+              {/* Alert — pending interested */}
+              {stats.interested > 0 && (
+                <div style={{
+                  background: C.greenSoft, borderRadius: 20, padding: "18px 22px",
+                  border: `1.5px solid ${C.greenL}`, marginBottom: 22,
+                  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+                }}>
+                  <div>
+                    <div style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink }}>
+                      {stats.interested} arrendatario{stats.interested !== 1 ? "s" : ""} interesado{stats.interested !== 1 ? "s" : ""}
+                    </div>
+                    <div style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, marginTop: 3 }}>
+                      Revisa sus perfiles y acepta los que más te convenzan
+                    </div>
+                  </div>
+                  <button onClick={() => navigate.push("/owner/interested")}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 5, padding: "9px 16px",
+                      borderRadius: 9999, background: C.green, color: C.white,
+                      border: "none", cursor: "pointer", fontFamily: BODY, fontSize: 13, fontWeight: 700,
+                      whiteSpace: "nowrap", flexShrink: 0,
+                    }}>
+                    Ver <ArrowRight style={{ width: 13, height: 13 }} />
+                  </button>
                 </div>
-              </div>
-            </button>
-          </>
-        )}
-      </div>
+              )}
+
+              {/* Add property CTA */}
+              <button onClick={() => navigate.push("/owner/properties/new")}
+                style={{
+                  width: "100%", padding: "20px 24px", borderRadius: 24,
+                  background: C.white, border: `1.5px dashed ${C.borderS}`,
+                  display: "flex", alignItems: "center", gap: 14,
+                  cursor: "pointer", transition: "all 0.15s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = C.creAlt; e.currentTarget.style.borderColor = C.terra; }}
+                onMouseLeave={e => { e.currentTarget.style.background = C.white; e.currentTarget.style.borderColor = C.borderS; }}
+              >
+                <div style={{
+                  width: 44, height: 44, borderRadius: 12,
+                  background: C.terra, display: "flex", alignItems: "center", justifyContent: "center"
+                }}>
+                  <Plus style={{ width: 22, height: 22, color: C.white }} />
+                </div>
+                <div style={{ textAlign: "left" }}>
+                  <div style={{ fontFamily: BODY, fontSize: 15, fontWeight: 700, color: C.ink }}>
+                    Publicar propiedad
+                  </div>
+                  <div style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, marginTop: 2 }}>
+                    Agrega un nuevo inmueble para que los arrendatarios lo encuentren
+                  </div>
+                </div>
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

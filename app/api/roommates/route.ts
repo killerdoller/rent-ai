@@ -26,7 +26,15 @@ export async function GET(request: Request) {
       (rejected || []).forEach((r: any) => seenIds.add(r.rejected_user_id));
     }
 
-    // 2. Fetch todos los perfiles de tenants (excluye propietarios)
+    // 2. Fetch recomendaciones para este usuario
+    const { data: recommendations } = userId 
+      ? await supabase.from("recommendations").select("recommended_user_id, match_score").eq("user_id", userId)
+      : { data: null };
+    
+    const scoresMap = new Map<string, number>();
+    (recommendations || []).forEach((r: any) => scoresMap.set(r.recommended_user_id, r.match_score));
+
+    // 3. Fetch todos los perfiles de tenants (excluye propietarios)
     let query = supabase
       .from("profiles")
       .select(`
@@ -57,7 +65,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // 3. Quiénes me dieron like (para mostrar badge "Te dio like")
+    // 4. Quiénes me dieron like (para mostrar badge "Te dio like")
     const likedMeIds = new Set<string>();
     if (userId) {
       const { data: likes } = await supabase
@@ -67,11 +75,14 @@ export async function GET(request: Request) {
       (likes || []).forEach((l: any) => likedMeIds.add(l.user_id));
     }
 
-    // 4. Filtrar ya vistos y mapear
+    // 5. Filtrar ya vistos y mapear
     const roommates = (data || [])
       .filter((p: any) => !seenIds.has(p.id))
       .map((p: any) => {
         const fullName = `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Roomie";
+        // Priorizar score de la tabla, si no existe usar un default bajo para mandarlos al final
+        const matchScore = scoresMap.has(p.id) ? scoresMap.get(p.id)! : 50;
+
         return {
           id: p.id,
           type: "roommate" as const,
@@ -90,9 +101,10 @@ export async function GET(request: Request) {
             ...(p.lifestyle_tags || []),
             ...(p.interests || []),
           ].slice(0, 8),
-          matchScore: Math.floor(Math.random() * 20) + 75,
+          matchScore: matchScore,
         };
-      });
+      })
+      .sort((a, b) => b.matchScore - a.matchScore); // Ordenar por score real de mayor a menor
 
     return NextResponse.json(roommates);
   } catch (err: any) {
