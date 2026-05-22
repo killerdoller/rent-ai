@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   Camera, Edit2, MapPin, Briefcase, Save, X, LogOut,
   Moon, Sun, Zap, Home, Users, Heart, ChevronDown, ChevronUp,
+  CigaretteOff, Cigarette, PawPrint, Laptop, Dumbbell, ChefHat
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -22,20 +23,29 @@ const C = {
 };
 
 const LIFESTYLE_OPTIONS = [
-  { label: "No fumador", icon: "🚭" },
-  { label: "Fumador",    icon: "🚬" },
-  { label: "Mascotas",   icon: "🐾" },
-  { label: "Noctámbulo", icon: "🌙" },
-  { label: "Madrugador", icon: "☀️" },
-  { label: "Trabajo desde casa", icon: "💻" },
-  { label: "Deportista", icon: "🏃" },
-  { label: "Cocinero",   icon: "🍳" },
+  { label: "No fumador", icon: <CigaretteOff style={{ width: 16, height: 16 }} /> },
+  { label: "Fumador",    icon: <Cigarette style={{ width: 16, height: 16 }} /> },
+  { label: "Mascotas",   icon: <PawPrint style={{ width: 16, height: 16 }} /> },
+  { label: "Noctámbulo", icon: <Moon style={{ width: 16, height: 16 }} /> },
+  { label: "Madrugador", icon: <Sun style={{ width: 16, height: 16 }} /> },
+  { label: "Trabajo desde casa", icon: <Laptop style={{ width: 16, height: 16 }} /> },
+  { label: "Deportista", icon: <Dumbbell style={{ width: 16, height: 16 }} /> },
+  { label: "Cocinero",   icon: <ChefHat style={{ width: 16, height: 16 }} /> },
 ];
 
 const INTEREST_OPTIONS = [
   "Música","Cine","Lectura","Viajes","Cocina",
   "Arte","Yoga","Gaming","Fotografía","Deporte",
 ];
+
+const LOCALITIES = [
+  "Usaquén", "Chapinero", "Santa Fe", "San Cristóbal", "Usme", "Tunjuelito", 
+  "Bosa", "Kennedy", "Fontibón", "Engativá", "Suba", "Barrios Unidos", 
+  "Teusaquillo", "Los Mártires", "Antonio Nariño", "Puente Aranda", 
+  "La Candelaria", "Rafael Uribe Uribe", "Ciudad Bolívar", "Sumapaz"
+];
+
+const PROPERTY_TYPES = ["Apartamento", "Casa", "Habitación"];
 
 const formatCOP = (val: string | number) => {
   if (val === null || val === undefined || val === "") return "";
@@ -78,6 +88,11 @@ interface UserProfile {
     interests: number;
     personality: number;
   };
+  desired_amenities_sector: string[];
+  desired_amenities_interior: string[];
+  desired_property_types: string[];
+  desired_localities: string[];
+  desired_neighborhoods: string[];
 }
 
 export function Profile() {
@@ -318,80 +333,6 @@ export function Profile() {
           </div>
         </Card>
 
-        {/* Estilo de vida */}
-        <Card title="Estilo de vida">
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {/* Tags */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              {LIFESTYLE_OPTIONS.map(({ label, icon }) => {
-                const active = d?.lifestyle_tags?.includes(label);
-                return (
-                  <div key={label}
-                    onClick={isEditing ? () => set("lifestyle_tags", toggleTag(form.lifestyle_tags || [], label)) : undefined}
-                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: 12, border: `1.5px solid ${active ? C.green : C.border}`, background: active ? `${C.green}12` : C.cream, color: active ? C.green : C.coffee, cursor: isEditing ? "pointer" : "default" }}>
-                    <span style={{ fontSize: 14 }}>{icon}</span>
-                    <span style={{ fontFamily: BODY, fontSize: 12, fontWeight: 600 }}>{label}</span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Sliders */}
-            {[
-              { label: "Limpieza", key: "cleanliness_level" as const, left: "Relajado", right: "Impecable" },
-              { label: "Social",   key: "social_level" as const,        left: "Tranquilo", right: "Muy social" },
-            ].map(({ label, key, left, right }) => (
-              <div key={key}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</span>
-                  <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.green }}>{d?.[key] ?? 5}/10</span>
-                </div>
-                <div style={{ height: 8, background: C.muted, borderRadius: 9999, overflow: "hidden", position: "relative" }}>
-                  <motion.div initial={{ width: 0 }} animate={{ width: `${(d?.[key] ?? 5) * 10}%` }}
-                    style={{ position: "absolute", inset: "0 auto 0 0", background: C.green, borderRadius: 9999 }} />
-                  {isEditing && (
-                    <input type="range" min={1} max={10} value={d?.[key] ?? 5}
-                      onChange={e => set(key, Number(e.target.value))}
-                      style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
-                  )}
-                </div>
-                {isEditing && (
-                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}>
-                    <span style={{ fontFamily: BODY, fontSize: 10, color: C.coffee, opacity: 0.55 }}>{left}</span>
-                    <span style={{ fontFamily: BODY, fontSize: 10, color: C.coffee, opacity: 0.55 }}>{right}</span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Intereses */}
-        <Card title="Intereses">
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {INTEREST_OPTIONS.map(interest => {
-              const active = d?.interests?.includes(interest);
-              return (
-                <button key={interest}
-                  onClick={isEditing ? () => set("interests", toggleTag(form.interests || [], interest)) : undefined}
-                  style={{ padding: "7px 16px", borderRadius: 9999, fontFamily: BODY, fontSize: 12, fontWeight: 700, border: "none", cursor: isEditing ? "pointer" : "default", background: active ? C.green : C.muted, color: active ? C.white : C.coffee }}>
-                  {interest}
-                </button>
-              );
-            })}
-            {isEditing && (
-              <button onClick={() => {
-                const n = prompt("Añadir interés:");
-                if (n) set("interests", [...(form.interests || []), n]);
-              }}
-                style={{ padding: "7px 16px", borderRadius: 9999, fontFamily: BODY, fontSize: 12, fontWeight: 700, background: "none", border: `1.5px dashed ${C.border}`, color: C.coffee, cursor: "pointer" }}>
-                + Añadir
-              </button>
-            )}
-            {!isEditing && !d?.interests?.length && <Placeholder>Sin intereses añadidos</Placeholder>}
-          </div>
-        </Card>
-
         {/* ¿Qué buscas? */}
         <Card title="¿Qué buscas?">
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -457,6 +398,201 @@ export function Profile() {
                 </span>
               )}
             </Field>
+
+            {/* Localidades y Barrios */}
+            {(d?.user_mode === "find-room" || form.user_mode === "find-room") && (
+              <>
+                <Field label="Tipo de Propiedad Ideal">
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {PROPERTY_TYPES.map(type => {
+                      const active = d?.desired_property_types?.includes(type);
+                      if (!isEditing && !active) return null;
+                      return (
+                        <button key={type}
+                          onClick={isEditing ? () => set("desired_property_types", toggleTag(form.desired_property_types || [], type)) : undefined}
+                          style={{ padding: "7px 14px", borderRadius: 9999, fontFamily: BODY, fontSize: 12, fontWeight: 700, border: `1.5px solid ${active ? C.green : C.border}`, background: active ? `${C.green}12` : C.cream, color: active ? C.green : C.coffee, cursor: isEditing ? "pointer" : "default" }}>
+                          {type}
+                        </button>
+                      );
+                    })}
+                    {!isEditing && !d?.desired_property_types?.length && <Placeholder>Cualquiera</Placeholder>}
+                  </div>
+                </Field>
+
+                <Field label="Localidades">
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {LOCALITIES.map(loc => {
+                      const active = d?.desired_localities?.includes(loc);
+                      if (!isEditing && !active) return null;
+                      return (
+                        <button key={loc}
+                          onClick={isEditing ? () => set("desired_localities", toggleTag(form.desired_localities || [], loc)) : undefined}
+                          style={{ padding: "6px 12px", borderRadius: 8, fontFamily: BODY, fontSize: 11, fontWeight: 600, border: `1px solid ${active ? C.green : C.border}`, background: active ? `${C.green}12` : C.cream, color: active ? C.green : C.coffee, cursor: isEditing ? "pointer" : "default" }}>
+                          {loc}
+                        </button>
+                      );
+                    })}
+                    {!isEditing && !d?.desired_localities?.length && <Placeholder>Cualquiera</Placeholder>}
+                  </div>
+                </Field>
+
+                <Field label="Barrios específicos">
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {(isEditing ? form.desired_neighborhoods : d?.desired_neighborhoods)?.map(hood => (
+                      <div key={hood} style={{ padding: "5px 10px", borderRadius: 9999, background: C.muted, fontFamily: BODY, fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                        {hood}
+                        {isEditing && (
+                          <button onClick={() => set("desired_neighborhoods", form.desired_neighborhoods?.filter(h => h !== hood))} style={{ border: "none", background: "none", cursor: "pointer", color: C.coffee, display: "flex", alignItems: "center", padding: 0 }}>✕</button>
+                        )}
+                      </div>
+                    ))}
+                    {isEditing && (
+                      <button onClick={() => {
+                        const hood = prompt("Añadir barrio:");
+                        if (hood && !form.desired_neighborhoods?.includes(hood)) set("desired_neighborhoods", [...(form.desired_neighborhoods || []), hood]);
+                      }} style={{ padding: "5px 10px", borderRadius: 9999, border: `1.5px dashed ${C.border}`, background: "none", fontFamily: BODY, fontSize: 12, color: C.coffee, cursor: "pointer" }}>
+                        + Añadir
+                      </button>
+                    )}
+                    {!isEditing && !d?.desired_neighborhoods?.length && <Placeholder>Ninguno especificado</Placeholder>}
+                  </div>
+                </Field>
+
+                <Field label="Amenidades del sector deseadas">
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {(isEditing ? form.desired_amenities_sector : d?.desired_amenities_sector)?.map(amenity => (
+                      <button key={amenity}
+                        onClick={isEditing ? () => set("desired_amenities_sector", toggleTag(form.desired_amenities_sector || [], amenity)) : undefined}
+                        style={{ padding: "7px 14px", borderRadius: 9999, fontFamily: BODY, fontSize: 12, fontWeight: 700, border: `1.5px solid ${C.green}`, background: `${C.green}12`, color: C.green, cursor: isEditing ? "pointer" : "default" }}>
+                        {amenity} {isEditing && "✕"}
+                      </button>
+                    ))}
+                    {isEditing && ["Transporte público", "Parques", "Comercio", "Universidades", "Zona tranquila", "Vida nocturna"]
+                      .filter(a => !(form.desired_amenities_sector || []).includes(a))
+                      .map(amenity => (
+                        <button key={amenity}
+                          onClick={() => set("desired_amenities_sector", toggleTag(form.desired_amenities_sector || [], amenity))}
+                          style={{ padding: "7px 14px", borderRadius: 9999, fontFamily: BODY, fontSize: 12, fontWeight: 700, border: `1.5px solid ${C.border}`, background: C.cream, color: C.coffee, cursor: "pointer" }}>
+                          {amenity}
+                        </button>
+                      ))}
+                    {isEditing && (
+                      <button onClick={() => {
+                        const n = prompt("Añadir amenidad del sector:");
+                        if (n && !form.desired_amenities_sector?.includes(n)) set("desired_amenities_sector", [...(form.desired_amenities_sector || []), n]);
+                      }} style={{ padding: "7px 14px", borderRadius: 9999, fontFamily: BODY, fontSize: 12, fontWeight: 700, border: `1.5px dashed ${C.border}`, background: "none", color: C.coffee, cursor: "pointer" }}>
+                        + Añadir
+                      </button>
+                    )}
+                    {!isEditing && !d?.desired_amenities_sector?.length && <Placeholder>Ninguna</Placeholder>}
+                  </div>
+                </Field>
+
+                <Field label="Características del apto deseadas">
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {(isEditing ? form.desired_amenities_interior : d?.desired_amenities_interior)?.map(amenity => (
+                      <button key={amenity}
+                        onClick={isEditing ? () => set("desired_amenities_interior", toggleTag(form.desired_amenities_interior || [], amenity)) : undefined}
+                        style={{ padding: "7px 14px", borderRadius: 9999, fontFamily: BODY, fontSize: 12, fontWeight: 700, border: `1.5px solid ${C.green}`, background: `${C.green}12`, color: C.green, cursor: isEditing ? "pointer" : "default" }}>
+                        {amenity} {isEditing && "✕"}
+                      </button>
+                    ))}
+                    {isEditing && ["Lavandería", "Ascensor", "Gimnasio", "Seguridad 24/7", "Balcón", "Amoblado", "Parqueadero"]
+                      .filter(a => !(form.desired_amenities_interior || []).includes(a))
+                      .map(amenity => (
+                        <button key={amenity}
+                          onClick={() => set("desired_amenities_interior", toggleTag(form.desired_amenities_interior || [], amenity))}
+                          style={{ padding: "7px 14px", borderRadius: 9999, fontFamily: BODY, fontSize: 12, fontWeight: 700, border: `1.5px solid ${C.border}`, background: C.cream, color: C.coffee, cursor: "pointer" }}>
+                          {amenity}
+                        </button>
+                      ))}
+                    {isEditing && (
+                      <button onClick={() => {
+                        const n = prompt("Añadir característica del apto:");
+                        if (n && !form.desired_amenities_interior?.includes(n)) set("desired_amenities_interior", [...(form.desired_amenities_interior || []), n]);
+                      }} style={{ padding: "7px 14px", borderRadius: 9999, fontFamily: BODY, fontSize: 12, fontWeight: 700, border: `1.5px dashed ${C.border}`, background: "none", color: C.coffee, cursor: "pointer" }}>
+                        + Añadir
+                      </button>
+                    )}
+                    {!isEditing && !d?.desired_amenities_interior?.length && <Placeholder>Ninguna</Placeholder>}
+                  </div>
+                </Field>
+              </>
+            )}
+          </div>
+        </Card>
+
+        {/* Estilo de vida */}
+        <Card title="Estilo de vida">
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {/* Tags */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {LIFESTYLE_OPTIONS.map(({ label, icon }) => {
+                const active = d?.lifestyle_tags?.includes(label);
+                return (
+                  <div key={label}
+                    onClick={isEditing ? () => set("lifestyle_tags", toggleTag(form.lifestyle_tags || [], label)) : undefined}
+                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: 12, border: `1.5px solid ${active ? C.green : C.border}`, background: active ? `${C.green}12` : C.cream, color: active ? C.green : C.coffee, cursor: isEditing ? "pointer" : "default" }}>
+                    <span style={{ fontSize: 14, display: "flex", alignItems: "center" }}>{icon}</span>
+                    <span style={{ fontFamily: BODY, fontSize: 12, fontWeight: 600 }}>{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Sliders */}
+            {[
+              { label: "Limpieza", key: "cleanliness_level" as const, left: "Relajado", right: "Impecable" },
+              { label: "Social",   key: "social_level" as const,        left: "Tranquilo", right: "Muy social" },
+            ].map(({ label, key, left, right }) => (
+              <div key={key}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</span>
+                  <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.green }}>{d?.[key] ?? 5}/10</span>
+                </div>
+                <div style={{ height: 8, background: C.muted, borderRadius: 9999, overflow: "hidden", position: "relative" }}>
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${(d?.[key] ?? 5) * 10}%` }}
+                    style={{ position: "absolute", inset: "0 auto 0 0", background: C.green, borderRadius: 9999 }} />
+                  {isEditing && (
+                    <input type="range" min={1} max={10} value={d?.[key] ?? 5}
+                      onChange={e => set(key, Number(e.target.value))}
+                      style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%" }} />
+                  )}
+                </div>
+                {isEditing && (
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}>
+                    <span style={{ fontFamily: BODY, fontSize: 10, color: C.coffee, opacity: 0.55 }}>{left}</span>
+                    <span style={{ fontFamily: BODY, fontSize: 10, color: C.coffee, opacity: 0.55 }}>{right}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Intereses */}
+        <Card title="Intereses">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {INTEREST_OPTIONS.map(interest => {
+              const active = d?.interests?.includes(interest);
+              return (
+                <button key={interest}
+                  onClick={isEditing ? () => set("interests", toggleTag(form.interests || [], interest)) : undefined}
+                  style={{ padding: "7px 16px", borderRadius: 9999, fontFamily: BODY, fontSize: 12, fontWeight: 700, border: "none", cursor: isEditing ? "pointer" : "default", background: active ? C.green : C.muted, color: active ? C.white : C.coffee }}>
+                  {interest}
+                </button>
+              );
+            })}
+            {isEditing && (
+              <button onClick={() => {
+                const n = prompt("Añadir interés:");
+                if (n) set("interests", [...(form.interests || []), n]);
+              }}
+                style={{ padding: "7px 16px", borderRadius: 9999, fontFamily: BODY, fontSize: 12, fontWeight: 700, background: "none", border: `1.5px dashed ${C.border}`, color: C.coffee, cursor: "pointer" }}>
+                + Añadir
+              </button>
+            )}
+            {!isEditing && !d?.interests?.length && <Placeholder>Sin intereses añadidos</Placeholder>}
           </div>
         </Card>
 
@@ -472,7 +608,7 @@ export function Profile() {
               { label: "Intereses", key: "interests" },
               { label: "Personalidad", key: "personality" },
             ].map(({ label, key }) => {
-              const weight = (d?.importance_weights as any)?.[key] ?? 1.0;
+              const weight = Math.min((d?.importance_weights as any)?.[key] ?? 1.0, 1.0);
               return (
                 <div key={key}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
