@@ -13,6 +13,8 @@ export async function POST(request: Request) {
     owner_id, title, monthly_rent, city, neighborhood, bedrooms,
     description, image_url, images, allows_students, requires_co_debtor,
     tags, address, latitude, longitude,
+    property_type, localidad, bathrooms, area_sqm, stratum, floor_number, building_floors,
+    amenities_interior, amenities_exterior, amenities_sector, utilities_included
   } = body;
 
   if (!owner_id || !title || !monthly_rent || !city) {
@@ -37,6 +39,17 @@ export async function POST(request: Request) {
       address: address || null,
       latitude: latitude || null,
       longitude: longitude || null,
+      property_type: property_type || "Apartamento",
+      localidad: localidad || null,
+      bathrooms: bathrooms || 1,
+      area_sqm: area_sqm || null,
+      stratum: stratum || null,
+      floor_number: floor_number || null,
+      building_floors: building_floors || null,
+      amenities_interior: amenities_interior || [],
+      amenities_exterior: amenities_exterior || [],
+      amenities_sector: amenities_sector || [],
+      utilities_included: utilities_included || [],
     })
     .select("property_id, title")
     .single();
@@ -65,7 +78,9 @@ export async function PATCH(request: Request) {
   }
 
   const ALLOWED = ["title","monthly_rent","city","neighborhood","bedrooms","description",
-    "image_url","images","allows_students","requires_co_debtor","tags","address","latitude","longitude"];
+    "image_url","images","allows_students","requires_co_debtor","tags","address","latitude","longitude",
+    "property_type","localidad","bathrooms","area_sqm","stratum","floor_number","building_floors",
+    "amenities_interior","amenities_exterior","amenities_sector","utilities_included"];
   const update = Object.fromEntries(Object.entries(fields).filter(([k]) => ALLOWED.includes(k)));
 
   const { data, error } = await supabase
@@ -103,6 +118,17 @@ export async function GET(request: Request) {
       address,
       latitude,
       longitude,
+      property_type,
+      localidad,
+      bathrooms,
+      area_sqm,
+      stratum,
+      floor_number,
+      building_floors,
+      amenities_interior,
+      amenities_exterior,
+      amenities_sector,
+      utilities_included,
       created_at
     `)
     .eq("owner_id", ownerId)

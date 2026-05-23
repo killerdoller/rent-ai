@@ -69,6 +69,56 @@ def resolve_owner_id(supabase: Client, owner_id_or_email: str) -> str:
         return owner_id_or_email
 
 
+
+# Números escritos en español → dígito
+_WORD_TO_NUM = {
+    "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5,
+    "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10,
+}
+
+_FLOORS_RE = re.compile(
+    r"""
+    (?:                          # opción A: "4 niveles / pisos / plantas"
+        (?P<n1>\d+)\s*
+        (?:niveles?|pisos?|plantas?|floors?)
+    )
+    |                            # opción B: "niveles / pisos / plantas de 4"
+    (?:
+        (?:niveles?|pisos?|plantas?)
+        \s+de\s+
+        (?P<n2>\d+)
+    )
+    |                            # opción C: palabra española "cuatro niveles"
+    (?:
+        (?P<nw>dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)
+        \s*
+        (?:niveles?|pisos?|plantas?)
+    )
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+
+def extract_floors_from_description(description: str) -> int:
+    """
+    Busca menciones de número de pisos/niveles/plantas en la descripción.
+    Retorna el número encontrado, o 0 si no hay nada.
+    Ejemplos detectados:
+      '4 niveles', '3 pisos', '2 plantas', 'cuatro niveles',
+      'casa de 3 pisos', '4 levels'
+    """
+    if not description:
+        return 0
+    for m in _FLOORS_RE.finditer(description):
+        raw = m.group("n1") or m.group("n2")
+        if raw:
+            return int(raw)
+        word = m.group("nw")
+        if word:
+            return _WORD_TO_NUM.get(word.lower(), 0)
+    return 0
+
+
 def extract_price(price_field) -> float:
     """Handle both raw numbers and Finca Raiz price objects."""
     if isinstance(price_field, dict):
@@ -79,8 +129,8 @@ def extract_price(price_field) -> float:
         return 0.0
 
 
-def extract_all_image_urls(item: dict) -> list[str]:
-    """Extract ALL image URLs from a Finca Raiz listing."""
+def extract_all_image_urls(item: dict, max_images: int = 10) -> list[str]:
+    """Extract image URLs from a Finca Raiz listing (limited to max_images)."""
     images = item.get("images") or []
     urls = []
     if images and isinstance(images, list):
@@ -91,7 +141,7 @@ def extract_all_image_urls(item: dict) -> list[str]:
     # Fallback: top-level img field
     if not urls and item.get("img"):
         urls.append(item["img"])
-    return urls
+    return urls[:max_images]
 
 
 async def download_image(url: str) -> bytes | None:
@@ -241,21 +291,26 @@ async def scrape_and_upload(url: str, owner_id: str, limit: int = 100, dry_run: 
                 price = extract_price(item.get("price"))
                 locations = item.get("locations") or {}
                 location_main = locations.get("location_main") or {}
-                neighborhood = location_main.get("name") or (
-                    (locations.get("neighbourhood") or [{}])[0].get("name") or "N/A"
-                )
+                neighborhood = (locations.get("neighbourhood") or [{}])[0].get("name") or \
+                               location_main.get("name") or "N/A"
                 city_list = locations.get("city") or []
                 city = city_list[0].get("name") if city_list else "Bogotá"
-                
+                description = item.get("description") or ""
+
                 rooms = item.get("bedrooms") or 1
                 bathrooms = int(item.get("bathrooms") or 0)
                 area_sqm = float(item.get("m2Built") or item.get("m2") or 0.0)
                 stratum = int(item.get("stratum") or 0)
                 floor_number = int(item.get("floor") or 0)
                 building_floors = int(item.get("floorsCount") or 0)
-                
-                description = item.get("description") or ""
-                
+
+                # Si floorsCount no está en el JSON, intentar extraerlo
+                # de la descripción con regex ("4 niveles", "3 pisos", etc.)
+                if not building_floors and description:
+                    building_floors = extract_floors_from_description(description)
+                    if building_floors:
+                        print(f"    [regex] Detectados {building_floors} niveles desde la descripción")
+
                 facilities = item.get("facilities") or []
                 tags = [f["name"] for f in facilities if f.get("name")]
                 

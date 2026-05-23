@@ -45,13 +45,20 @@ async def scrape_fincaraiz(url):
             for item in listings:
                 # Extraemos la información clave
                 # Nota: Algunos campos pueden variar dependiendo de la inmobiliaria
+                locations = item.get("locations") or {}
+                location_main = locations.get("location_main") or {}
+                barrio = (locations.get("neighbourhood") or [{}])[0].get("name") or \
+                         location_main.get("name") or "N/A"
+                city_list = locations.get("city") or []
+                ciudad = city_list[0].get("name") if city_list else "N/A"
+
                 res = {
                     "id": item.get("id"),
                     "titulo": item.get("title", "Sin título"),
                     "precio": item.get("price", 0),
                     "moneda": item.get("currency", "COP"),
-                    "barrio": item.get("neighborhood", "N/A"),
-                    "ciudad": item.get("city", "N/A"),
+                    "barrio": barrio,
+                    "ciudad": ciudad,
                     "area": f"{item.get('area', 0)} m2",
                     "habitaciones": item.get("rooms", 0),
                     "baños": item.get("baths", 0),

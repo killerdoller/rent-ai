@@ -3,89 +3,166 @@ import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Search, Loader2 } from "lucide-react";
+import { Loader2, MapPin, Search } from "lucide-react";
 
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl:       "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl:     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
-
-const BODY  = "var(--font-inter, 'system-ui', sans-serif)";
+const BODY = "var(--font-inter, 'system-ui', sans-serif)";
 const C = { terra: "#D87D6F", coffee: "#82554D", muted: "#EFE7DE", white: "#FFFFFF", border: "rgba(130,85,77,0.14)" };
 
-interface NominatimResult {
-  place_id: number;
-  display_name: string;
-  lat: string;
-  lon: string;
+interface GeoResult {
+  id: string;
+  label: string;
+  lat?: number;
+  lng?: number;
+  placeId?: string;
+  source?: "google" | "nominatim" | "photon";
+  precision?: string;
 }
 
 interface Props {
   initialLat: number;
   initialLng: number;
   city?: string;
+  hasInitialLocation?: boolean;
   onLocationPicked: (lat: number, lng: number, address: string) => void;
 }
 
-// Inner component — has access to map instance
+const pinIcon = L.divIcon({
+  className: "rentai-map-pin",
+  html: `<div style="width:30px;height:30px;border-radius:50% 50% 50% 0;background:#D87D6F;transform:rotate(-45deg);border:3px solid white;box-shadow:0 6px 18px rgba(13,13,13,.24);"><div style="width:9px;height:9px;border-radius:50%;background:white;margin:7px auto 0;"></div></div>`,
+  iconSize: [30, 30],
+  iconAnchor: [15, 30],
+});
+
 function MapController({ target }: { target: [number, number] | null }) {
   const map = useMap();
+
   useEffect(() => {
-    if (target) map.flyTo(target, 16, { duration: 0.8 });
-  }, [target]);
+    setTimeout(() => map.invalidateSize(), 80);
+  }, [map]);
+
+  useEffect(() => {
+    if (target) map.flyTo(target, 17, { duration: 0.8 });
+  }, [map, target]);
+
   return null;
 }
 
-export default function MapPicker({ initialLat, initialLng, city = "Bogotá, Colombia", onLocationPicked }: Props) {
-  const [query, setQuery]       = useState("");
-  const [results, setResults]   = useState<NominatimResult[]>([]);
+function shortCity(city: string) {
+  return city.split(",")[0]?.trim() || city;
+}
+
+function hasStreetNumber(value: string) {
+  return /(#|nro\.?|no\.?)?\s*\d+\s*[-–]\s*\d+/i.test(value) || /#\s*\d+/i.test(value);
+}
+
+function preferredAddress(selectedLabel: string, typedQuery: string, city: string) {
+  const typed = typedQuery.trim();
+  if (!typed) return selectedLabel;
+
+  if (hasStreetNumber(typed) && !selectedLabel.toLowerCase().includes(typed.toLowerCase())) {
+    const cityName = shortCity(city);
+    return typed.toLowerCase().includes(cityName.toLowerCase()) ? typed : `${typed}, ${cityName}`;
+  }
+
+  return selectedLabel.split(",").slice(0, 4).join(",").trim();
+}
+
+export default function MapPicker({
+  initialLat,
+  initialLng,
+  city = "Bogota, Colombia",
+  hasInitialLocation = false,
+  onLocationPicked,
+}: Props) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<GeoResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const [showDrop, setShowDrop]  = useState(false);
-  const [pin, setPin]            = useState<[number, number] | null>(null);
-  const [flyTarget, setFlyTarget] = useState<[number, number] | null>(null);
+  const [showDrop, setShowDrop] = useState(false);
+  const [pin, setPin] = useState<[number, number] | null>(
+    hasInitialLocation ? [initialLat, initialLng] : null,
+  );
+  const [flyTarget, setFlyTarget] = useState<[number, number] | null>(
+    hasInitialLocation ? [initialLat, initialLng] : null,
+  );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const search = async (q: string) => {
-    if (q.length < 3) { setResults([]); return; }
+  const search = async (value: string) => {
+    const q = value.trim();
+    if (q.length < 3) {
+      setResults([]);
+      return;
+    }
+
     setSearching(true);
     try {
-      const fullQuery = q.toLowerCase().includes(city.split(",")[0].toLowerCase()) ? q : `${q}, ${city}`;
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fullQuery)}&format=json&limit=6&addressdetails=1`,
-        { headers: { "Accept-Language": "es" } }
-      );
-      setResults(await res.json());
+      const params = new URLSearchParams({ q, city });
+      const response = await fetch(`/api/maps/autocomplete?${params.toString()}`);
+      const data = await response.json();
+
+      if (data.results?.length) {
+        setResults(data.results);
+        setShowDrop(true);
+        return;
+      }
+
+      if (data.configured === false) {
+        setResults([]);
+        setShowDrop(false);
+        return;
+      }
+
+      params.set("google_only", "1");
+      const geocodeResponse = await fetch(`/api/maps/geocode?${params.toString()}`);
+      const geocodeData = await geocodeResponse.json();
+      setResults(geocodeData.results || []);
       setShowDrop(true);
-    } catch { /* silent */ }
-    finally { setSearching(false); }
+    } catch {
+      setResults([]);
+    } finally {
+      setSearching(false);
+    }
   };
 
-  const handleQueryChange = (v: string) => {
-    setQuery(v);
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+    if (pin) onLocationPicked(pin[0], pin[1], value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => search(v), 400);
+    debounceRef.current = setTimeout(() => search(value), 450);
   };
 
-  const selectResult = (r: NominatimResult) => {
-    const lat = parseFloat(r.lat);
-    const lng = parseFloat(r.lon);
-    setPin([lat, lng]);
-    setFlyTarget([lat, lng]);
-    setQuery(r.display_name);
+  const selectResult = async (result: GeoResult) => {
+    let resolved = result;
+
+    if (result.placeId && (!Number.isFinite(result.lat) || !Number.isFinite(result.lng))) {
+      setSearching(true);
+      try {
+        const params = new URLSearchParams({ place_id: result.placeId });
+        const response = await fetch(`/api/maps/geocode?${params.toString()}`);
+        const data = await response.json();
+        resolved = data.result || data.results?.[0] || result;
+      } finally {
+        setSearching(false);
+      }
+    }
+
+    if (!Number.isFinite(resolved.lat) || !Number.isFinite(resolved.lng)) return;
+
+    const nextPin: [number, number] = [resolved.lat!, resolved.lng!];
+    const cleanName = preferredAddress(result.label, query, city);
+
+    setPin(nextPin);
+    setFlyTarget(nextPin);
+    setQuery(cleanName);
     setShowDrop(false);
-    onLocationPicked(lat, lng, r.display_name);
+    onLocationPicked(nextPin[0], nextPin[1], cleanName);
   };
 
   const reverseGeocode = async (lat: number, lng: number) => {
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-        { headers: { "Accept-Language": "es" } }
-      );
-      const data = await res.json();
-      return data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      const params = new URLSearchParams({ lat: String(lat), lng: String(lng) });
+      const response = await fetch(`/api/maps/reverse?${params.toString()}`);
+      const data = await response.json();
+      return data.address || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
     } catch {
       return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
     }
@@ -93,58 +170,83 @@ export default function MapPicker({ initialLat, initialLng, city = "Bogotá, Col
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {/* Search bar */}
       <div style={{ position: "relative" }}>
         <div style={{ position: "relative" }}>
           <Search style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 15, height: 15, color: C.coffee, opacity: 0.5, zIndex: 1 }} />
           {searching && <Loader2 style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: C.terra }} className="animate-spin" />}
           <input
             value={query}
-            onChange={e => handleQueryChange(e.target.value)}
+            onChange={(event) => handleQueryChange(event.target.value)}
             onFocus={() => results.length > 0 && setShowDrop(true)}
-            placeholder="Buscar dirección, barrio o ciudad…"
+            placeholder="Buscar direccion exacta, barrio o ciudad..."
             style={{
-              width: "100%", boxSizing: "border-box",
+              width: "100%",
+              boxSizing: "border-box",
               padding: "10px 36px 10px 32px",
-              background: C.muted, border: `1.5px solid ${showDrop ? C.terra : "transparent"}`,
-              borderRadius: 12, fontFamily: BODY, fontSize: 13, color: "#0D0D0D", outline: "none",
+              background: C.muted,
+              border: `1.5px solid ${showDrop ? C.terra : "transparent"}`,
+              borderRadius: 12,
+              fontFamily: BODY,
+              fontSize: 13,
+              color: "#0D0D0D",
+              outline: "none",
             }}
           />
         </div>
 
-        {/* Dropdown */}
         {showDrop && results.length > 0 && (
           <div style={{
-            position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 1000,
-            background: C.white, borderRadius: 12, border: `1.5px solid ${C.border}`,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.12)", overflow: "hidden",
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: 0,
+            right: 0,
+            zIndex: 1000,
+            background: C.white,
+            borderRadius: 12,
+            border: `1.5px solid ${C.border}`,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+            overflow: "hidden",
           }}>
-            {results.map(r => (
-              <button key={r.place_id} type="button"
-                onClick={() => selectResult(r)}
+            {results.map((result, index) => (
+              <button
+                key={result.id || index}
+                type="button"
+                onClick={() => selectResult(result)}
                 style={{
-                  width: "100%", padding: "10px 14px", border: "none", background: "none",
-                  textAlign: "left", cursor: "pointer", fontFamily: BODY, fontSize: 12,
-                  color: "#0D0D0D", borderBottom: `1px solid ${C.border}`,
-                  display: "flex", alignItems: "center", gap: 8,
+                  width: "100%",
+                  padding: "10px 14px",
+                  border: "none",
+                  background: "none",
+                  textAlign: "left",
+                  cursor: "pointer",
+                  fontFamily: BODY,
+                  fontSize: 12,
+                  color: "#0D0D0D",
+                  borderBottom: `1px solid ${C.border}`,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
                 }}
-                onMouseEnter={e => (e.currentTarget.style.background = C.muted)}
-                onMouseLeave={e => (e.currentTarget.style.background = "none")}
+                onMouseEnter={(event) => (event.currentTarget.style.background = C.muted)}
+                onMouseLeave={(event) => (event.currentTarget.style.background = "none")}
               >
-                <Search style={{ width: 12, height: 12, color: C.coffee, flexShrink: 0 }} />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.display_name}</span>
+                <MapPin style={{ width: 13, height: 13, color: C.terra, flexShrink: 0 }} />
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {result.label}
+                </span>
               </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* Map */}
-      <div style={{ borderRadius: 16, overflow: "hidden", border: `1.5px solid ${C.border}`, height: 220 }}
-        onClick={() => setShowDrop(false)}>
+      <div
+        style={{ borderRadius: 16, overflow: "hidden", border: `1.5px solid ${C.border}`, height: 240 }}
+        onClick={() => setShowDrop(false)}
+      >
         <MapContainer
           center={[initialLat, initialLng]}
-          zoom={pin ? 16 : 12}
+          zoom={pin ? 17 : 12}
           style={{ height: "100%", width: "100%" }}
           scrollWheelZoom={false}
         >
@@ -153,35 +255,43 @@ export default function MapPicker({ initialLat, initialLng, city = "Bogotá, Col
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <MapController target={flyTarget} />
-          {pin && (
-            <Marker position={pin} />
-          )}
-          {/* Still allow manual fine-tune click */}
-          <ClickFinetuner onPick={async (lat, lng) => {
-            setPin([lat, lng]);
-            const addr = await reverseGeocode(lat, lng);
-            setQuery(addr);
-            onLocationPicked(lat, lng, addr);
-          }} />
+          {pin && <Marker position={pin} icon={pinIcon} />}
+          <ClickFinetuner
+            onPick={async (lat, lng) => {
+              const nextPin: [number, number] = [lat, lng];
+              setPin(nextPin);
+              setFlyTarget(nextPin);
+
+              if (hasStreetNumber(query) && query.length > 5) {
+                onLocationPicked(lat, lng, query);
+                return;
+              }
+
+              const address = await reverseGeocode(lat, lng);
+              setQuery(address);
+              onLocationPicked(lat, lng, address);
+            }}
+          />
         </MapContainer>
       </div>
 
-      {pin && (
-        <p style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, opacity: 0.7 }}>
-          Toca el mapa para ajustar el punto exacto.
-        </p>
-      )}
+      <p style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, opacity: 0.72 }}>
+        {pin ? "Toca el mapa para mover el pin al acceso exacto." : "Busca una direccion y ajusta el pin sobre el mapa."}
+      </p>
     </div>
   );
 }
 
-// Allows clicking on the map to fine-tune the pin
 function ClickFinetuner({ onPick }: { onPick: (lat: number, lng: number) => void }) {
   const map = useMap();
+
   useEffect(() => {
-    const handler = (e: L.LeafletMouseEvent) => onPick(e.latlng.lat, e.latlng.lng);
+    const handler = (event: L.LeafletMouseEvent) => onPick(event.latlng.lat, event.latlng.lng);
     map.on("click", handler);
-    return () => { map.off("click", handler); };
+    return () => {
+      map.off("click", handler);
+    };
   }, [map, onPick]);
+
   return null;
 }

@@ -11,7 +11,9 @@ const PROFILE_FIELDS = `
   id, first_name, last_name, age, job_title, university_name,
   city, monthly_budget, min_budget, max_budget, user_mode, avatar_url, bio,
   interests, lifestyle_tags, cleanliness_level, social_level, profile_images,
-  exclusion_rules, importance_weights
+  exclusion_rules, importance_weights, target_location, search_radius_meters,
+  desired_amenities_sector, desired_amenities_interior,
+  desired_property_types, desired_localities, desired_neighborhoods
 `;
 
 const PATCH_ALLOWED = [
@@ -19,7 +21,9 @@ const PATCH_ALLOWED = [
   "monthly_budget", "min_budget", "max_budget", "user_mode", "bio", "job_title",
   "interests", "lifestyle_tags", "cleanliness_level",
   "social_level", "avatar_url", "profile_images", "profile_completed",
-  "exclusion_rules", "importance_weights"
+  "exclusion_rules", "importance_weights", "target_location", "search_radius_meters",
+  "desired_amenities_sector", "desired_amenities_interior",
+  "desired_property_types", "desired_localities", "desired_neighborhoods"
 ];
 
 // GET /api/profile?user_id=xxx

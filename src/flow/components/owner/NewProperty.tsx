@@ -28,17 +28,53 @@ const inputStyle: React.CSSProperties = {
   fontFamily: BODY, fontSize: 14, color: C.ink, outline: "none",
 };
 
-const COMMON_TAGS = [
-  "Amoblado","Ascensor","Parqueadero","Balcón","Terraza",
-  "Gimnasio","Piscina","Portería 24h","Zona de lavandería",
-  "Mascotas permitidas","Cocina integral","WiFi incluido",
+const AMENITIES_INTERIOR = ["Amoblado", "Cocina integral", "Zona de lavandería", "Aire acondicionado", "Calentador", "Closet", "Balcón", "Terraza"];
+const AMENITIES_EXTERIOR = ["Ascensor", "Parqueadero", "Gimnasio", "Piscina", "Portería 24h", "Salón comunal", "Zona BBQ", "Zonas verdes"];
+const AMENITIES_SECTOR = ["Cerca a transporte público", "Cerca a universidades", "Zona comercial", "Parques cercanos", "Supermercados"];
+const UTILITIES_INCLUDED = ["Agua", "Energía", "Gas", "WiFi", "Administración"];
+
+const LOCALITIES = [
+  "Usaquén", "Chapinero", "Santa Fe", "San Cristóbal", "Usme", "Tunjuelito", 
+  "Bosa", "Kennedy", "Fontibón", "Engativá", "Suba", "Barrios Unidos", 
+  "Teusaquillo", "Los Mártires", "Antonio Nariño", "Puente Aranda", 
+  "La Candelaria", "Rafael Uribe Uribe", "Ciudad Bolívar", "Sumapaz"
 ];
+
+const MultiSelect = ({ options, selected, onChange, addLabel }: { options: string[], selected: string[], onChange: (v: string[]) => void, addLabel?: string }) => (
+  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+    {selected.map(opt => (
+      <button key={opt} type="button" onClick={() => onChange(selected.filter(x => x !== opt))}
+        style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 9999, border: `1.5px solid ${C.terra}`, background: `${C.terra}12`, fontFamily: BODY, fontSize: 12, fontWeight: 600, color: C.terra, cursor: "pointer" }}>
+        <CheckCircle2 style={{ width: 12, height: 12 }} />
+        {opt}
+      </button>
+    ))}
+    {options.filter(opt => !selected.includes(opt)).map(opt => (
+      <button key={opt} type="button" onClick={() => onChange([...selected, opt])}
+        style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 9999, border: `1.5px solid ${C.border}`, background: C.cream, fontFamily: BODY, fontSize: 12, fontWeight: 600, color: C.coffee, cursor: "pointer" }}>
+        {opt}
+      </button>
+    ))}
+    {addLabel && (
+      <button type="button" onClick={() => {
+        const n = prompt(`Añadir ${addLabel}:`);
+        if (n && !selected.includes(n)) onChange([...selected, n]);
+      }} style={{ padding: "7px 12px", borderRadius: 9999, border: `1.5px dashed ${C.border}`, background: "none", fontFamily: BODY, fontSize: 12, fontWeight: 600, color: C.coffee, cursor: "pointer" }}>
+        + Añadir
+      </button>
+    )}
+  </div>
+);
 
 interface InitialProperty {
   property_id: string; title: string; monthly_rent: number;
   city: string; neighborhood: string; bedrooms: number; description: string;
   images: string[]; image_url: string; allows_students: boolean; requires_co_debtor: boolean;
   tags: string[]; address: string | null; latitude: number | null; longitude: number | null;
+  property_type?: string; localidad?: string; bathrooms?: number; area_sqm?: number; stratum?: number;
+  floor_number?: number; building_floors?: number;
+  amenities_interior?: string[]; amenities_exterior?: string[]; amenities_sector?: string[];
+  utilities_included?: string[];
 }
 
 export function NewProperty({ initialProperty }: { initialProperty?: InitialProperty }) {
@@ -59,8 +95,19 @@ export function NewProperty({ initialProperty }: { initialProperty?: InitialProp
     address: initialProperty?.address ?? "",
     latitude: initialProperty?.latitude ?? null as number | null,
     longitude: initialProperty?.longitude ?? null as number | null,
+    property_type: initialProperty?.property_type ?? "Apartamento",
+    localidad: initialProperty?.localidad ?? "",
+    bathrooms: initialProperty?.bathrooms ? String(initialProperty.bathrooms) : "1",
+    area_sqm: initialProperty?.area_sqm ? String(initialProperty.area_sqm) : "",
+    stratum: initialProperty?.stratum ? String(initialProperty.stratum) : "",
+    floor_number: initialProperty?.floor_number ? String(initialProperty.floor_number) : "",
+    building_floors: initialProperty?.building_floors ? String(initialProperty.building_floors) : "",
   });
   const [selectedTags, setSelectedTags] = useState<string[]>(initialProperty?.tags ?? []);
+  const [amenitiesInterior, setAmenitiesInterior] = useState<string[]>(initialProperty?.amenities_interior ?? []);
+  const [amenitiesExterior, setAmenitiesExterior] = useState<string[]>(initialProperty?.amenities_exterior ?? []);
+  const [amenitiesSector, setAmenitiesSector] = useState<string[]>(initialProperty?.amenities_sector ?? []);
+  const [utilitiesIncluded, setUtilitiesIncluded] = useState<string[]>(initialProperty?.utilities_included ?? []);
 
   const set = (name: string, value: any) => setForm(f => ({ ...f, [name]: value }));
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -83,6 +130,17 @@ export function NewProperty({ initialProperty }: { initialProperty?: InitialProp
         allows_students: form.allows_students, requires_co_debtor: form.requires_co_debtor,
         tags: selectedTags, address: form.address || null,
         latitude: form.latitude, longitude: form.longitude,
+        property_type: form.property_type,
+        localidad: form.localidad || null,
+        bathrooms: Number(form.bathrooms),
+        area_sqm: form.area_sqm ? Number(form.area_sqm) : null,
+        stratum: form.stratum ? Number(form.stratum) : null,
+        floor_number: form.floor_number ? Number(form.floor_number) : null,
+        building_floors: form.building_floors ? Number(form.building_floors) : null,
+        amenities_interior: amenitiesInterior,
+        amenities_exterior: amenitiesExterior,
+        amenities_sector: amenitiesSector,
+        utilities_included: utilitiesIncluded,
       };
       const res = await fetch("/api/owner/properties", {
         method: isEdit ? "PATCH" : "POST",
@@ -127,6 +185,16 @@ export function NewProperty({ initialProperty }: { initialProperty?: InitialProp
                     placeholder="1500000" style={{ ...inputStyle, paddingLeft: 26 }} />
                 </div>
               </Field>
+              <Field label="Tipo de Inmueble">
+                <select name="property_type" value={form.property_type} onChange={handleChange} style={{ ...inputStyle, appearance: "none" }}>
+                  <option value="Apartamento">Apartamento</option>
+                  <option value="Casa">Casa</option>
+                  <option value="Habitación">Habitación</option>
+                  <option value="Estudio">Estudio</option>
+                </select>
+              </Field>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <Field label="Habitaciones">
                 <div style={{ position: "relative" }}>
                   <Bed style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: C.coffee, opacity: 0.5 }} />
@@ -136,14 +204,46 @@ export function NewProperty({ initialProperty }: { initialProperty?: InitialProp
                   </select>
                 </div>
               </Field>
+              <Field label="Baños">
+                <select name="bathrooms" value={form.bathrooms} onChange={handleChange} style={{ ...inputStyle, appearance: "none" }}>
+                  {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </Field>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <Field label="Ciudad">
-                <input name="city" value={form.city} onChange={handleChange} style={inputStyle} />
+              <Field label="Área (m²)">
+                <input name="area_sqm" type="number" min="0" value={form.area_sqm} onChange={handleChange} placeholder="Ej: 60" style={inputStyle} />
+              </Field>
+              <Field label="Estrato">
+                <select name="stratum" value={form.stratum} onChange={handleChange} style={{ ...inputStyle, appearance: "none" }}>
+                  <option value="">Seleccionar</option>
+                  {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </Field>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <Field label="Piso (Nivel)">
+                <input name="floor_number" type="number" value={form.floor_number} onChange={handleChange} placeholder="Ej: 3" style={inputStyle} />
+              </Field>
+              <Field label="Pisos del edificio">
+                <input name="building_floors" type="number" value={form.building_floors} onChange={handleChange} placeholder="Opcional" style={inputStyle} />
+              </Field>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <Field label="Localidad">
+                <select name="localidad" value={form.localidad} onChange={handleChange} style={{ ...inputStyle, appearance: "none" }}>
+                  <option value="">Seleccionar Localidad</option>
+                  {LOCALITIES.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                </select>
               </Field>
               <Field label="Barrio">
                 <input name="neighborhood" value={form.neighborhood} onChange={handleChange}
                   placeholder="Chapinero Alto" style={inputStyle} />
+              </Field>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+              <Field label="Ciudad">
+                <input name="city" value={form.city} onChange={handleChange} style={inputStyle} />
               </Field>
             </div>
           </Card>
@@ -171,6 +271,7 @@ export function NewProperty({ initialProperty }: { initialProperty?: InitialProp
             <MapPicker
               initialLat={form.latitude ?? 4.711} initialLng={form.longitude ?? -74.0721}
               city={form.city ? `${form.city}, Colombia` : "Bogotá, Colombia"}
+              hasInitialLocation={form.latitude !== null && form.longitude !== null}
               onLocationPicked={(lat, lng, address) => setForm(f => ({ ...f, latitude: lat, longitude: lng, address }))}
             />
             {form.address && (
@@ -186,20 +287,23 @@ export function NewProperty({ initialProperty }: { initialProperty?: InitialProp
             )}
           </Card>
 
-          {/* Características */}
-          <Card title="Características" subtitle="Selecciona las que apliquen">
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {COMMON_TAGS.map(tag => {
-                const active = selectedTags.includes(tag);
-                return (
-                  <button key={tag} type="button" onClick={() => setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])}
-                    style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 9999, border: `1.5px solid ${active ? C.terra : C.border}`, background: active ? `${C.terra}12` : C.cream, fontFamily: BODY, fontSize: 12, fontWeight: 600, color: active ? C.terra : C.coffee, cursor: "pointer" }}>
-                    {active && <CheckCircle2 style={{ width: 12, height: 12 }} />}
-                    {tag}
-                  </button>
-                );
-              })}
-            </div>
+          {/* Comodidades y Servicios */}
+          <Card title="Comodidades y Servicios">
+            <Field label="Servicios incluidos en el canon">
+              <MultiSelect options={UTILITIES_INCLUDED} selected={utilitiesIncluded} onChange={setUtilitiesIncluded} addLabel="servicio" />
+            </Field>
+            <div style={{ marginTop: 12 }} />
+            <Field label="Interior del inmueble">
+              <MultiSelect options={AMENITIES_INTERIOR} selected={amenitiesInterior} onChange={setAmenitiesInterior} addLabel="característica" />
+            </Field>
+            <div style={{ marginTop: 12 }} />
+            <Field label="Zonas comunes / Exterior">
+              <MultiSelect options={AMENITIES_EXTERIOR} selected={amenitiesExterior} onChange={setAmenitiesExterior} addLabel="zona común" />
+            </Field>
+            <div style={{ marginTop: 12 }} />
+            <Field label="El sector cuenta con">
+              <MultiSelect options={AMENITIES_SECTOR} selected={amenitiesSector} onChange={setAmenitiesSector} addLabel="amenidad" />
+            </Field>
           </Card>
 
           {/* Opciones */}

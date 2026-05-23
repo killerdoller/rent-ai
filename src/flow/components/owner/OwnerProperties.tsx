@@ -17,6 +17,7 @@ interface Property {
   image_url: string; images: string[]; description: string; tags: string[];
   allows_students: boolean; requires_co_debtor: boolean;
   address: string | null; latitude: number | null; longitude: number | null;
+  property_type?: string; localidad?: string;
   created_at: string;
 }
 
@@ -114,8 +115,15 @@ export function OwnerProperties() {
                     <div style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.ink, marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{prop.title}</div>
                     <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 8 }}>
                       <MapPin style={{ width: 12, height: 12, color: C.coffee, flexShrink: 0 }} />
-                      <span style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{prop.neighborhood}, {prop.city}</span>
+                      <span style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {prop.neighborhood}, {prop.localidad ? `${prop.localidad}, ` : ""}{prop.city}
+                      </span>
                     </div>
+                    {prop.property_type && (
+                      <div style={{ fontFamily: BODY, fontSize: 11, color: C.terra, marginBottom: 8, fontWeight: 600 }}>
+                        {prop.property_type}
+                      </div>
+                    )}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <span style={{ fontFamily: BODY, fontSize: 13, fontWeight: 700, color: C.terra }}>${Number(prop.monthly_rent).toLocaleString()} COP/mes</span>
                       {prop.bedrooms && (

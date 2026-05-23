@@ -171,8 +171,9 @@ export function Home() {
           ? localStorage.getItem("rentai_user_id")
           : null;
 
+      const propertiesEndpoint = userId ? `/api/matches/properties?user_id=${userId}` : "/api/properties";
       const [propertiesRes, likesRes, rejectionsRes] = await Promise.all([
-        fetch("/api/properties"),
+        fetch(propertiesEndpoint),
         userId ? fetch(`/api/likes?user_id=${userId}`) : Promise.resolve(null),
         userId
           ? fetch(`/api/rejections?user_id=${userId}`)
