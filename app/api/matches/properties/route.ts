@@ -33,7 +33,12 @@ export async function GET(request: Request) {
     // 2. Extraer los IDs para traer los detalles de las propiedades
     const propertyIds = matches.map((m: any) => m.property_id);
 
-    // 3. Consultar las propiedades completas (para la UI)
+    // 3. Consultar las propiedades completas (para la UI). El SELECT debe
+    // espejar al de /api/properties — la vista de detalle (PropertyDetailSheet
+    // en Home.tsx) necesita latitude/longitude para renderizar el mapa,
+    // bedrooms/floor_number para el price bar, tags como fallback de
+    // amenities, etc. Si falta un campo aquí, la UI cae al fallback (ej.
+    // muestra foto en vez de mapa).
     let query = supabaseAdmin
       .from("properties")
       .select(`
@@ -42,17 +47,27 @@ export async function GET(request: Request) {
         title,
         description,
         monthly_rent,
+        neighborhood,
+        localidad,
         city,
         address,
+        latitude,
+        longitude,
         image_url,
         images,
+        bedrooms,
         property_type,
         bathrooms,
         area_sqm,
         stratum,
+        floor_number,
+        building_floors,
+        tags,
         amenities_interior,
         amenities_exterior,
-        amenities_sector
+        amenities_sector,
+        utilities_included,
+        nearby_pois
       `)
       .in("property_id", propertyIds);
 
@@ -81,12 +96,14 @@ export async function GET(request: Request) {
     }
 
     // 4. Mapear para incluir el match_score calculado en la base de datos
+    // y los campos derivados que espera la UI (location, price, image).
     const propertiesWithScore = properties.map((prop) => {
       const matchData = matches.find((m: any) => m.property_id === prop.property_id);
       return {
         ...prop,
         id: prop.property_id,
         type: "room",
+        location: `${prop.neighborhood || ""}, ${prop.city}`.replace(/^, /, ""),
         price: prop.monthly_rent,
         image: prop.image_url || "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=1080",
         images: prop.images && prop.images.length > 0 ? prop.images : (prop.image_url ? [prop.image_url] : []),

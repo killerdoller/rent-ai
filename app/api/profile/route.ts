@@ -13,7 +13,8 @@ const PROFILE_FIELDS = `
   interests, lifestyle_tags, cleanliness_level, social_level, profile_images,
   exclusion_rules, importance_weights, target_location, search_radius_meters,
   desired_amenities_sector, desired_amenities_interior,
-  desired_property_types, desired_localities, desired_neighborhoods
+  desired_property_types, desired_localities, desired_neighborhoods,
+  min_bedrooms
 `;
 
 const PATCH_ALLOWED = [
@@ -23,7 +24,8 @@ const PATCH_ALLOWED = [
   "social_level", "avatar_url", "profile_images", "profile_completed",
   "exclusion_rules", "importance_weights", "target_location", "search_radius_meters",
   "desired_amenities_sector", "desired_amenities_interior",
-  "desired_property_types", "desired_localities", "desired_neighborhoods"
+  "desired_property_types", "desired_localities", "desired_neighborhoods",
+  "min_bedrooms"
 ];
 
 // GET /api/profile?user_id=xxx
@@ -52,7 +54,7 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { user_id, ...rest } = body;
+    const { user_id, target_lat, target_lng, ...rest } = body;
 
     if (!user_id) {
       return NextResponse.json({ error: "user_id requerido" }, { status: 400 });
@@ -71,6 +73,16 @@ export async function PATCH(request: Request) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    // Store the search-center point (geography) via RPC — feeds the spatial
+    // dimension of the match score.
+    if (typeof target_lat === "number" && typeof target_lng === "number") {
+      await supabaseAdmin.rpc("set_profile_target", {
+        p_user_id: user_id,
+        p_lat: target_lat,
+        p_lng: target_lng,
+      });
     }
 
     return NextResponse.json(data);

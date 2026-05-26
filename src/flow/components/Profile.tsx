@@ -8,6 +8,9 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { supabase } from "../../utils/supabaseClient";
+import { geocodeWeightedTarget } from "../../utils/geocodeTarget";
+import { BOGOTA_LOCALITIES, neighborhoodsForLocalities } from "../../utils/bogotaZones";
+import { SECTOR_AMENITIES, PROPERTY_AMENITIES_FOR_TENANT } from "../../utils/bogotaAmenities";
 import { motion } from "framer-motion";
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
@@ -38,12 +41,7 @@ const INTEREST_OPTIONS = [
   "Arte","Yoga","Gaming","Fotografía","Deporte",
 ];
 
-const LOCALITIES = [
-  "Usaquén", "Chapinero", "Santa Fe", "San Cristóbal", "Usme", "Tunjuelito", 
-  "Bosa", "Kennedy", "Fontibón", "Engativá", "Suba", "Barrios Unidos", 
-  "Teusaquillo", "Los Mártires", "Antonio Nariño", "Puente Aranda", 
-  "La Candelaria", "Rafael Uribe Uribe", "Ciudad Bolívar", "Sumapaz"
-];
+const LOCALITIES = BOGOTA_LOCALITIES;
 
 const PROPERTY_TYPES = ["Apartamento", "Casa", "Habitación"];
 
@@ -93,6 +91,7 @@ interface UserProfile {
   desired_property_types: string[];
   desired_localities: string[];
   desired_neighborhoods: string[];
+  min_bedrooms?: number | null;
 }
 
 export function Profile() {
@@ -136,10 +135,21 @@ export function Profile() {
     setIsSaving(true);
     try {
       const userId = localStorage.getItem("rentai_user_id");
+      // Re-geocode the search center when zones change. Pesa 60% localidad,
+      // 40% barrios (ver geocodeWeightedTarget) — la localidad ancla porque
+      // es la señal más confiable; los barrios refinan dentro de ella.
+      const hasZones =
+        (form.desired_localities?.length || 0) + (form.desired_neighborhoods?.length || 0) > 0;
+      const target = hasZones
+        ? await geocodeWeightedTarget({
+            localities: form.desired_localities || [],
+            neighborhoods: form.desired_neighborhoods || [],
+          })
+        : null;
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, ...form }),
+        body: JSON.stringify({ user_id: userId, ...form, ...(target ? { target_lat: target.lat, target_lng: target.lng } : {}) }),
       });
       if (!res.ok) throw new Error((await res.json()).error || "Error al guardar");
       const updated = await res.json();
@@ -419,6 +429,33 @@ export function Profile() {
                   </div>
                 </Field>
 
+                <Field label="Mínimo de habitaciones">
+                  {!isEditing ? (
+                    <span style={{ fontFamily: BODY, fontSize: 13, color: C.ink }}>
+                      {d?.min_bedrooms ? `${d.min_bedrooms}+` : <Placeholder>Sin mínimo</Placeholder>}
+                    </span>
+                  ) : (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {[
+                        { label: "Sin mínimo", value: null },
+                        { label: "1+", value: 1 },
+                        { label: "2+", value: 2 },
+                        { label: "3+", value: 3 },
+                        { label: "4+", value: 4 },
+                      ].map(opt => {
+                        const active = (form.min_bedrooms ?? null) === opt.value;
+                        return (
+                          <button key={String(opt.value)}
+                            onClick={() => set("min_bedrooms", opt.value as any)}
+                            style={{ padding: "7px 14px", borderRadius: 9999, fontFamily: BODY, fontSize: 12, fontWeight: 700, border: `1.5px solid ${active ? C.green : C.border}`, background: active ? `${C.green}12` : C.cream, color: active ? C.green : C.coffee, cursor: "pointer" }}>
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </Field>
+
                 <Field label="Localidades">
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                     {LOCALITIES.map(loc => {
@@ -436,26 +473,71 @@ export function Profile() {
                   </div>
                 </Field>
 
-                <Field label="Barrios específicos">
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {(isEditing ? form.desired_neighborhoods : d?.desired_neighborhoods)?.map(hood => (
-                      <div key={hood} style={{ padding: "5px 10px", borderRadius: 9999, background: C.muted, fontFamily: BODY, fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
-                        {hood}
-                        {isEditing && (
-                          <button onClick={() => set("desired_neighborhoods", form.desired_neighborhoods?.filter(h => h !== hood))} style={{ border: "none", background: "none", cursor: "pointer", color: C.coffee, display: "flex", alignItems: "center", padding: 0 }}>✕</button>
-                        )}
-                      </div>
-                    ))}
-                    {isEditing && (
+                <Field label="Barrios específicos (opcional)">
+                  {!isEditing ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {d?.desired_neighborhoods?.map(hood => (
+                        <div key={hood} style={{ padding: "5px 10px", borderRadius: 9999, background: C.muted, fontFamily: BODY, fontSize: 12 }}>{hood}</div>
+                      ))}
+                      {!d?.desired_neighborhoods?.length && <Placeholder>Ninguno especificado</Placeholder>}
+                    </div>
+                  ) : (form.desired_localities?.length || 0) === 0 ? (
+                    <p style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, fontStyle: "italic" }}>
+                      Selecciona localidades arriba para elegir barrios. La localidad sola es suficiente para la búsqueda.
+                    </p>
+                  ) : (
+                    <>
+                      {neighborhoodsForLocalities(form.desired_localities || []).map(group => (
+                        <div key={group.locality} style={{ marginBottom: 12 }}>
+                          <div style={{ fontFamily: BODY, fontSize: 10, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>
+                            {group.locality}
+                          </div>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            {group.neighborhoods.map(hood => {
+                              const active = form.desired_neighborhoods?.includes(hood);
+                              return (
+                                <button key={hood}
+                                  onClick={() => set(
+                                    "desired_neighborhoods",
+                                    active
+                                      ? form.desired_neighborhoods?.filter(h => h !== hood)
+                                      : [...(form.desired_neighborhoods || []), hood],
+                                  )}
+                                  style={{ padding: "5px 10px", borderRadius: 8, fontFamily: BODY, fontSize: 11, fontWeight: 600, border: `1px solid ${active ? C.green : C.border}`, cursor: "pointer", background: active ? `${C.green}12` : C.cream, color: active ? C.green : C.coffee }}>
+                                  {hood}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+
                       <button onClick={() => {
-                        const hood = prompt("Añadir barrio:");
-                        if (hood && !form.desired_neighborhoods?.includes(hood)) set("desired_neighborhoods", [...(form.desired_neighborhoods || []), hood]);
-                      }} style={{ padding: "5px 10px", borderRadius: 9999, border: `1.5px dashed ${C.border}`, background: "none", fontFamily: BODY, fontSize: 12, color: C.coffee, cursor: "pointer" }}>
-                        + Añadir
+                        const hood = prompt("Añadir barrio personalizado:");
+                        if (hood && !form.desired_neighborhoods?.includes(hood)) {
+                          set("desired_neighborhoods", [...(form.desired_neighborhoods || []), hood]);
+                        }
+                      }} style={{ padding: "5px 10px", borderRadius: 9999, border: `1.5px dashed ${C.border}`, background: "none", fontFamily: BODY, fontSize: 11, color: C.coffee, cursor: "pointer", marginTop: 4 }}>
+                        + Añadir otro barrio
                       </button>
-                    )}
-                    {!isEditing && !d?.desired_neighborhoods?.length && <Placeholder>Ninguno especificado</Placeholder>}
-                  </div>
+
+                      {form.desired_neighborhoods?.length > 0 && (
+                        <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${C.border}` }}>
+                          <div style={{ fontFamily: BODY, fontSize: 10, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>
+                            Seleccionados
+                          </div>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                            {form.desired_neighborhoods.map(hood => (
+                              <div key={hood} style={{ padding: "5px 10px", borderRadius: 9999, background: C.muted, fontFamily: BODY, fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                                {hood}
+                                <button onClick={() => set("desired_neighborhoods", form.desired_neighborhoods?.filter(h => h !== hood))} style={{ border: "none", background: "none", cursor: "pointer", color: C.coffee, display: "flex", alignItems: "center", padding: 0 }}>✕</button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </Field>
 
                 <Field label="Amenidades del sector deseadas">
@@ -467,7 +549,7 @@ export function Profile() {
                         {amenity} {isEditing && "✕"}
                       </button>
                     ))}
-                    {isEditing && ["Transporte público", "Parques", "Comercio", "Universidades", "Zona tranquila", "Vida nocturna"]
+                    {isEditing && SECTOR_AMENITIES
                       .filter(a => !(form.desired_amenities_sector || []).includes(a))
                       .map(amenity => (
                         <button key={amenity}
@@ -488,7 +570,7 @@ export function Profile() {
                   </div>
                 </Field>
 
-                <Field label="Características del apto deseadas">
+                <Field label="Comodidades de la propiedad deseadas">
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                     {(isEditing ? form.desired_amenities_interior : d?.desired_amenities_interior)?.map(amenity => (
                       <button key={amenity}
@@ -497,7 +579,7 @@ export function Profile() {
                         {amenity} {isEditing && "✕"}
                       </button>
                     ))}
-                    {isEditing && ["Lavandería", "Ascensor", "Gimnasio", "Seguridad 24/7", "Balcón", "Amoblado", "Parqueadero"]
+                    {isEditing && PROPERTY_AMENITIES_FOR_TENANT
                       .filter(a => !(form.desired_amenities_interior || []).includes(a))
                       .map(amenity => (
                         <button key={amenity}

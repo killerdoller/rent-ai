@@ -37,6 +37,7 @@ export async function GET() {
         amenities_exterior,
         amenities_sector,
         utilities_included,
+        nearby_pois,
         owners (
           owner_id,
           name,
@@ -81,6 +82,7 @@ export async function GET() {
       amenities_exterior: p.amenities_exterior || [],
       amenities_sector: p.amenities_sector || [],
       utilities_included: p.utilities_included || [],
+      nearby_pois: p.nearby_pois || null,
       owner: p.owners,
     }));
 

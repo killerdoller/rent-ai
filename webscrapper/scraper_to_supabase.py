@@ -76,6 +76,177 @@ _WORD_TO_NUM = {
     "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10,
 }
 
+# Localidades canónicas de Bogotá. La lista debe coincidir con la de
+# src/flow/components/CompleteProfile.tsx para que `desired_localities` en
+# el perfil del inquilino haga match con `properties.localidad`.
+_LOCALIDADES_CANONICAS = [
+    "Usaquén", "Chapinero", "Santa Fe", "San Cristóbal", "Usme", "Tunjuelito",
+    "Bosa", "Kennedy", "Fontibón", "Engativá", "Suba", "Barrios Unidos",
+    "Teusaquillo", "Los Mártires", "Antonio Nariño", "Puente Aranda",
+    "La Candelaria", "Rafael Uribe Uribe", "Ciudad Bolívar", "Sumapaz",
+]
+
+
+def _strip_accents(s: str) -> str:
+    """Para comparar 'Engativá' con 'engativa', 'Chapinero' con 'CHAPINERO', etc."""
+    import unicodedata
+    return "".join(
+        c for c in unicodedata.normalize("NFD", s)
+        if unicodedata.category(c) != "Mn"
+    ).lower()
+
+
+# Catálogo de barrios canónicos por localidad. Mantener en sync con
+# src/utils/bogotaZones.ts y scripts/backfill-neighborhoods.mjs.
+#
+# FincaRaíz rara vez expone el barrio en el JSON estructurado — `location_main`
+# trae la LOCALIDAD. El barrio sí está en el texto del título y/o descripción.
+# Aquí buscamos coincidencias contra esta lista canónica.
+_NEIGHBORHOODS_BY_LOCALITY = {
+    "Usaquén": ["Santa Bárbara", "Country Club", "Cedritos", "Toberín", "San Cristóbal Norte", "Verbenal", "Usaquén Centro", "Bella Suiza", "Santa Ana", "La Carolina", "Lijacá", "Country Sur"],
+    "Chapinero": ["El Chicó", "El Nogal", "El Refugio", "El Retiro", "La Cabrera", "Los Rosales", "Quinta Camacho", "Chapinero Central", "Chapinero Alto", "La Salle", "El Castillo", "Antiguo Country", "La Porciúncula", "Sucre", "Pardo Rubio", "Marly", "San Luis", "Bellavista"],
+    "Santa Fe": ["La Macarena", "La Perseverancia", "Las Aguas", "Santa Fe Centro", "Bosque Izquierdo", "Cruces", "Las Nieves"],
+    "San Cristóbal": ["20 de Julio", "La Victoria", "San Blas", "Sosiego", "Velódromo", "La Gloria", "Altamira"],
+    "Usme": ["Usme Centro", "La Esperanza", "Yomasa", "Comuneros", "Danubio", "Gran Yomasa"],
+    "Tunjuelito": ["Tunjuelito Centro", "Venecia", "Tunal", "Muzú", "San Carlos"],
+    "Bosa": ["Bosa Centro", "Bosa La Estación", "Apogeo", "Porvenir", "Holanda", "El Recreo"],
+    "Kennedy": ["Castilla", "Banderas", "Kennedy Central", "Patio Bonito", "Tintal", "Timiza", "Class", "Marsella", "Britalia"],
+    "Fontibón": ["Fontibón Centro", "Modelia", "Hayuelos", "Versalles", "Capellanía", "Ciudad Hayuelos", "El Refugio"],
+    "Engativá": ["Boyacá Real", "Bolivia", "La Granja", "Engativá Centro", "Las Ferias", "Bellavista", "Florida", "Villa Luz", "Normandía"],
+    "Suba": ["Niza", "Mazurén", "Britalia", "Pinar de Suba", "Suba Centro", "Tibabuyes", "Salitre Norte", "El Rincón", "Aures", "La Campiña", "La Carolina", "Casa Blanca"],
+    "Barrios Unidos": ["Polo Club", "Los Andes", "La Castellana", "La Patria", "Modelo", "Once de Noviembre", "Alcázares", "Concepción Norte"],
+    "Teusaquillo": ["Galerías", "La Soledad", "Teusaquillo Centro", "Quinta Paredes", "Pablo VI", "Sears", "Ciudad Salitre", "Belalcázar", "La Estrella"],
+    "Los Mártires": ["Santa Isabel", "Voto Nacional", "La Sabana", "San Victorino", "Ricaurte", "La Pepita"],
+    "Antonio Nariño": ["Restrepo", "San Antonio", "Ciudad Berna", "Olaya", "Eduardo Santos"],
+    "Puente Aranda": ["Centro Industrial", "Ciudad Montes", "Puente Aranda Centro", "Salazar Gómez", "La Esperanza Sur", "Pensilvania"],
+    "La Candelaria": ["La Candelaria", "Egipto", "Belén", "Centro Histórico"],
+    "Rafael Uribe Uribe": ["Quiroga", "San José", "Marruecos", "Diana Turbay", "Olaya"],
+    "Ciudad Bolívar": ["Lucero", "Ismael Perdomo", "Jerusalén", "San Francisco", "El Tesoro", "Arborizadora"],
+    "Sumapaz": ["Nazareth", "San Juan"],
+}
+
+
+
+def locality_for_barrio(barrio: str | None) -> str | None:
+    """Reverse lookup: dado un barrio canónico, devuelve su localidad."""
+    if not barrio:
+        return None
+    norm = _strip_accents(barrio)
+    for loc, hoods in _NEIGHBORHOODS_BY_LOCALITY.items():
+        if any(_strip_accents(h) == norm for h in hoods):
+            return loc
+    return None
+
+
+def normalize_localidad(raw: str | None) -> str | None:
+    """
+    Mapea una localidad raw al nombre canónico. EXACT match — antes usábamos
+    substring inclusion y eso clasificaba "Chapinero Alto" como localidad
+    "Chapinero" (bug que hacía perder barrios válidos).
+    """
+    if not raw:
+        return None
+    raw_norm = _strip_accents(raw).strip()
+    for canonical in _LOCALIDADES_CANONICAS:
+        if _strip_accents(canonical) == raw_norm:
+            return canonical
+    return None
+
+
+def canonicalize_barrio(raw: str | None) -> str | None:
+    """Devuelve el barrio canónico (con tildes y mayúsculas correctas) si el
+    `raw` matchea alguno de la lista por _NEIGHBORHOODS_BY_LOCALITY. Es
+    case-insensitive y accent-insensitive."""
+    if not raw:
+        return None
+    raw_norm = _strip_accents(raw)
+    for hoods in _NEIGHBORHOODS_BY_LOCALITY.values():
+        for h in hoods:
+            if _strip_accents(h) == raw_norm:
+                return h
+    return None
+
+
+# Regex del título de FincaRaíz: "[Tipo] en [Arriendo|Venta] en [ZONA], Bogotá"
+_TITLE_ZONE_RE = re.compile(
+    r"\ben\s+(?:Arriendo|Venta|Renta)\s+en\s+(.+?)(?:,\s*Bogot[áa]|$)",
+    re.IGNORECASE,
+)
+
+
+def extract_zone_from_title(title: str | None) -> str | None:
+    """Parsea la zona (barrio o localidad) del título de FincaRaíz."""
+    if not title:
+        return None
+    m = _TITLE_ZONE_RE.search(title)
+    if not m:
+        return None
+    text = m.group(1).strip()
+    # Strip "Zona " prefix: "Zona Chapinero" → "Chapinero"
+    text = re.sub(r"^Zona\s+", "", text, flags=re.IGNORECASE)
+    return text
+
+
+def classify_zone(zone: str | None) -> tuple[str | None, str | None]:
+    """Decide si una zona es barrio o localidad. Devuelve (barrio, localidad)."""
+    if not zone:
+        return None, None
+    as_localidad = normalize_localidad(zone)
+    if as_localidad:
+        return None, as_localidad
+    as_barrio = canonicalize_barrio(zone)
+    if as_barrio:
+        return as_barrio, None
+    return None, None
+
+
+def _description_mentions_barrio(text_no_acc_lower: str, barrio: str) -> bool:
+    """Match con CONTEXTO de ubicación. Case-insensitive, accent-insensitive.
+    Solo cuenta si el barrio aparece después de "en", "barrio", "sector", "zona",
+    "ubicado en", "se encuentra en" — eso evita falsos positivos como "modelo
+    de cocina" matcheando el barrio Modelo."""
+    escaped = re.escape(_strip_accents(barrio))
+    patterns = [
+        rf"\ben\s+(?:el\s+barrio\s+)?{escaped}\b",
+        rf"\bbarrio\s+(?:el\s+|la\s+|los\s+|las\s+)?{escaped}\b",
+        rf"\bsector\s+(?:el\s+|la\s+)?{escaped}\b",
+        rf"\bzona\s+(?:de\s+)?{escaped}\b",
+        rf"\bubicad[oa]\s+en\s+(?:el\s+barrio\s+)?{escaped}\b",
+        rf"\bse\s+encuentra\s+en\s+(?:el\s+barrio\s+)?{escaped}\b",
+    ]
+    for pat in patterns:
+        if re.search(pat, text_no_acc_lower):
+            return True
+    return False
+
+
+def find_barrio_in_description(description: str | None, prefer_locality: str | None = None) -> str | None:
+    """Busca un barrio canónico DENTRO de la descripción, con contexto de
+    ubicación. Prefiere los de la localidad indicada; dentro de cada lista
+    prueba los más largos primero ("Chapinero Central" antes que "Central")."""
+    if not description:
+        return None
+    text = _strip_accents(description)  # lowercased y sin acentos
+
+    def try_group(hoods):
+        for barrio in sorted(hoods, key=len, reverse=True):
+            if _description_mentions_barrio(text, barrio):
+                return barrio
+        return None
+
+    if prefer_locality and prefer_locality in _NEIGHBORHOODS_BY_LOCALITY:
+        r = try_group(_NEIGHBORHOODS_BY_LOCALITY[prefer_locality])
+        if r:
+            return r
+    for loc, hoods in _NEIGHBORHOODS_BY_LOCALITY.items():
+        if loc == prefer_locality:
+            continue
+        r = try_group(hoods)
+        if r:
+            return r
+    return None
+
+
 _FLOORS_RE = re.compile(
     r"""
     (?:                          # opción A: "4 niveles / pisos / plantas"
@@ -291,8 +462,54 @@ async def scrape_and_upload(url: str, owner_id: str, limit: int = 100, dry_run: 
                 price = extract_price(item.get("price"))
                 locations = item.get("locations") or {}
                 location_main = locations.get("location_main") or {}
-                neighborhood = (locations.get("neighbourhood") or [{}])[0].get("name") or \
-                               location_main.get("name") or "N/A"
+
+                # FincaRaíz entrega `neighbourhood` como un ARRAY de varios
+                # barrios candidatos (no uno solo), y a veces incluye la
+                # localidad como una entrada más. Antes solo tomábamos [0],
+                # que podía ser:
+                #   - Un barrio real (ej. "La Salle")
+                #   - O la propia localidad (ej. "Chapinero")
+                #   - O un barrio canónico pero no el correcto para esa propiedad
+                # Iteramos todos, saltamos localidades, y nos quedamos con el
+                # primer match canónico — al menos garantizamos un barrio real.
+                neighborhood_entries = locations.get("neighbourhood") or []
+                neighborhood_raw = None
+                neighborhood_first_non_locality = None  # fallback no-canónico
+                for entry in neighborhood_entries:
+                    name = (entry or {}).get("name")
+                    if not name:
+                        continue
+                    if normalize_localidad(name):
+                        continue  # es la localidad, no un barrio
+                    if neighborhood_first_non_locality is None:
+                        neighborhood_first_non_locality = name
+                    canonical = canonicalize_barrio(name)
+                    if canonical:
+                        neighborhood_raw = canonical
+                        break
+                # Si ningún entry matcheó canónico, usamos el primer no-localidad
+                # como mejor esfuerzo (mejor que NULL si FincaRaíz al menos lo nombró).
+                if neighborhood_raw is None:
+                    neighborhood_raw = neighborhood_first_non_locality
+
+                # FincaRaiz puede entregar la localidad bajo claves distintas:
+                # `locality`, `location_main.name`, o como prefijo del neighborhood.
+                # Intentamos varias y normalizamos al nombre canónico del perfil.
+                locality_raw = (
+                    (locations.get("locality") or [{}])[0].get("name")
+                    if locations.get("locality") else None
+                )
+                localidad = (
+                    normalize_localidad(locality_raw)
+                    or normalize_localidad(location_main.get("name"))
+                    or normalize_localidad(neighborhood_raw)
+                )
+
+                # `neighborhood` se asigna definitivamente más abajo, después
+                # de buscar el barrio canónico en title+description. NO usar
+                # la localidad como fallback aquí — ese era exactamente el bug
+                # que queremos quitar.
+
                 city_list = locations.get("city") or []
                 city = city_list[0].get("name") if city_list else "Bogotá"
                 description = item.get("description") or ""
@@ -342,6 +559,40 @@ async def scrape_and_upload(url: str, owner_id: str, limit: int = 100, dry_run: 
                 latitude = item.get("latitude") or None
                 longitude = item.get("longitude") or None
 
+                # Resolución del barrio (3 pasos):
+                # 1. Título: "[Tipo] en [Arriendo] en [ZONA], Bogotá" — parseado
+                #    estructuradamente y matcheado contra catálogo canónico.
+                # 2. Descripción: buscar barrios canónicos con CONTEXTO
+                #    ("en X", "barrio X", "ubicado en X") para evitar falsos
+                #    positivos como "modelo de cocina" → barrio Modelo.
+                # 3. neighborhood_raw del JSON solo si no es una localidad.
+                #
+                # Nota: Nominatim descartado — devuelve UPZs en Bogotá, no barrios.
+                title_zone = extract_zone_from_title(title)
+                barrio_from_title, locality_from_title = classify_zone(title_zone)
+
+                barrio_from_desc = None
+                if not barrio_from_title:
+                    barrio_from_desc = find_barrio_in_description(
+                        description, localidad or locality_from_title,
+                    )
+
+                existing_is_locality = normalize_localidad(neighborhood_raw) is not None
+                existing_usable = (
+                    canonicalize_barrio(neighborhood_raw) or neighborhood_raw
+                    if neighborhood_raw and not existing_is_locality
+                    else None
+                )
+
+                neighborhood = barrio_from_title or barrio_from_desc or existing_usable or None
+
+                # Localidad: existing → del título → derivada del barrio canónico.
+                localidad = (
+                    localidad
+                    or locality_from_title
+                    or locality_for_barrio(neighborhood)
+                )
+
                 # --- All images ---
                 raw_urls = extract_all_image_urls(item)
                 print(f"  [{fincaraiz_id}] {len(raw_urls)} imagen(es) encontrada(s) — descargando...")
@@ -353,6 +604,7 @@ async def scrape_and_upload(url: str, owner_id: str, limit: int = 100, dry_run: 
                     "property_type": property_type,
                     "monthly_rent": price,
                     "neighborhood": neighborhood,
+                    "localidad": localidad,
                     "city": city,
                     "bedrooms": int(rooms),
                     "bathrooms": bathrooms,
@@ -376,7 +628,7 @@ async def scrape_and_upload(url: str, owner_id: str, limit: int = 100, dry_run: 
                 }
 
                 if dry_run:
-                    print(f"  [DRY RUN] {title} — ${price:,.0f} COP — {neighborhood}, {city}")
+                    print(f"  [DRY RUN] {title} — ${price:,.0f} COP — barrio: {neighborhood or '(sin barrio)'} | localidad: {localidad or '(sin localidad)'} | {city}")
                     print(f"           {len(all_urls)} imagen(es): {cover_url or '(sin imagen)'}")
                     print(f"           dirección: {address or '(sin dirección)'} | coords: {latitude}, {longitude}")
                 else:

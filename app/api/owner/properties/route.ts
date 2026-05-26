@@ -1,10 +1,26 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { fetchNearbyPois, deriveSectorAmenities } from "../../../../src/utils/nearby";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+
+// Computes surrounding POIs for a property and persists them. The derived
+// sector tags overwrite amenities_sector so the match score reflects objective
+// reality (and never goes stale) rather than the owner's manual text.
+async function computeAndStorePois(propertyId: string, lat: number, lng: number) {
+  const result = await fetchNearbyPois(lat, lng);
+  await supabase
+    .from("properties")
+    .update({
+      nearby_pois: result,
+      nearby_computed_at: new Date().toISOString(),
+      amenities_sector: deriveSectorAmenities(result.places),
+    })
+    .eq("property_id", propertyId);
+}
 
 // POST /api/owner/properties — crear nueva propiedad
 export async function POST(request: Request) {
@@ -58,6 +74,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  if (latitude && longitude) {
+    await computeAndStorePois(data.property_id, Number(latitude), Number(longitude));
+  }
+
   return NextResponse.json(data, { status: 201 });
 }
 
@@ -85,10 +105,17 @@ export async function PATCH(request: Request) {
 
   const { data, error } = await supabase
     .from("properties").update(update).eq("property_id", property_id)
-    .select("property_id, title").single();
+    .select("property_id, title, latitude, longitude").single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  // Recompute POIs only when the location changed.
+  const locationChanged = "latitude" in update || "longitude" in update;
+  if (locationChanged && data.latitude && data.longitude) {
+    await computeAndStorePois(data.property_id, Number(data.latitude), Number(data.longitude));
+  }
+
+  return NextResponse.json({ property_id: data.property_id, title: data.title });
 }
 
 // GET /api/owner/properties?owner_id=xxx
@@ -129,6 +156,7 @@ export async function GET(request: Request) {
       amenities_exterior,
       amenities_sector,
       utilities_included,
+      nearby_pois,
       created_at
     `)
     .eq("owner_id", ownerId)

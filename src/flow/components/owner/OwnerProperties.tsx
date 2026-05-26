@@ -1,7 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Building2, MapPin, Bed, Plus, Pencil } from "lucide-react";
+import { AnimatePresence } from "motion/react";
+import { Building2, MapPin, Bed, Plus, Pencil, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { PropertyDetailSheet, type PropertyDetailCard } from "../PropertyDetailSheet";
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
 const BODY    = "var(--font-inter, 'system-ui', sans-serif)";
@@ -18,13 +20,47 @@ interface Property {
   allows_students: boolean; requires_co_debtor: boolean;
   address: string | null; latitude: number | null; longitude: number | null;
   property_type?: string; localidad?: string;
+  bathrooms?: number; area_sqm?: number; stratum?: number;
+  floor_number?: number; building_floors?: number;
+  amenities_interior?: string[]; amenities_exterior?: string[]; amenities_sector?: string[];
+  utilities_included?: string[]; nearby_pois?: any;
   created_at: string;
+}
+
+function toDetailCard(p: Property): PropertyDetailCard {
+  return {
+    id: p.property_id,
+    type: "room",
+    image: p.image_url || "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=1080",
+    images: p.images && p.images.length > 0 ? p.images : (p.image_url ? [p.image_url] : []),
+    title: p.title,
+    location: `${p.neighborhood || ""}, ${p.city}`.replace(/^, /, ""),
+    price: p.monthly_rent ? Number(p.monthly_rent) : undefined,
+    bedrooms: p.bedrooms,
+    description: p.description || "",
+    tags: p.tags || [],
+    address: p.address,
+    latitude: p.latitude,
+    longitude: p.longitude,
+    property_type: p.property_type,
+    bathrooms: p.bathrooms,
+    area_sqm: p.area_sqm,
+    stratum: p.stratum,
+    floor_number: p.floor_number,
+    building_floors: p.building_floors,
+    amenities_interior: p.amenities_interior ?? [],
+    amenities_exterior: p.amenities_exterior ?? [],
+    amenities_sector: p.amenities_sector ?? [],
+    utilities_included: p.utilities_included ?? [],
+    nearby_pois: p.nearby_pois ?? null,
+  };
 }
 
 export function OwnerProperties() {
   const navigate = useRouter();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [previewCard, setPreviewCard] = useState<PropertyDetailCard | null>(null);
 
   useEffect(() => {
     const ownerId = localStorage.getItem("owner_id");
@@ -107,8 +143,19 @@ export function OwnerProperties() {
                         <span style={{ fontFamily: BODY, fontSize: 10, fontWeight: 700, color: C.coffee }}>Acepta estudiantes</span>
                       </div>
                     )}
-                    <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(255,255,255,0.92)", width: 30, height: 30, borderRadius: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <Pencil style={{ width: 13, height: 13, color: C.terra }} />
+                    {/* Botones de acción superpuestos */}
+                    <div style={{ position: "absolute", top: 10, right: 10, display: "flex", gap: 6 }}>
+                      {/* Vista previa: cómo lo ve un inquilino (con POIs, mapa, etc.) */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setPreviewCard(toDetailCard(prop)); }}
+                        title="Ver como inquilino"
+                        style={{ background: "rgba(255,255,255,0.92)", width: 30, height: 30, borderRadius: 15, border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                        <Eye style={{ width: 13, height: 13, color: C.coffee }} />
+                      </button>
+                      {/* Edit */}
+                      <div style={{ background: "rgba(255,255,255,0.92)", width: 30, height: 30, borderRadius: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <Pencil style={{ width: 13, height: 13, color: C.terra }} />
+                      </div>
                     </div>
                   </div>
                   <div style={{ padding: "14px 16px" }}>
@@ -147,6 +194,12 @@ export function OwnerProperties() {
           )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {previewCard && (
+          <PropertyDetailSheet card={previewCard} onClose={() => setPreviewCard(null)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

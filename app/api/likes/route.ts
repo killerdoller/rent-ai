@@ -26,15 +26,27 @@ export async function GET(request: Request) {
         title,
         monthly_rent,
         neighborhood,
+        localidad,
         city,
         bedrooms,
+        bathrooms,
+        area_sqm,
+        stratum,
+        floor_number,
+        building_floors,
         image_url,
         images,
         description,
         tags,
         address,
         latitude,
-        longitude
+        longitude,
+        property_type,
+        amenities_interior,
+        amenities_exterior,
+        amenities_sector,
+        utilities_included,
+        nearby_pois
       )
     `)
     .eq("user_id", userId)

@@ -1,11 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
-import { MessageCircle, MapPin, Bed, Sparkles, Heart, X, Tag, Users } from "lucide-react";
-import { ImageCarousel } from "./ImageCarousel";
+import { MessageCircle, MapPin, Bed, Bath, Maximize2, Sparkles, Heart, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import dynamic from "next/dynamic";
 import { RoommateProfileSheet } from "./RoommateProfileSheet";
+import { PropertyDetailSheet, type PropertyDetailCard } from "./PropertyDetailSheet";
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
 const BODY    = "var(--font-inter, 'system-ui', sans-serif)";
@@ -18,11 +17,6 @@ const C = {
   coffee: "#82554D",
   border: "rgba(130,85,77,0.14)",
 };
-
-const PropertyMap = dynamic(() => import("./PropertyMap"), {
-  ssr: false,
-  loading: () => <div style={{ width: "100%", height: "100%", background: C.muted }} />,
-});
 
 interface Match {
   id: string;
@@ -51,8 +45,14 @@ interface LikedProperty {
     title: string;
     monthly_rent: number;
     neighborhood: string;
+    localidad?: string | null;
     city: string;
     bedrooms: number;
+    bathrooms?: number | null;
+    area_sqm?: number | null;
+    stratum?: number | null;
+    floor_number?: number | null;
+    building_floors?: number | null;
     image_url: string;
     images?: string[];
     description: string;
@@ -60,6 +60,43 @@ interface LikedProperty {
     address?: string | null;
     latitude?: number | null;
     longitude?: number | null;
+    property_type?: string | null;
+    amenities_interior?: string[] | null;
+    amenities_exterior?: string[] | null;
+    amenities_sector?: string[] | null;
+    utilities_included?: string[] | null;
+    nearby_pois?: any;
+  };
+}
+
+// Convierte una propiedad guardada al shape que espera el PropertyDetailSheet
+// compartido (mismo que usa Descubrir).
+function likedToDetailCard(p: LikedProperty["properties"]): PropertyDetailCard {
+  return {
+    id: p.property_id,
+    type: "room",
+    image: p.image_url || "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=1080",
+    images: p.images && p.images.length > 0 ? p.images : (p.image_url ? [p.image_url] : []),
+    title: p.title,
+    location: `${p.neighborhood || ""}, ${p.city}`.replace(/^, /, ""),
+    price: p.monthly_rent ? Number(p.monthly_rent) : undefined,
+    bedrooms: p.bedrooms,
+    description: p.description || "",
+    tags: p.tags || [],
+    address: p.address,
+    latitude: p.latitude,
+    longitude: p.longitude,
+    property_type: p.property_type ?? undefined,
+    bathrooms: p.bathrooms ?? undefined,
+    area_sqm: p.area_sqm ?? undefined,
+    stratum: p.stratum ?? undefined,
+    floor_number: p.floor_number ?? undefined,
+    building_floors: p.building_floors ?? undefined,
+    amenities_interior: p.amenities_interior ?? [],
+    amenities_exterior: p.amenities_exterior ?? [],
+    amenities_sector: p.amenities_sector ?? [],
+    utilities_included: p.utilities_included ?? [],
+    nearby_pois: p.nearby_pois ?? null,
   };
 }
 
@@ -71,7 +108,7 @@ export function Conexiones({ defaultTab = "matches" }: { defaultTab?: Tab }) {
   const [matches, setMatches] = useState<Match[]>([]);
   const [likes, setLikes] = useState<LikedProperty[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [expandedProperty, setExpandedProperty] = useState<LikedProperty | null>(null);
+  const [detailCard, setDetailCard] = useState<PropertyDetailCard | null>(null);
   const [roommieSheet, setRoommieSheet] = useState<{ userId: string; matchId: string } | null>(null);
 
   useEffect(() => { fetchAll(); }, []);
@@ -225,33 +262,95 @@ export function Conexiones({ defaultTab = "matches" }: { defaultTab?: Tab }) {
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
                       {likes.map((fav) => {
                         const p = fav.properties;
+                        if (!p) return null;
+                        const primaryAmenities =
+                          (p.amenities_interior && p.amenities_interior.length > 0)
+                            ? p.amenities_interior
+                            : (p.amenities_exterior && p.amenities_exterior.length > 0)
+                              ? p.amenities_exterior
+                              : (p.tags || []);
                         return (
-                          <button key={fav.id} onClick={() => setExpandedProperty(fav)}
-                            style={{ background: C.white, borderRadius: 20, overflow: "hidden", border: `1.5px solid ${C.border}`, cursor: "pointer", textAlign: "left", boxShadow: "0 2px 8px rgba(130,85,77,0.06)", transition: "box-shadow 0.12s" }}
-                            onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 6px 20px rgba(130,85,77,0.12)")}
-                            onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 2px 8px rgba(130,85,77,0.06)")}>
-                            <div style={{ position: "relative", height: 140 }}>
-                              <img src={p?.image_url || "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=400"}
-                                alt={p?.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.35), transparent)" }} />
+                          <button key={fav.id}
+                            onClick={() => setDetailCard(likedToDetailCard(p))}
+                            className="group"
+                            style={{
+                              position: "relative",
+                              borderRadius: 20,
+                              overflow: "hidden",
+                              border: "none",
+                              padding: 0,
+                              cursor: "pointer",
+                              textAlign: "left",
+                              boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
+                              aspectRatio: "3 / 4",
+                              minHeight: 380,
+                              background: "#0D0D0D",
+                            }}>
+                            {/* Imagen full-bleed (mismo look que SwipeCard de Descubrir) */}
+                            <img
+                              src={p.image_url || "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=1080"}
+                              alt={p.title}
+                              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                            />
+                            {/* Gradient overlay para legibilidad */}
+                            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0.2) 50%, transparent)" }} />
+
+                            {/* Badge "Guardado" top-right */}
+                            <div style={{ position: "absolute", top: 12, right: 12, display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 9999, background: "rgba(255,255,255,0.92)", boxShadow: "0 2px 6px rgba(0,0,0,0.15)" }}>
+                              <Heart style={{ width: 12, height: 12, color: "#D87D6F", fill: "#D87D6F" }} />
+                              <span style={{ fontFamily: BODY, fontSize: 10, fontWeight: 700, color: "#D87D6F", textTransform: "uppercase", letterSpacing: 0.5 }}>Guardado</span>
                             </div>
-                            <div style={{ padding: "12px 14px" }}>
-                              <div style={{ fontFamily: BODY, fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p?.title}</div>
-                              <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 8 }}>
-                                <MapPin style={{ width: 11, height: 11, color: C.coffee, flexShrink: 0 }} />
-                                <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p?.neighborhood}, {p?.city}</span>
+
+                            {/* Información apilada en la parte inferior */}
+                            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: 18 }}>
+                              <div style={{ fontFamily: BODY, fontSize: 18, fontWeight: 700, color: "#FFFFFF", lineHeight: 1.2, marginBottom: 4 }}>{p.title}</div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 10 }}>
+                                <MapPin style={{ width: 13, height: 13, color: "rgba(255,255,255,0.8)", flexShrink: 0 }} />
+                                <span style={{ fontFamily: BODY, fontSize: 12, color: "rgba(255,255,255,0.8)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {p.neighborhood ? `${p.neighborhood}, ` : ""}{p.city}
+                                </span>
                               </div>
-                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                {p?.monthly_rent && (
-                                  <span style={{ fontFamily: BODY, fontSize: 13, fontWeight: 700, color: C.green }}>${Number(p.monthly_rent).toLocaleString()} COP/mes</span>
+                              {/* Price + property_type + bedrooms + bathrooms + área */}
+                              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                                {p.monthly_rent && (
+                                  <span style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: "#FFFFFF" }}>
+                                    ${Number(p.monthly_rent).toLocaleString()} COP/mes
+                                  </span>
                                 )}
-                                {p?.bedrooms && (
-                                  <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                                    <Bed style={{ width: 12, height: 12, color: C.coffee }} />
-                                    <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee }}>{p.bedrooms} hab.</span>
+                                {p.property_type && (
+                                  <span style={{ padding: "2px 8px", background: "rgba(0,0,0,0.4)", color: "#FFFFFF", borderRadius: 6, fontFamily: BODY, fontSize: 11 }}>
+                                    {p.property_type}
+                                  </span>
+                                )}
+                                {p.bedrooms && (
+                                  <div style={{ display: "flex", alignItems: "center", gap: 3, color: "rgba(255,255,255,0.85)" }}>
+                                    <Bed style={{ width: 12, height: 12 }} />
+                                    <span style={{ fontFamily: BODY, fontSize: 11 }}>{p.bedrooms} {p.bedrooms === 1 ? "hab." : "habs."}</span>
+                                  </div>
+                                )}
+                                {p.bathrooms && (
+                                  <div style={{ display: "flex", alignItems: "center", gap: 3, color: "rgba(255,255,255,0.85)" }}>
+                                    <Bath style={{ width: 12, height: 12 }} />
+                                    <span style={{ fontFamily: BODY, fontSize: 11 }}>{p.bathrooms} {p.bathrooms === 1 ? "baño" : "baños"}</span>
+                                  </div>
+                                )}
+                                {p.area_sqm && (
+                                  <div style={{ display: "flex", alignItems: "center", gap: 3, color: "rgba(255,255,255,0.85)" }}>
+                                    <Maximize2 style={{ width: 12, height: 12 }} />
+                                    <span style={{ fontFamily: BODY, fontSize: 11 }}>{p.area_sqm} m²</span>
                                   </div>
                                 )}
                               </div>
+                              {/* Chips de amenidades */}
+                              {primaryAmenities.length > 0 && (
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                  {primaryAmenities.slice(0, 3).map((tag) => (
+                                    <span key={tag} style={{ padding: "4px 10px", borderRadius: 9999, background: "rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", fontFamily: BODY, fontSize: 11, fontWeight: 500, color: "#FFFFFF" }}>
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </button>
                         );
@@ -266,8 +365,8 @@ export function Conexiones({ defaultTab = "matches" }: { defaultTab?: Tab }) {
       </div>
 
       <AnimatePresence>
-        {expandedProperty && (
-          <PropertyDetailSheet property={expandedProperty} onClose={() => setExpandedProperty(null)} />
+        {detailCard && (
+          <PropertyDetailSheet card={detailCard} onClose={() => setDetailCard(null)} />
         )}
       </AnimatePresence>
 
@@ -294,156 +393,3 @@ function EmptyState({ icon, title, subtitle }: { icon: React.ReactNode; title: s
   );
 }
 
-function PropertyDetailSheet({ property, onClose }: { property: LikedProperty; onClose: () => void }) {
-  const p = property.properties;
-  const hasMap = !!(p?.latitude && p?.longitude);
-
-  return (
-    <>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        onClick={onClose} className="fixed inset-0 bg-black/60 z-40" />
-
-      <motion.div
-        initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-        transition={{ type: "spring", damping: 32, stiffness: 300 }}
-        className="fixed z-50 bottom-0 left-0 right-0 md:inset-0 md:flex md:items-center md:justify-center md:p-6 pointer-events-none"
-      >
-        <div className="bg-white rounded-t-3xl md:rounded-3xl shadow-2xl w-full md:max-w-3xl pointer-events-auto overflow-hidden relative flex flex-col"
-          style={{ height: "88svh", maxHeight: "88svh" }}>
-          <div className="md:hidden flex-shrink-0 flex justify-center pt-3 pb-1">
-            <div style={{ width: 36, height: 4, borderRadius: 9999, background: C.border }} />
-          </div>
-          <button onClick={onClose} className="absolute top-3 right-3 z-10 rounded-full p-1.5 shadow"
-            style={{ background: "rgba(255,255,255,0.92)" }}>
-            <X style={{ width: 16, height: 16, color: C.coffee }} />
-          </button>
-
-          {/* Mobile */}
-          <div className="flex flex-col flex-1 min-h-0 md:hidden">
-            <div className="relative flex-shrink-0" style={{ height: 260 }}>
-              <ImageCarousel
-                images={p?.images && p.images.length > 0 ? p.images : (p?.image_url ? [p.image_url] : [])}
-                height={260}
-                style={{ position: "absolute", inset: 0 }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent pointer-events-none" />
-              <div className="absolute bottom-3 left-4 right-10 pointer-events-none" style={{ zIndex: 3 }}>
-                <h2 className="text-white font-bold text-xl leading-tight drop-shadow">{p?.title}</h2>
-                <div className="flex items-center gap-1 text-white/80 text-xs mt-0.5">
-                  <MapPin className="w-3 h-3 flex-shrink-0" />
-                  <span className="truncate">{[p?.neighborhood, p?.city].filter(Boolean).join(", ")}</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex-shrink-0 flex items-center gap-4 px-4 py-3 border-b" style={{ borderColor: C.border, background: C.cream }}>
-              {p?.monthly_rent && <span style={{ fontFamily: BODY, fontSize: 15, fontWeight: 700, color: C.green }}>${Number(p.monthly_rent).toLocaleString()} COP/mes</span>}
-              {p?.bedrooms && <div className="flex items-center gap-1" style={{ color: C.coffee }}><Bed className="w-3.5 h-3.5" /><span style={{ fontFamily: BODY, fontSize: 12 }}>{p.bedrooms} hab.</span></div>}
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {hasMap && (
-                <div className="relative flex-shrink-0" style={{ height: 180 }}>
-                  <PropertyMap lat={p.latitude!} lng={p.longitude!} title={p.title} />
-                  {p.address && (
-                    <div className="absolute bottom-0 left-0 right-0 px-3 py-2" style={{ background: "rgba(255,255,255,0.92)" }}>
-                      <div className="flex items-start gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: C.green }} />
-                        <p style={{ fontFamily: BODY, fontSize: 11, color: C.coffee }} className="line-clamp-2">{p.address}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="px-4 py-4 space-y-4">
-                {p?.description && (
-                  <div>
-                    <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Descripción</p>
-                    <p style={{ fontFamily: BODY, fontSize: 14, lineHeight: 1.65, color: C.ink }}>{p.description}</p>
-                  </div>
-                )}
-                {p?.tags && p.tags.length > 0 && (
-                  <div>
-                    <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
-                      <Tag className="w-3 h-3" /> Características
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {p.tags.map((tag) => <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium" style={{ background: C.cream, color: C.coffee }}>{tag}</span>)}
-                    </div>
-                  </div>
-                )}
-                <p style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, opacity: 0.7 }}>
-                  Guardado el {new Date(property.created_at).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Desktop */}
-          <div className="hidden md:flex flex-1 min-h-0">
-            {hasMap ? (
-              <div className="w-2/5 flex-shrink-0 relative">
-                <PropertyMap lat={p.latitude!} lng={p.longitude!} title={p.title} />
-                {p.address && (
-                  <div className="absolute bottom-0 left-0 right-0 px-3 py-2" style={{ background: "rgba(255,255,255,0.9)" }}>
-                    <div className="flex items-start gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: C.green }} />
-                      <p style={{ fontFamily: BODY, fontSize: 11, color: C.coffee }} className="line-clamp-2">{p.address}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="w-2/5 flex-shrink-0 relative overflow-hidden">
-                <ImageCarousel
-                  images={p?.images && p.images.length > 0 ? p.images : (p?.image_url ? [p.image_url] : [])}
-                  style={{ position: "absolute", inset: 0, height: "100%" }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
-              </div>
-            )}
-            <div className="flex-1 flex flex-col min-w-0">
-              <div className="relative flex-shrink-0" style={{ height: 200 }}>
-                <ImageCarousel
-                  images={p?.images && p.images.length > 0 ? p.images : (p?.image_url ? [p.image_url] : [])}
-                  height={200}
-                  style={{ position: "absolute", inset: 0 }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent pointer-events-none" />
-                <div className="absolute bottom-3 left-3 right-8 pointer-events-none" style={{ zIndex: 3 }}>
-                  <h2 className="text-white font-bold text-base leading-tight drop-shadow">{p?.title}</h2>
-                  <div className="flex items-center gap-1 text-white/80 text-xs mt-0.5">
-                    <MapPin className="w-3 h-3" /><span className="truncate">{[p?.neighborhood, p?.city].filter(Boolean).join(", ")}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex-shrink-0 flex items-center gap-4 px-4 py-2.5 border-b" style={{ borderColor: C.border, background: C.cream }}>
-                {p?.monthly_rent && <span style={{ fontFamily: BODY, fontSize: 14, fontWeight: 700, color: C.green }}>${Number(p.monthly_rent).toLocaleString()} COP/mes</span>}
-                {p?.bedrooms && <div className="flex items-center gap-1" style={{ color: C.coffee }}><Bed className="w-3.5 h-3.5" /><span style={{ fontFamily: BODY, fontSize: 12 }}>{p.bedrooms} hab.</span></div>}
-              </div>
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
-                {p?.description && (
-                  <div>
-                    <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Descripción</p>
-                    <p style={{ fontFamily: BODY, fontSize: 13, lineHeight: 1.65, color: C.ink }}>{p.description}</p>
-                  </div>
-                )}
-                {p?.tags && p.tags.length > 0 && (
-                  <div>
-                    <p style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
-                      <Tag className="w-3 h-3" /> Características
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {p.tags.map((tag) => <span key={tag} className="px-2.5 py-1 rounded-full text-xs font-medium" style={{ background: C.cream, color: C.coffee }}>{tag}</span>)}
-                    </div>
-                  </div>
-                )}
-                <p style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, opacity: 0.7 }}>
-                  Guardado el {new Date(property.created_at).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    </>
-  );
-}

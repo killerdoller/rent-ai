@@ -28,17 +28,25 @@ const inputStyle: React.CSSProperties = {
   fontFamily: BODY, fontSize: 14, color: C.ink, outline: "none",
 };
 
-const AMENITIES_INTERIOR = ["Amoblado", "Cocina integral", "Zona de lavandería", "Aire acondicionado", "Calentador", "Closet", "Balcón", "Terraza"];
-const AMENITIES_EXTERIOR = ["Ascensor", "Parqueadero", "Gimnasio", "Piscina", "Portería 24h", "Salón comunal", "Zona BBQ", "Zonas verdes"];
-const AMENITIES_SECTOR = ["Cerca a transporte público", "Cerca a universidades", "Zona comercial", "Parques cercanos", "Supermercados"];
+// Vocabulario unificado con el perfil del inquilino. Ver src/utils/bogotaAmenities.ts
+// para el porqué y la lista completa. El matching usa la UNIÓN de interior +
+// exterior, así que un parqueadero publicado en "exterior" igual matchea si
+// el tenant lo pidió.
+import {
+  SECTOR_AMENITIES as TENANT_SECTOR_AMENITIES,
+  PROPERTY_AMENITIES_INTERIOR as TENANT_PROPERTY_INTERIOR,
+  PROPERTY_AMENITIES_EXTERIOR as TENANT_PROPERTY_EXTERIOR,
+} from "../../../utils/bogotaAmenities";
+import { BOGOTA_LOCALITIES } from "../../../utils/bogotaZones";
+
+// Spread para convertir readonly tuples del catálogo a string[] mutable
+// que es lo que espera MultiSelect.
+const AMENITIES_INTERIOR: string[] = [...TENANT_PROPERTY_INTERIOR];
+const AMENITIES_EXTERIOR: string[] = [...TENANT_PROPERTY_EXTERIOR];
+const AMENITIES_SECTOR: string[] = [...TENANT_SECTOR_AMENITIES];
 const UTILITIES_INCLUDED = ["Agua", "Energía", "Gas", "WiFi", "Administración"];
 
-const LOCALITIES = [
-  "Usaquén", "Chapinero", "Santa Fe", "San Cristóbal", "Usme", "Tunjuelito", 
-  "Bosa", "Kennedy", "Fontibón", "Engativá", "Suba", "Barrios Unidos", 
-  "Teusaquillo", "Los Mártires", "Antonio Nariño", "Puente Aranda", 
-  "La Candelaria", "Rafael Uribe Uribe", "Ciudad Bolívar", "Sumapaz"
-];
+const LOCALITIES = BOGOTA_LOCALITIES;
 
 const MultiSelect = ({ options, selected, onChange, addLabel }: { options: string[], selected: string[], onChange: (v: string[]) => void, addLabel?: string }) => (
   <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>

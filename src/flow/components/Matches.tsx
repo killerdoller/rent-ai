@@ -1,8 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
-import { MessageCircle, MapPin, Heart, Sparkles, Loader2 } from "lucide-react";
+import { AnimatePresence } from "motion/react";
+import { MessageCircle, MapPin, Heart, Sparkles, Loader2, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { RoommateProfileSheet } from "./RoommateProfileSheet";
+import { PropertyDetailSheet, type PropertyDetailCard } from "./PropertyDetailSheet";
 
 interface Match {
   id: string;
@@ -14,11 +16,62 @@ interface Match {
     title: string;
     monthly_rent: number;
     neighborhood: string;
+    localidad?: string | null;
     city: string;
+    bedrooms?: number;
+    bathrooms?: number | null;
+    area_sqm?: number | null;
+    stratum?: number | null;
+    floor_number?: number | null;
+    building_floors?: number | null;
     image_url: string;
+    images?: string[] | null;
+    description?: string | null;
+    tags?: string[] | null;
+    address?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    property_type?: string | null;
+    amenities_interior?: string[] | null;
+    amenities_exterior?: string[] | null;
+    amenities_sector?: string[] | null;
+    utilities_included?: string[] | null;
+    nearby_pois?: any;
   };
   owners?: { owner_id: string; name: string };
   other?: { id: string; name: string; image: string; detail: string };
+}
+
+function propertyMatchToCard(m: Match): PropertyDetailCard | null {
+  const p = m.properties;
+  if (!p) return null;
+  return {
+    id: p.property_id,
+    type: "room",
+    image: p.image_url || "https://images.unsplash.com/photo-1611234688667-76b6d8fadd75?w=1080",
+    images: p.images && p.images.length > 0 ? p.images : (p.image_url ? [p.image_url] : []),
+    title: p.title,
+    location: `${p.neighborhood || ""}, ${p.city}`.replace(/^, /, ""),
+    price: p.monthly_rent ? Number(p.monthly_rent) : undefined,
+    bedrooms: p.bedrooms,
+    description: p.description || "",
+    tags: p.tags || [],
+    matchScore: m.match_score ?? undefined,
+    address: p.address,
+    latitude: p.latitude,
+    longitude: p.longitude,
+    property_type: p.property_type ?? undefined,
+    bathrooms: p.bathrooms ?? undefined,
+    area_sqm: p.area_sqm ?? undefined,
+    stratum: p.stratum ?? undefined,
+    floor_number: p.floor_number ?? undefined,
+    building_floors: p.building_floors ?? undefined,
+    amenities_interior: p.amenities_interior ?? [],
+    amenities_exterior: p.amenities_exterior ?? [],
+    amenities_sector: p.amenities_sector ?? [],
+    utilities_included: p.utilities_included ?? [],
+    nearby_pois: p.nearby_pois ?? null,
+  };
 }
 
 export function Matches() {
@@ -28,6 +81,7 @@ export function Matches() {
   const [isLoading, setIsLoading] = useState(true);
   const [likingBack, setLikingBack] = useState<Record<string, boolean>>({});
   const [sheet, setSheet] = useState<{ userId: string; profileData?: any; matchId?: string; interestedEntry?: any } | null>(null);
+  const [propertyDetail, setPropertyDetail] = useState<PropertyDetailCard | null>(null);
   const navigate = useRouter();
 
   useEffect(() => { fetchAll(); }, []);
@@ -145,6 +199,19 @@ export function Matches() {
                         {m.type === "property" ? "Apartamento" : "Roomie"}
                       </span>
                     </div>
+                    {m.type === "property" && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const card = propertyMatchToCard(m);
+                          if (card) setPropertyDetail(card);
+                        }}
+                        title="Ver detalle"
+                        className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-white/95 hover:bg-white shadow-md flex items-center justify-center"
+                      >
+                        <Eye className="w-4 h-4 text-coffee" />
+                      </button>
+                    )}
                   </div>
                   <div className="p-4">
                     <h3 className="font-bold text-base truncate">
@@ -214,6 +281,13 @@ export function Matches() {
           isLiking={likingBack[sheet.userId]}
         />
       )}
+
+      {/* Property detail sheet — para que el inquilino vea las cosas del POI/mapa de su match */}
+      <AnimatePresence>
+        {propertyDetail && (
+          <PropertyDetailSheet card={propertyDetail} onClose={() => setPropertyDetail(null)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

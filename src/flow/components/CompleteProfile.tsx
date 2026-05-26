@@ -2,7 +2,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Briefcase, Home, Users, ChevronRight, Loader2, Cigarette, Ban, PawPrint, Moon, Sun, Laptop, Dumbbell, ChefHat, PartyPopper, Sparkles, Wallet, Zap, Heart, Smile } from "lucide-react";
+import { MapPin, Briefcase, Home, Users, ChevronRight, Loader2, Cigarette, Ban, PawPrint, Moon, Sun, Laptop, Dumbbell, ChefHat, PartyPopper, Sparkles, Wallet, Zap, Heart, Smile, X } from "lucide-react";
+import { geocodeWeightedTarget } from "../../utils/geocodeTarget";
+import { BOGOTA_LOCALITIES, neighborhoodsForLocalities } from "../../utils/bogotaZones";
+import { SECTOR_AMENITIES, PROPERTY_AMENITIES_FOR_TENANT } from "../../utils/bogotaAmenities";
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
 const BODY    = "var(--font-inter, 'system-ui', sans-serif)";
@@ -32,12 +35,7 @@ const INTEREST_OPTIONS = [
   "Arte", "Yoga", "Gaming", "Fotografía", "Deporte",
 ];
 
-const LOCALITIES = [
-  "Usaquén", "Chapinero", "Santa Fe", "San Cristóbal", "Usme", "Tunjuelito", 
-  "Bosa", "Kennedy", "Fontibón", "Engativá", "Suba", "Barrios Unidos", 
-  "Teusaquillo", "Los Mártires", "Antonio Nariño", "Puente Aranda", 
-  "La Candelaria", "Rafael Uribe Uribe", "Ciudad Bolívar", "Sumapaz"
-];
+const LOCALITIES = BOGOTA_LOCALITIES;
 
 const PROPERTY_TYPES = ["Apartamento", "Casa", "Habitación"];
 
@@ -69,6 +67,7 @@ export function CompleteProfile() {
     desired_amenities_sector: [] as string[],
     desired_amenities_interior: [] as string[],
     desired_property_types: [] as string[],
+    min_bedrooms: null as number | null,
     desired_localities: [] as string[],
     desired_neighborhoods: [] as string[],
     new_neighborhood: ""
@@ -86,6 +85,23 @@ export function CompleteProfile() {
     try {
       const userId = localStorage.getItem("rentai_user_id");
       if (!userId) throw new Error("No hay sesión activa");
+
+      // Geocode the chosen zones into a single search center (target_location),
+      // which drives the 50% spatial weight of the match score. Localidad y
+      // barrios se combinan con pesos (60/40 por default) — ver
+      // geocodeWeightedTarget. La localidad pesa más porque es la señal más
+      // confiable cuando el usuario aún no conoce los barrios.
+      let target_lat: number | undefined;
+      let target_lng: number | undefined;
+      const hasZones = form.desired_localities.length > 0 || form.desired_neighborhoods.length > 0;
+      if (form.user_mode === "find-room" && hasZones) {
+        const target = await geocodeWeightedTarget({
+          localities: form.desired_localities,
+          neighborhoods: form.desired_neighborhoods,
+        });
+        if (target) { target_lat = target.lat; target_lng = target.lng; }
+      }
+
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -103,8 +119,10 @@ export function CompleteProfile() {
           desired_amenities_sector: form.desired_amenities_sector,
           desired_amenities_interior: form.desired_amenities_interior,
           desired_property_types: form.desired_property_types,
+          min_bedrooms: form.min_bedrooms,
           desired_localities: form.desired_localities,
           desired_neighborhoods: form.desired_neighborhoods,
+          ...(target_lat !== undefined ? { target_lat, target_lng } : {}),
           profile_completed: true,
         }),
       });
@@ -394,6 +412,31 @@ function Step3({ form, setForm }: StepProps) {
           </div>
 
           <div>
+            <Label>Mínimo de habitaciones</Label>
+            <p style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, marginTop: -6, marginBottom: 8 }}>
+              Filtra propiedades con menos habitaciones. Déjalo en "Sin mínimo" si te da igual.
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {[
+                { label: "Sin mínimo", value: null },
+                { label: "1+", value: 1 },
+                { label: "2+", value: 2 },
+                { label: "3+", value: 3 },
+                { label: "4+", value: 4 },
+              ].map(opt => {
+                const active = form.min_bedrooms === opt.value;
+                return (
+                  <button key={String(opt.value)} type="button"
+                    onClick={() => setForm({ ...form, min_bedrooms: opt.value })}
+                    style={{ padding: "7px 14px", borderRadius: 9999, fontFamily: BODY, fontSize: 12, fontWeight: 700, border: `1.5px solid ${active ? C.green : C.border}`, cursor: "pointer", background: active ? `${C.green}12` : C.cream, color: active ? C.green : C.coffee }}>
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
             <Label>Localidad(es) en Bogotá</Label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {LOCALITIES.map(loc => {
@@ -409,41 +452,90 @@ function Step3({ form, setForm }: StepProps) {
           </div>
 
           <div>
-            <Label>Barrios específicos</Label>
-            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              <input
-                type="text"
-                value={form.new_neighborhood || ""}
-                onChange={e => setForm({ ...form, new_neighborhood: e.target.value })}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && form.new_neighborhood) {
-                    e.preventDefault();
-                    if (!form.desired_neighborhoods.includes(form.new_neighborhood)) {
-                      setForm({ ...form, desired_neighborhoods: [...form.desired_neighborhoods, form.new_neighborhood], new_neighborhood: "" });
-                    }
-                  }
-                }}
-                placeholder="Ej. Cedritos, Chicó..."
-                style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: `1.5px solid ${C.border}`, fontFamily: BODY, fontSize: 13, outline: "none" }}
-              />
-              <button type="button" onClick={() => {
-                if (form.new_neighborhood && !form.desired_neighborhoods.includes(form.new_neighborhood)) {
-                  setForm({ ...form, desired_neighborhoods: [...form.desired_neighborhoods, form.new_neighborhood], new_neighborhood: "" });
-                }
-              }} style={{ padding: "8px 16px", borderRadius: 10, background: C.green, color: C.white, border: "none", fontFamily: BODY, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                Añadir
-              </button>
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {form.desired_neighborhoods.map((hood: string) => (
-                <div key={hood} style={{ padding: "5px 10px", borderRadius: 9999, background: C.muted, fontFamily: BODY, fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
-                  {hood}
-                  <button type="button" onClick={() => setForm({ ...form, desired_neighborhoods: form.desired_neighborhoods.filter((h: string) => h !== hood) })} style={{ border: "none", background: "none", cursor: "pointer", color: C.coffee, display: "flex", alignItems: "center", padding: 0 }}>
-                    <X style={{ width: 12, height: 12 }} />
-                  </button>
-                </div>
-              ))}
-            </div>
+            <Label>Barrios específicos (opcional)</Label>
+            {form.desired_localities.length === 0 ? (
+              <p style={{ fontFamily: BODY, fontSize: 12, color: C.coffee, fontStyle: "italic" }}>
+                Selecciona al menos una localidad arriba para ver sus barrios.
+                Si no quieres especificar, déjalo así — la localidad es suficiente.
+              </p>
+            ) : (
+              <>
+                {neighborhoodsForLocalities(form.desired_localities).map(group => (
+                  <div key={group.locality} style={{ marginBottom: 12 }}>
+                    <div style={{ fontFamily: BODY, fontSize: 10, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>
+                      {group.locality}
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {group.neighborhoods.map(hood => {
+                        const active = form.desired_neighborhoods.includes(hood);
+                        return (
+                          <button key={hood} type="button"
+                            onClick={() => setForm({
+                              ...form,
+                              desired_neighborhoods: active
+                                ? form.desired_neighborhoods.filter(h => h !== hood)
+                                : [...form.desired_neighborhoods, hood],
+                            })}
+                            style={{ padding: "5px 10px", borderRadius: 8, fontFamily: BODY, fontSize: 11, fontWeight: 600, border: `1px solid ${active ? C.green : C.border}`, cursor: "pointer", background: active ? `${C.green}12` : C.cream, color: active ? C.green : C.coffee }}>
+                            {hood}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Escape hatch para barrios que no estén en la lista */}
+                <details style={{ marginTop: 4 }}>
+                  <summary style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, cursor: "pointer" }}>
+                    ¿No ves tu barrio? Añadirlo manualmente
+                  </summary>
+                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                    <input
+                      type="text"
+                      value={form.new_neighborhood || ""}
+                      onChange={e => setForm({ ...form, new_neighborhood: e.target.value })}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && form.new_neighborhood) {
+                          e.preventDefault();
+                          if (!form.desired_neighborhoods.includes(form.new_neighborhood)) {
+                            setForm({ ...form, desired_neighborhoods: [...form.desired_neighborhoods, form.new_neighborhood], new_neighborhood: "" });
+                          }
+                        }
+                      }}
+                      placeholder="Nombre del barrio"
+                      style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: `1.5px solid ${C.border}`, fontFamily: BODY, fontSize: 13, outline: "none" }}
+                    />
+                    <button type="button" onClick={() => {
+                      if (form.new_neighborhood && !form.desired_neighborhoods.includes(form.new_neighborhood)) {
+                        setForm({ ...form, desired_neighborhoods: [...form.desired_neighborhoods, form.new_neighborhood], new_neighborhood: "" });
+                      }
+                    }} style={{ padding: "8px 16px", borderRadius: 10, background: C.green, color: C.white, border: "none", fontFamily: BODY, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                      Añadir
+                    </button>
+                  </div>
+                </details>
+
+                {/* Chips de barrios seleccionados (cuando hay alguno fuera del picker, queda visible) */}
+                {form.desired_neighborhoods.length > 0 && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${C.border}` }}>
+                    <div style={{ fontFamily: BODY, fontSize: 10, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>
+                      Seleccionados
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {form.desired_neighborhoods.map((hood: string) => (
+                        <div key={hood} style={{ padding: "5px 10px", borderRadius: 9999, background: C.muted, fontFamily: BODY, fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                          {hood}
+                          <button type="button" onClick={() => setForm({ ...form, desired_neighborhoods: form.desired_neighborhoods.filter((h: string) => h !== hood) })} style={{ border: "none", background: "none", cursor: "pointer", color: C.coffee, display: "flex", alignItems: "center", padding: 0 }}>
+                            <X style={{ width: 12, height: 12 }} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           <div>
@@ -455,7 +547,7 @@ function Step3({ form, setForm }: StepProps) {
                   {amenity} ✕
                 </button>
               ))}
-              {["Transporte público", "Parques", "Comercio", "Universidades", "Zona tranquila", "Vida nocturna"]
+              {SECTOR_AMENITIES
                 .filter(a => !form.desired_amenities_sector.includes(a))
                 .map(amenity => (
                 <button key={amenity} type="button" onClick={() => setForm({ ...form, desired_amenities_sector: [...form.desired_amenities_sector, amenity] })}
@@ -473,7 +565,10 @@ function Step3({ form, setForm }: StepProps) {
             </div>
           </div>
           <div>
-            <Label>Características del apto deseadas</Label>
+            <Label>Comodidades de la propiedad deseadas</Label>
+            <p style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, marginTop: -6, marginBottom: 8 }}>
+              No te preocupes si está dentro del apartamento o en áreas comunes — solo selecciona lo que quieres que tenga.
+            </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {form.desired_amenities_interior.map((amenity: string) => (
                 <button key={amenity} type="button" onClick={() => setForm({ ...form, desired_amenities_interior: form.desired_amenities_interior.filter((a: string) => a !== amenity) })}
@@ -481,7 +576,7 @@ function Step3({ form, setForm }: StepProps) {
                   {amenity} ✕
                 </button>
               ))}
-              {["Lavandería", "Ascensor", "Gimnasio", "Seguridad 24/7", "Balcón", "Amoblado", "Parqueadero"]
+              {PROPERTY_AMENITIES_FOR_TENANT
                 .filter(a => !form.desired_amenities_interior.includes(a))
                 .map(amenity => (
                 <button key={amenity} type="button" onClick={() => setForm({ ...form, desired_amenities_interior: [...form.desired_amenities_interior, amenity] })}
