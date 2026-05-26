@@ -1,39 +1,73 @@
-# Proyecto: Web Scraper de Vivienda (Colombia)
+# Web Scraper de Vivienda — Finca Raíz
 
-Este proyecto permite extraer información de apartamentos y casas de **Finca Raiz** de forma automatizada.
+Herramienta de extracción automática de apartamentos en arriendo desde **FincaRaíz** para alimentar la base de datos de RentAI.
 
-## Requisitos
-
-1. Tener **Python 3.8+** instalado.
-2. Instalar las dependencias necesarias:
+## Instalación
 
 ```bash
 pip install -r requirements.txt
 playwright install chromium
 ```
 
-## Cómo usar el Scraper
+## Scripts
 
-Puedes ejecutar el script directamente desde la terminal:
+### Pipeline de dos pasos (texto → CSV)
 
 ```bash
-# Para el scraper de apartamentos (CSV):
-python scraper.py --url "TU_URL_DE_BUSQUEDA_AQUI"
+# Paso 1: Extraer texto visible de N páginas de resultados
+python extract_text.py --pages 5
 
-# Para extraer TODO el texto de una página (TXT):
-python extract_text.py --url "TU_URL_AQUI"
+# Paso 2: Convertir el texto a CSV estructurado
+python parse_to_csv.py
 ```
 
-Si no pones ninguna URL, por defecto usará la de Chapinero que proporcionaste.
+Existen variantes `_m2` para scraping enfocado en precio por metro cuadrado:
+```bash
+python extract_text_m2.py --pages 5
+python parse_to_csv_m2.py
+```
 
-## Sugerencia para Roommates
+### Scraper técnico (JSON directo)
 
-Para encontrar roommates (compañeros de habitación), te recomiendo estos sitios adicionales que suelen tener filtros específicos para estudiantes:
+```bash
+python scraper.py --url "TU_URL_DE_BUSQUEDA_AQUI"
+```
 
-1. **CompartoApto**: Es el más famoso en Colombia para este fin específico.
-2. **Facebook Groups**: "Busco Roommate Bogotá" o "Arriendos Universitarios Chapinero" son muy activos.
-3. **DadaRoom**: Otra alternativa popular para perfiles jóvenes.
+Usa la etiqueta `__NEXT_DATA__` de la página para extraer datos JSON directamente, sin pasar por texto plano.
 
----
+### Scraper con carga a Supabase
 
-*Nota: Este proyecto es para fines educativos. Recuerda siempre revisar los términos de servicio de los sitios que visitas.*
+```bash
+python scraper_to_supabase.py --url "..." --owner_id "demo@rentai.com"
+```
+
+Sube imágenes a Supabase Storage y registra las propiedades en la tabla `properties`. El argumento `--owner_id` acepta un UUID existente en la tabla `owners` o un email.
+
+## Variables de entorno
+
+Crea un archivo `.env` copiando `.env.example`:
+
+```
+SUPABASE_URL=https://tu-proyecto.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key
+```
+
+## Columnas del CSV generado
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `inmobiliaria` | texto | Nombre de la agencia |
+| `precio canon` | float | Precio mensual de arriendo |
+| `administracion` | float | Cuota de administración (0.0 si no aplica) |
+| `zona` | texto | Barrio/sector |
+| `ciudad` | texto | Ciudad |
+| `habitaciones` | int | Número de habitaciones |
+| `baños` | int | Número de baños |
+| `metros_cuadrados` | float | Área en m² |
+| `descripcion` | texto | Texto descriptivo completo |
+
+`parse_to_csv.py` actualiza el CSV de forma incremental — detecta y omite duplicados basándose en precio, zona, habitaciones y fragmento de descripción.
+
+## Archivos de salida
+
+Los CSV y TXT generados están en `.gitignore` — son archivos de trabajo, no código fuente. El resultado final se carga directamente a Supabase via `scraper_to_supabase.py`.

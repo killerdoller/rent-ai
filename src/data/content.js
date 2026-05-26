@@ -4,7 +4,8 @@ export const content = {
         links: [
             { name: "Problema", href: "#problema" },
             { name: "Solución", href: "#solucion" },
-            { name: "Features", href: "#features" }
+            { name: "Features", href: "#features" },
+            { name: "Propietarios", href: "#propietarios" }
         ],
         cta: "Empezar",
         login: "Iniciar Sesión"
@@ -101,6 +102,39 @@ export const content = {
         subheadline: "Crea tu perfil de búsqueda en 1 minuto.",
         cta: "Empezar ahora",
         copy: "© 2026 RentAI - El arriendo del futuro hoy."
+    },
+    owners: {
+        kicker: "Para Propietarios",
+        title: "Arrienda mejor, no más",
+        subtitle: "Conecta con arrendatarios reales que ya quieren tu propiedad — sin filtrar solicitudes a mano.",
+        cta: "Publicar mi propiedad",
+        differentials: [
+            {
+                icon: "🎯",
+                title: "Tenants pre-filtrados",
+                description: "Solo ves candidatos que ya hicieron match con tu propiedad. Sin solicitudes irrelevantes."
+            },
+            {
+                icon: "🤝",
+                title: "Tú también eliges",
+                description: "El match es bilateral: ves el perfil del arrendatario y decides si aceptas o no."
+            },
+            {
+                icon: "📊",
+                title: "Analytics de tu inmueble",
+                description: "Funnel de interesados, perfil del tenant ideal y comparación de precio con el mercado."
+            },
+            {
+                icon: "📍",
+                title: "POIs verificados automáticamente",
+                description: "Tu propiedad se enriquece con datos reales de transporte, comercios y servicios cercanos — sin que escribas nada."
+            },
+            {
+                icon: "💬",
+                title: "Chat solo con matches",
+                description: "Comunícate directamente con arrendatarios confirmados. Sin spam ni contactos no deseados."
+            }
+        ]
     },
     roomies: {
         title: "Encuentra al roomie perfecto para compartir tu nuevo hogar",

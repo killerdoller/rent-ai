@@ -8,6 +8,7 @@ import FlowMockup from './components/FlowMockup';
 import AuthForm from './components/AuthForm';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Layers, SlidersHorizontal, Sparkles, Bell, ShieldCheck, Users, UserCheck, BarChart3, MapPin, MessageCircle, Search, CalendarX, Filter } from 'lucide-react';
 
 
 
@@ -117,15 +118,23 @@ const Problem = () => (
                 {content.problem.title}
             </h2>
             <div className="grid md:grid-cols-3 gap-8">
-                {content.problem.items.map((item, i) => (
-                    <div key={i} className="bg-white border border-slate-100 p-10 rounded-3xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
-                        <div className="w-12 h-12 bg-terracotta-warm/10 text-terracotta-warm rounded-2xl flex items-center justify-center text-2xl mb-6">
-                            {i === 0 ? "🔎" : i === 1 ? "📅" : "🔇"}
+                {content.problem.items.map((item, i) => {
+                    const problemIcons = [
+                        { icon: Filter,     bg: "bg-blue-50",  color: "text-blue-500"  },
+                        { icon: CalendarX,  bg: "bg-red-50",   color: "text-red-500"   },
+                        { icon: Search,     bg: "bg-amber-50", color: "text-amber-500" },
+                    ];
+                    const { icon: Icon, bg, color } = problemIcons[i];
+                    return (
+                        <div key={i} className="bg-white border border-slate-100 p-10 rounded-3xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 flex flex-col items-center text-center">
+                            <div className={`w-12 h-12 ${bg} rounded-2xl flex items-center justify-center mb-6`}>
+                                <Icon className={`w-6 h-6 ${color}`} strokeWidth={1.75} />
+                            </div>
+                            <h3 className="text-xl font-black text-text-main mb-4">{item.title}</h3>
+                            <p className="text-text-muted font-bold text-sm leading-relaxed">{item.description}</p>
                         </div>
-                        <h3 className="text-xl font-black text-text-main mb-4">{item.title}</h3>
-                        <p className="text-text-muted font-bold text-sm leading-relaxed">{item.description}</p>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     </Section>
@@ -160,6 +169,14 @@ const Solution = () => (
     </Section>
 );
 
+const featureIcons = [
+    { icon: Layers,             bg: "bg-blue-50",    color: "text-blue-500"   },
+    { icon: SlidersHorizontal,  bg: "bg-purple-50",  color: "text-purple-500" },
+    { icon: Sparkles,           bg: "bg-primary/10", color: "text-primary"    },
+    { icon: Bell,               bg: "bg-amber-50",   color: "text-amber-500"  },
+    { icon: ShieldCheck,        bg: "bg-green-50",   color: "text-green-600"  },
+];
+
 const Features = () => (
     <Section id="features" variant="violet" kicker="Características" className="bg-white">
         <div className="flex flex-col gap-16">
@@ -167,15 +184,63 @@ const Features = () => (
                 {content.features.title}
             </h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                {content.features.items.map((feature, i) => (
-                    <div key={i} className="p-10 rounded-3xl border border-slate-100 bg-white hover:border-primary/20 transition-all hover:shadow-xl group">
-                        <div className="w-14 h-14 bg-mint-soft/20 text-olive-match rounded-2xl flex items-center justify-center text-2xl mb-8 group-hover:scale-110 transition-transform">
-                            {["🏠", "🎯", "🤖", "🔔", "✅"][i]}
+                {content.features.items.map((feature, i) => {
+                    const { icon: Icon, bg, color } = featureIcons[i];
+                    return (
+                        <div key={i} className="p-10 rounded-3xl border border-slate-100 bg-white hover:border-primary/20 transition-all hover:shadow-xl group flex flex-col items-center text-center">
+                            <div className={`w-14 h-14 ${bg} rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform`}>
+                                <Icon className={`w-7 h-7 ${color}`} strokeWidth={1.75} />
+                            </div>
+                            <h4 className="text-xl font-black text-text-main mb-4">{feature.title}</h4>
+                            <p className="text-text-muted font-bold text-sm leading-relaxed">{feature.description}</p>
                         </div>
-                        <h4 className="text-xl font-black text-text-main mb-4">{feature.title}</h4>
-                        <p className="text-text-muted font-bold text-sm leading-relaxed">{feature.description}</p>
-                    </div>
-                ))}
+                    );
+                })}
+            </div>
+        </div>
+    </Section>
+);
+
+const Owners = () => (
+    <Section id="propietarios" variant="pink" kicker={content.owners.kicker}>
+        <div className="flex flex-col gap-16">
+            <div className="text-center max-w-3xl mx-auto flex flex-col gap-4">
+                <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-text-main">
+                    {content.owners.title}
+                </h2>
+                <p className="text-lg text-text-muted font-bold">{content.owners.subtitle}</p>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {content.owners.differentials.map((item, i) => {
+                    const ownerIcons = [
+                        { icon: Users,         bg: "bg-blue-50",    color: "text-blue-500"   },
+                        { icon: UserCheck,     bg: "bg-green-50",   color: "text-green-600"  },
+                        { icon: BarChart3,     bg: "bg-purple-50",  color: "text-purple-500" },
+                        { icon: MapPin,        bg: "bg-primary/10", color: "text-primary"    },
+                        { icon: MessageCircle, bg: "bg-amber-50",   color: "text-amber-500"  },
+                    ];
+                    const { icon: Icon, bg, color } = ownerIcons[i];
+                    return (
+                        <div
+                            key={i}
+                            className={`p-8 rounded-3xl border border-slate-100 bg-white hover:border-primary/20 transition-all hover:shadow-xl group flex flex-col items-center text-center${i === 3 ? ' lg:col-start-1' : ''}`}
+                        >
+                            <div className={`w-14 h-14 ${bg} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                                <Icon className={`w-7 h-7 ${color}`} strokeWidth={1.75} />
+                            </div>
+                            <h4 className="text-lg font-black text-text-main mb-3">{item.title}</h4>
+                            <p className="text-text-muted font-bold text-sm leading-relaxed">{item.description}</p>
+                        </div>
+                    );
+                })}
+            </div>
+            <div className="flex justify-center">
+                <Link
+                    href="/owner/dashboard"
+                    className="bg-primary hover:opacity-90 text-white text-[14px] font-black px-10 py-4 rounded-full transition-all shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5"
+                >
+                    {content.owners.cta}
+                </Link>
             </div>
         </div>
     </Section>
@@ -262,20 +327,8 @@ export default function Landing() {
             </div>
             <Problem />
             <Solution />
-            <Section id="demo" variant="default" kicker="La Experiencia" className="bg-white">
-                <div className="flex flex-col gap-10">
-                    <div className="text-center max-w-3xl mx-auto mb-10">
-                        <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-text-main mb-6">
-                            Tu próximo hogar está a un mensaje de distancia
-                        </h2>
-                        <p className="text-lg text-text-muted font-bold">
-                            Mira cómo nuestro Asistente Inteligente encuentra opciones perfectas para ti en segundos.
-                        </p>
-                    </div>
-                    <FlowMockup />
-                </div>
-            </Section>
-            <Features />
+<Features />
+            <Owners />
             <Roomies />
             <Footer />
         </main>
