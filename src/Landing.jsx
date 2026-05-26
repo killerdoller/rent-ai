@@ -51,8 +51,8 @@ const Navbar = ({ onLoginClick }) => (
 );
 
 const Hero = () => {
-    const totalFrames = 191;
-    const baseUrl = "https://qtolgzslaxgiaoomophi.supabase.co/storage/v1/object/public/animacion/casita/frame_";
+    const totalFrames = 192;
+    const baseUrl = "https://nkwemnfunfsxkcpfipyq.supabase.co/storage/v1/object/public/Frames/frame_";
     const frames = Array.from({ length: totalFrames }, (_, i) => {
         const frameIndex = i.toString().padStart(3, '0');
         return `${baseUrl}${frameIndex}_delay-0.041s.webp`;

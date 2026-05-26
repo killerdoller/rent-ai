@@ -23,7 +23,7 @@ interface Props {
   initialLng: number;
   city?: string;
   hasInitialLocation?: boolean;
-  onLocationPicked: (lat: number, lng: number, address: string) => void;
+  onLocationPicked: (lat: number | null, lng: number | null, address: string) => void;
 }
 
 const pinIcon = L.divIcon({
@@ -96,26 +96,24 @@ export default function MapPicker({
     setSearching(true);
     try {
       const params = new URLSearchParams({ q, city });
-      const response = await fetch(`/api/maps/autocomplete?${params.toString()}`);
-      const data = await response.json();
 
-      if (data.results?.length) {
-        setResults(data.results);
+      // Try Google Places autocomplete first
+      const acResponse = await fetch(`/api/maps/autocomplete?${params.toString()}`);
+      const acData = await acResponse.json();
+
+      if (acData.results?.length) {
+        setResults(acData.results);
         setShowDrop(true);
         return;
       }
 
-      if (data.configured === false) {
-        setResults([]);
-        setShowDrop(false);
-        return;
-      }
-
-      params.set("google_only", "1");
+      // Fallback to geocode (Google → Nominatim → Photon) when autocomplete
+      // returns nothing OR when Google key is not configured (configured === false).
       const geocodeResponse = await fetch(`/api/maps/geocode?${params.toString()}`);
       const geocodeData = await geocodeResponse.json();
-      setResults(geocodeData.results || []);
-      setShowDrop(true);
+      const fallbackResults = geocodeData.results || [];
+      setResults(fallbackResults);
+      setShowDrop(fallbackResults.length > 0);
     } catch {
       setResults([]);
     } finally {
@@ -125,7 +123,9 @@ export default function MapPicker({
 
   const handleQueryChange = (value: string) => {
     setQuery(value);
-    if (pin) onLocationPicked(pin[0], pin[1], value);
+    // Always propagate address text to parent so manual typing is saved even without a pin.
+    // lat/lng pass null when there's no confirmed pin position.
+    onLocationPicked(pin?.[0] ?? null, pin?.[1] ?? null, value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => search(value), 450);
   };
@@ -178,6 +178,14 @@ export default function MapPicker({
             value={query}
             onChange={(event) => handleQueryChange(event.target.value)}
             onFocus={() => results.length > 0 && setShowDrop(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (results.length > 0) selectResult(results[0]);
+                else setShowDrop(false);
+              }
+              if (e.key === "Escape") setShowDrop(false);
+            }}
             placeholder="Buscar direccion exacta, barrio o ciudad..."
             style={{
               width: "100%",

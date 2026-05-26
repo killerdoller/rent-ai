@@ -280,7 +280,12 @@ export function NewProperty({ initialProperty }: { initialProperty?: InitialProp
               initialLat={form.latitude ?? 4.711} initialLng={form.longitude ?? -74.0721}
               city={form.city ? `${form.city}, Colombia` : "Bogotá, Colombia"}
               hasInitialLocation={form.latitude !== null && form.longitude !== null}
-              onLocationPicked={(lat, lng, address) => setForm(f => ({ ...f, latitude: lat, longitude: lng, address }))}
+              onLocationPicked={(lat, lng, address) => setForm(f => ({
+                ...f,
+                address,
+                ...(lat !== null && { latitude: lat }),
+                ...(lng !== null && { longitude: lng }),
+              }))}
             />
             {form.address && (
               <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 8 }}>
