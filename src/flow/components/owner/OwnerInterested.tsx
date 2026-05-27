@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Users, MapPin, Check, Building2, X, Briefcase, Heart, Star } from "lucide-react";
+import { Users, MapPin, Check, Building2, X, Briefcase, Heart, Star, GraduationCap, Home, BedDouble, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -36,22 +36,49 @@ interface InterestedTenant {
 
 interface TenantProfile {
   id: string; first_name: string | null; last_name: string | null;
-  age: number | null; job_title: string | null; city: string | null;
+  age: number | null; job_title: string | null; university_name: string | null; city: string | null;
   bio: string | null; interests: string[] | null; lifestyle_tags: string[] | null;
   cleanliness_level: number | null; social_level: number | null;
-  avatar_url: string | null; monthly_budget: number | null;
+  avatar_url: string | null; profile_images: string[] | null;
+  monthly_budget: number | null; min_budget: number | null; max_budget: number | null;
+  user_mode: string | null;
+  desired_property_types: string[] | null; min_bedrooms: number | null;
+  desired_localities: string[] | null; desired_neighborhoods: string[] | null;
+  desired_amenities_sector: string[] | null; desired_amenities_interior: string[] | null;
 }
 
+// Sliders are stored on a 1–10 scale (see Profile.tsx). Earlier profiles used
+// 1–5, so clamp the percentage to keep the bar within bounds either way.
 function SliderBar({ value, label }: { value: number | null; label: string }) {
-  const pct = value != null ? Math.round(((value - 1) / 4) * 100) : 50;
+  const pct = value != null ? Math.min(Math.round((value / 10) * 100), 100) : 50;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <span style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.6 }}>{label}</span>
-        <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, opacity: 0.6 }}>{value ?? "—"}/5</span>
+        <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee, opacity: 0.6 }}>{value ?? "—"}/10</span>
       </div>
       <div style={{ height: 6, borderRadius: 99, background: C.muted, overflow: "hidden" }}>
         <div style={{ height: "100%", width: `${pct}%`, background: C.terra, borderRadius: 99, transition: "width 0.3s" }} />
+      </div>
+    </div>
+  );
+}
+
+// Renders a "what the tenant is looking for" pill group; skips empty arrays.
+function DesireGroup({ icon, label, items }: { icon: React.ReactNode; label: string; items: (string | null)[] }) {
+  const clean = items.filter(Boolean) as string[];
+  if (clean.length === 0) return null;
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 5, fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>
+        {icon}{label}
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {clean.map(item => (
+          <span key={item} style={{ padding: "5px 12px", borderRadius: 9999, background: C.muted, fontFamily: BODY, fontSize: 11, fontWeight: 600, color: C.coffee }}>
+            {item}
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -83,6 +110,11 @@ function TenantProfileSheet({
       : "Arrendatario";
 
   const initial = name.charAt(0).toUpperCase();
+  const heroPhoto = profile?.profile_images?.[0] || profile?.avatar_url || tenant.tenant?.profile_images?.[0] || tenant.tenant?.avatar_url;
+  const fmtCOP = (n: number) => `$${Number(n).toLocaleString("es-CO")}`;
+  const budgetText = profile?.min_budget || profile?.max_budget
+    ? `${fmtCOP(profile.min_budget || 0)} – ${fmtCOP(profile.max_budget || 0)}`
+    : profile?.monthly_budget ? fmtCOP(profile.monthly_budget) : null;
 
   return (
     <motion.div
@@ -124,8 +156,8 @@ function TenantProfileSheet({
             <>
               {/* Hero */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 16, paddingBottom: 20, gap: 10 }}>
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt={name} style={{ width: 84, height: 84, borderRadius: 42, objectFit: "cover", border: `3px solid ${C.terra}` }} />
+                {heroPhoto ? (
+                  <img src={heroPhoto} alt={name} style={{ width: 84, height: 84, borderRadius: 42, objectFit: "cover", border: `3px solid ${C.terra}` }} />
                 ) : (
                   <div style={{ width: 84, height: 84, borderRadius: 42, background: `${C.terra}22`, display: "flex", alignItems: "center", justifyContent: "center", border: `3px solid ${C.terra}` }}>
                     <span style={{ fontFamily: DISPLAY, fontSize: 34, fontWeight: 500, color: C.terra }}>{initial}</span>
@@ -150,11 +182,17 @@ function TenantProfileSheet({
                       <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee }}>{profile.job_title}</span>
                     </div>
                   )}
-                  {profile?.monthly_budget && (
+                  {profile?.university_name && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 9999, background: C.muted }}>
+                      <GraduationCap style={{ width: 11, height: 11, color: C.coffee }} />
+                      <span style={{ fontFamily: BODY, fontSize: 11, color: C.coffee }}>{profile.university_name}</span>
+                    </div>
+                  )}
+                  {budgetText && (
                     <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 9999, background: `${C.terra}18` }}>
                       <Star style={{ width: 11, height: 11, color: C.terra }} />
                       <span style={{ fontFamily: BODY, fontSize: 11, color: C.terra, fontWeight: 700 }}>
-                        Presupuesto: ${Number(profile.monthly_budget).toLocaleString()}
+                        Presupuesto: {budgetText}
                       </span>
                     </div>
                   )}
@@ -215,6 +253,31 @@ function TenantProfileSheet({
                   </div>
                 </div>
               )}
+
+              {/* Qué busca el arrendatario */}
+              {(() => {
+                const wantsProp =
+                  (profile?.desired_property_types?.length || 0) +
+                  (profile?.min_bedrooms ? 1 : 0) +
+                  (profile?.desired_localities?.length || 0) +
+                  (profile?.desired_neighborhoods?.length || 0) +
+                  (profile?.desired_amenities_sector?.length || 0) +
+                  (profile?.desired_amenities_interior?.length || 0) > 0;
+                if (!wantsProp) return null;
+                return (
+                  <div style={{ background: C.white, borderRadius: 16, padding: "14px", border: `1.5px solid ${C.border}`, marginBottom: 14, display: "flex", flexDirection: "column", gap: 14 }}>
+                    <div style={{ fontFamily: DISPLAY, fontSize: 15, fontWeight: 500, color: C.ink }}>Qué busca</div>
+                    <DesireGroup icon={<Home style={{ width: 12, height: 12 }} />} label="Tipo de propiedad" items={profile?.desired_property_types || []} />
+                    {profile?.min_bedrooms ? (
+                      <DesireGroup icon={<BedDouble style={{ width: 12, height: 12 }} />} label="Habitaciones" items={[`${profile.min_bedrooms}+`]} />
+                    ) : null}
+                    <DesireGroup icon={<MapPin style={{ width: 12, height: 12 }} />} label="Localidades" items={profile?.desired_localities || []} />
+                    <DesireGroup icon={<MapPin style={{ width: 12, height: 12 }} />} label="Barrios" items={profile?.desired_neighborhoods || []} />
+                    <DesireGroup icon={<Sparkles style={{ width: 12, height: 12 }} />} label="Amenidades del sector" items={profile?.desired_amenities_sector || []} />
+                    <DesireGroup icon={<Sparkles style={{ width: 12, height: 12 }} />} label="Comodidades de la propiedad" items={profile?.desired_amenities_interior || []} />
+                  </div>
+                );
+              })()}
 
             </>
           )}

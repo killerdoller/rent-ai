@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import { Building2, Users, Heart, Plus, ArrowRight, LogOut, TrendingUp, BarChart3, Target } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../utils/supabaseClient";
-import { 
+import { useIsMobile } from "../ui/use-mobile";
+import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, Tooltip, Cell,
 } from 'recharts';
@@ -27,6 +28,7 @@ const C = {
 
 export function OwnerDashboard() {
   const navigate = useRouter();
+  const isMobile = useIsMobile();
   const [stats, setStats] = useState({ properties: 0, interested: 0, matches: 0 });
   const [analytics, setAnalytics] = useState<any>(null);
   const [marketLevel, setMarketLevel] = useState<"neighborhood" | "city">("neighborhood");
@@ -121,13 +123,13 @@ export function OwnerDashboard() {
       {/* Header */}
       <header style={{
         background: C.white, borderBottom: `1.5px solid ${C.border}`,
-        padding: "20px 24px",
+        padding: isMobile ? "16px 16px" : "20px 24px",
       }}>
-        <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div>
+        <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, minWidth: 0, flex: isMobile ? "1 1 auto" : "0 1 auto" }}>
+            <div style={{ minWidth: 0 }}>
               <div style={{
-                fontFamily: DISPLAY, fontSize: 34, fontWeight: 500, color: C.ink,
+                fontFamily: DISPLAY, fontSize: isMobile ? 26 : 34, fontWeight: 500, color: C.ink,
                 letterSpacing: -1.2, lineHeight: 1, marginTop: 4
               }}>
                 Panel de Control
@@ -139,14 +141,16 @@ export function OwnerDashboard() {
 
             {/* Property Selector */}
             {properties.length > 1 && (
-              <div style={{ marginLeft: 20, display: "flex", alignItems: "center", gap: 8 }}>
-                <select 
+              <div style={{ marginLeft: isMobile ? 0 : 20, display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: isMobile ? "1 1 100%" : "0 1 auto" }}>
+                <select
                   value={selectedPropertyId}
                   onChange={(e) => setSelectedPropertyId(e.target.value)}
                   style={{
                     padding: "8px 12px", borderRadius: 12, border: `1.5px solid ${C.border}`,
                     background: C.creAlt, color: C.ink, fontFamily: BODY, fontSize: 13, fontWeight: 600,
-                    cursor: "pointer", outline: "none"
+                    cursor: "pointer", outline: "none",
+                    maxWidth: "100%", flex: isMobile ? 1 : "0 1 auto",
+                    textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden",
                   }}
                 >
                   {properties.map(p => (
@@ -181,7 +185,7 @@ export function OwnerDashboard() {
       </header>
 
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-        <div style={{ maxWidth: 900, margin: "0 auto", padding: "28px 24px 80px" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto", padding: isMobile ? "20px 16px 80px" : "28px 24px 80px" }}>
           {isLoading ? (
             <div style={{ display: "flex", justifyContent: "center", paddingTop: 80 }}>
               <div style={{
@@ -253,7 +257,7 @@ export function OwnerDashboard() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Radar Chart: Psicográfico */}
                     <div style={{ 
-                      background: C.white, borderRadius: 24, padding: "28px", 
+                      background: C.white, borderRadius: 24, padding: isMobile ? "18px" : "28px",
                       border: `1.5px solid ${C.border}`,
                       boxShadow: "0 2px 8px rgba(130,85,77,0.04)",
                       minHeight: "350px",
@@ -288,7 +292,7 @@ export function OwnerDashboard() {
 
                     {/* Funnel: Conversión */}
                     <div style={{ 
-                      background: C.white, borderRadius: 24, padding: "28px", 
+                      background: C.white, borderRadius: 24, padding: isMobile ? "18px" : "28px",
                       border: `1.5px solid ${C.border}`,
                       boxShadow: "0 2px 8px rgba(130,85,77,0.04)",
                       minHeight: "350px",
@@ -333,7 +337,7 @@ export function OwnerDashboard() {
                     {/* Market Price Indicator */}
                     <div className="lg:col-span-2" style={{ 
                       background: `linear-gradient(135deg, ${C.white} 0%, ${C.creAlt} 100%)`, 
-                      borderRadius: 24, padding: "28px", 
+                      borderRadius: 24, padding: isMobile ? "18px" : "28px",
                       border: `1.5px solid ${C.border}`,
                     }}>
                       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 20, marginBottom: 24 }}>
@@ -369,9 +373,9 @@ export function OwnerDashboard() {
                         </div>
                       </div>
 
-                      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 20 }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ 
+                      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "flex-end", justifyContent: "space-between", gap: 20 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
                             fontFamily: BODY, fontSize: 13, color: C.ink, lineHeight: 1.5,
                             background: C.white, padding: "12px 16px", borderRadius: 16,
                             border: `1px solid ${C.border}`
@@ -381,8 +385,8 @@ export function OwnerDashboard() {
                             </strong> de la media en <strong>{analytics.market[marketLevel].label}</strong>.
                           </div>
                         </div>
-                        
-                        <div style={{ textAlign: "right" }}>
+
+                        <div style={{ textAlign: isMobile ? "left" : "right" }}>
                           <div style={{ fontFamily: BODY, fontSize: 11, fontWeight: 700, color: C.coffee, textTransform: "uppercase", letterSpacing: 0.5 }}>
                             Promedio ({analytics.market[marketLevel].label})
                           </div>
