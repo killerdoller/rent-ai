@@ -1,7 +1,7 @@
 "use client";
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Heart, MessageCircle, User, Flame } from "lucide-react";
+import { Heart, MessageCircle, User, Flame, Bot } from "lucide-react";
 import { supabase } from "../../utils/supabaseClient";
 
 const DISPLAY = "var(--font-fraunces, 'Georgia', serif)";
@@ -64,6 +64,7 @@ export function Root({ children }: { children: React.ReactNode }) {
   const navItems = [
     { path: "/app/home",    icon: Flame,        label: "Descubrir" },
     { path: "/app/matches", icon: Heart,         label: "Conexiones" },
+    { path: "/app/assistant", icon: Bot,         label: "IA Asistente", isSpecial: true },
     { path: "/app/chat",    icon: MessageCircle, label: "Chats" },
     { path: "/app/profile", icon: User,          label: "Perfil" },
   ];
@@ -89,19 +90,20 @@ export function Root({ children }: { children: React.ReactNode }) {
           </div>
 
           <nav style={{ display: "flex", flexDirection: "column", gap: 3, flex: 1 }}>
-            {navItems.map(({ path, icon: Icon, label }) => {
+            {navItems.map(({ path, icon: Icon, label, isSpecial }) => {
               const isActive = pathname?.startsWith(path);
               return (
                 <button key={path} onClick={() => navigate.push(path)} style={{
                   display: "flex", alignItems: "center", gap: 10, width: "100%",
-                  padding: "11px 14px", borderRadius: 12,
-                  background: isActive ? C.green : "transparent",
-                  color: isActive ? C.white : C.coffee,
-                  border: "none", cursor: "pointer",
-                  fontFamily: BODY, fontSize: 14, fontWeight: 600,
+                  padding: isSpecial ? "13px 14px" : "11px 14px", borderRadius: 12,
+                  background: isActive ? C.green : (isSpecial ? "rgba(216, 125, 111, 0.1)" : "transparent"),
+                  color: isActive ? C.white : (isSpecial ? C.green : C.coffee),
+                  border: isSpecial && !isActive ? `1.5px solid ${C.green}` : "none",
+                  cursor: "pointer",
+                  fontFamily: BODY, fontSize: 14, fontWeight: isSpecial ? 700 : 600,
                   transition: "all 0.12s", textAlign: "left",
                 }}>
-                  <Icon style={{ width: 18, height: 18, flexShrink: 0 }}/>
+                  <Icon style={{ width: isSpecial ? 20 : 18, height: isSpecial ? 20 : 18, flexShrink: 0 }}/>
                   <span>{label}</span>
                 </button>
               );
@@ -126,16 +128,17 @@ export function Root({ children }: { children: React.ReactNode }) {
             background: C.white, borderTop: `1.5px solid ${C.border}`,
           }}>
             <div style={{ height: 64, display: "flex", justifyContent: "space-around", alignItems: "center" }}>
-              {navItems.map(({ path, icon: Icon, label }) => {
+              {navItems.map(({ path, icon: Icon, label, isSpecial }) => {
                 const isActive = pathname?.startsWith(path);
                 return (
                   <button key={path} onClick={() => navigate.push(path)} style={{
                     display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                    padding: "6px 16px", background: "none", border: "none", cursor: "pointer",
-                    color: isActive ? C.green : C.coffee,
+                    padding: "6px 12px", background: "none", border: "none", cursor: "pointer",
+                    color: isActive ? C.green : (isSpecial ? C.green : C.coffee),
+                    transform: isSpecial ? "scale(1.05)" : "none",
                   }}>
-                    <Icon style={{ width: 22, height: 22 }} strokeWidth={isActive ? 2.2 : 1.8}/>
-                    <span style={{ fontFamily: BODY, fontSize: 10, fontWeight: 600 }}>{label}</span>
+                    <Icon style={{ width: 22, height: 22 }} strokeWidth={isActive ? 2.2 : (isSpecial ? 2.5 : 1.8)}/>
+                    <span style={{ fontFamily: BODY, fontSize: 10, fontWeight: isSpecial ? 700 : 600 }}>{label}</span>
                   </button>
                 );
               })}
