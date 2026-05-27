@@ -18,9 +18,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY,
 );
 
-// ── 1. Collect all storage file paths ────────────────────────────────────────
+// ── 1. Collect all storage file paths (root + subfolders) ────────────────────
 
-async function listAllFiles() {
+async function listFolder(folder) {
   const files = [];
   let offset  = 0;
   const limit = 1000;
@@ -28,17 +28,30 @@ async function listAllFiles() {
   while (true) {
     const { data, error } = await supabase.storage
       .from(BUCKET)
-      .list("properties", { limit, offset, sortBy: { column: "name", order: "asc" } });
+      .list(folder, { limit, offset, sortBy: { column: "name", order: "asc" } });
 
-    if (error) throw new Error(`Storage list error: ${error.message}`);
+    if (error) throw new Error(`Storage list error (${folder || "root"}): ${error.message}`);
     if (!data || data.length === 0) break;
 
-    files.push(...data.map(f => `properties/${f.name}`));
+    for (const item of data) {
+      const path = folder ? `${folder}/${item.name}` : item.name;
+      if (item.id === null) {
+        // It's a folder — recurse
+        files.push(...await listFolder(path));
+      } else {
+        files.push(path);
+      }
+    }
+
     if (data.length < limit) break;
     offset += limit;
   }
 
   return files;
+}
+
+async function listAllFiles() {
+  return listFolder("");
 }
 
 // ── 2. Collect all URLs referenced in the DB ─────────────────────────────────
