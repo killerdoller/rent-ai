@@ -127,17 +127,17 @@ export function Root({ children }: { children: React.ReactNode }) {
             zIndex: 50, paddingBottom: "env(safe-area-inset-bottom)",
             background: C.white, borderTop: `1.5px solid ${C.border}`,
           }}>
-            <div style={{ height: 64, display: "flex", justifyContent: "space-around", alignItems: "center" }}>
+            <div style={{ height: 64, display: "flex", alignItems: "center" }}>
               {navItems.map(({ path, icon: Icon, label, isSpecial }) => {
                 const isActive = pathname?.startsWith(path);
                 return (
                   <button key={path} onClick={() => navigate.push(path)} style={{
-                    display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                    padding: "6px 12px", background: "none", border: "none", cursor: "pointer",
+                    flex: 1, minWidth: 0,
+                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
+                    padding: "6px 4px", background: "none", border: "none", cursor: "pointer",
                     color: isActive ? C.green : (isSpecial ? C.green : C.coffee),
-                    transform: isSpecial ? "scale(1.05)" : "none",
                   }}>
-                    <Icon style={{ width: 22, height: 22 }} strokeWidth={isActive ? 2.2 : (isSpecial ? 2.5 : 1.8)}/>
+                    <Icon style={{ width: 22, height: 22, flexShrink: 0 }} strokeWidth={isActive ? 2.2 : (isSpecial ? 2.5 : 1.8)}/>
                     <span style={{ fontFamily: BODY, fontSize: 10, fontWeight: isSpecial ? 700 : 600 }}>{label}</span>
                   </button>
                 );
